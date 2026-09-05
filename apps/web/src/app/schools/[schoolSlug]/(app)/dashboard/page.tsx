@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -673,6 +673,299 @@ function ParentAccountCard({
         )}
       </div>
     </FamilyCardShell>
+  );
+}
+
+// ─── Student self dashboard ──────────────────────────────────────────────────
+// Miroir de StudentHome.tsx côté mobile : hero (rendu par WarmWelcomePanel),
+// 3 stats rapides (moyenne / matières / devoirs en attente), planning du jour,
+// dernières notes, accès rapides. Avant cet ajout, un élève connecté sur le
+// web n'avait rien d'autre que le bandeau de bienvenue sur cette page.
+
+type StudentTodayOccurrence = {
+  id: string;
+  startMinute: number;
+  subject: { name: string };
+  teacherUser: { firstName: string; lastName: string };
+  room: string | null;
+};
+
+type StudentHomeworkRow = {
+  id: string;
+  myDoneAt?: string | null;
+};
+
+type StudentFlatEvaluation = {
+  subjectLabel: string;
+  score: number | null;
+  maxScore: number;
+  recordedAt: string;
+};
+
+function toIsoDateString(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function getCurrentStudentTerm(
+  date = new Date(),
+): StudentNotesTermSnapshot["term"] {
+  const month = date.getMonth() + 1;
+  if (month >= 9 && month <= 12) return "TERM_1";
+  if (month >= 1 && month <= 3) return "TERM_2";
+  return "TERM_3";
+}
+
+function formatStudentScore(value: number | null): string {
+  if (value === null) return "-";
+  return value % 1 === 0 ? `${value}` : value.toFixed(2).replace(".", ",");
+}
+
+function extractLatestStudentEvaluations(
+  snapshots: StudentNotesTermSnapshot[],
+  count: number,
+): StudentFlatEvaluation[] {
+  const all: StudentFlatEvaluation[] = [];
+  for (const snapshot of snapshots) {
+    for (const subject of snapshot.subjects) {
+      for (const evaluation of subject.evaluations) {
+        all.push({
+          subjectLabel: subject.subjectLabel,
+          score: evaluation.score,
+          maxScore: evaluation.maxScore,
+          recordedAt: evaluation.recordedAt,
+        });
+      }
+    }
+  }
+  return all
+    .sort(
+      (a, b) =>
+        new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+    )
+    .slice(0, count);
+}
+
+function formatStudentEvalDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+}
+
+function StudentHomeSection({
+  schoolSlug,
+  t,
+}: {
+  schoolSlug: string;
+  t: TranslateFn;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState<StudentNotesTermSnapshot | null>(
+    null,
+  );
+  const [todayOccurrences, setTodayOccurrences] = useState<
+    StudentTodayOccurrence[]
+  >([]);
+  const [homeworkPending, setHomeworkPending] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!schoolSlug) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const today = toIsoDateString(new Date());
+        const timetableResponse = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/me?fromDate=${today}&toDate=${today}`,
+          { credentials: "include" },
+        );
+        if (!timetableResponse.ok) return;
+        const timetable = (await timetableResponse.json()) as {
+          student: { id: string };
+          class: { id: string };
+          occurrences?: Array<{
+            id: string;
+            occurrenceDate: string;
+            startMinute: number;
+            status?: string;
+            subject: { name: string };
+            teacherUser: { firstName: string; lastName: string };
+            room: string | null;
+          }>;
+        };
+        if (cancelled) return;
+
+        const occurrences = (timetable.occurrences ?? [])
+          .filter(
+            (occ) =>
+              occ.occurrenceDate === today &&
+              (occ.status ?? "PLANNED") === "PLANNED",
+          )
+          .sort((a, b) => a.startMinute - b.startMinute);
+        setTodayOccurrences(occurrences);
+
+        const [notesResult, homeworkResult] = await Promise.allSettled([
+          fetch(
+            `${API_URL}/schools/${schoolSlug}/students/${timetable.student.id}/notes`,
+            { credentials: "include" },
+          ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
+          fetch(
+            `${API_URL}/schools/${schoolSlug}/classes/${timetable.class.id}/homework?studentId=${encodeURIComponent(
+              timetable.student.id,
+            )}`,
+            { credentials: "include" },
+          ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
+        ]);
+        if (cancelled) return;
+
+        if (notesResult.status === "fulfilled") {
+          const snapshots = notesResult.value as StudentNotesTermSnapshot[];
+          const currentTerm = getCurrentStudentTerm();
+          setSnapshot(
+            snapshots.find((entry) => entry.term === currentTerm) ??
+              snapshots[0] ??
+              null,
+          );
+        }
+
+        if (homeworkResult.status === "fulfilled") {
+          const rows = homeworkResult.value as StudentHomeworkRow[];
+          setHomeworkPending(rows.filter((row) => !row.myDoneAt).length);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug]);
+
+  const latestEvaluations = useMemo(
+    () => (snapshot ? extractLatestStudentEvaluations([snapshot], 3) : []),
+    [snapshot],
+  );
+
+  return (
+    <div
+      className="space-y-4 min-[360px]:space-y-5"
+      data-testid="student-dashboard"
+    >
+      <div className="grid grid-cols-3 gap-2 min-[360px]:gap-3">
+        <Link
+          href={`/schools/${schoolSlug}/moi/notes`}
+          className="rounded-[16px] border border-orange-100 bg-white/85 p-3 text-center shadow-sm ring-1 ring-orange-100/60 transition-transform hover:-translate-y-0.5 hover:bg-white min-[360px]:rounded-[18px] min-[360px]:p-4"
+        >
+          <p className="font-heading text-xl font-semibold text-slate-950 min-[360px]:text-2xl">
+            {formatStudentScore(snapshot?.generalAverage.student ?? null)}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500 min-[360px]:text-xs">
+            {t("dashboard.student.stats.average")}
+          </p>
+        </Link>
+        <Link
+          href={`/schools/${schoolSlug}/moi/notes`}
+          className="rounded-[16px] border border-orange-100 bg-white/85 p-3 text-center shadow-sm ring-1 ring-orange-100/60 transition-transform hover:-translate-y-0.5 hover:bg-white min-[360px]:rounded-[18px] min-[360px]:p-4"
+        >
+          <p className="font-heading text-xl font-semibold text-slate-950 min-[360px]:text-2xl">
+            {snapshot ? snapshot.subjects.length : "-"}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500 min-[360px]:text-xs">
+            {t("dashboard.student.stats.subjects")}
+          </p>
+        </Link>
+        <Link
+          href={`/schools/${schoolSlug}/moi/cahier-de-texte`}
+          className="rounded-[16px] border border-orange-100 bg-white/85 p-3 text-center shadow-sm ring-1 ring-orange-100/60 transition-transform hover:-translate-y-0.5 hover:bg-white min-[360px]:rounded-[18px] min-[360px]:p-4"
+        >
+          <p className="font-heading text-xl font-semibold text-slate-950 min-[360px]:text-2xl">
+            {homeworkPending === null ? "-" : homeworkPending}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500 min-[360px]:text-xs">
+            {t("dashboard.student.stats.homework")}
+          </p>
+        </Link>
+      </div>
+
+      <div className="grid gap-3 min-[360px]:gap-4 xl:grid-cols-2">
+        <FamilyCardShell
+          title={t("dashboard.student.todayTitle")}
+          eyebrow={t("dashboard.student.todayEyebrow")}
+          icon={Calendar}
+          accent="from-[#d6f2fb] via-[#edf9ff] to-white"
+        >
+          {loading ? (
+            <div className="h-20 animate-pulse rounded-2xl bg-white/80" />
+          ) : todayOccurrences.length === 0 ? (
+            <div className="rounded-[16px] border border-dashed border-orange-200 bg-white/70 px-3 py-4 text-sm text-slate-600 min-[360px]:rounded-[18px] min-[360px]:py-5">
+              {t("dashboard.student.todayEmpty")}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todayOccurrences.map((occ) => (
+                <Link
+                  key={occ.id}
+                  href={`/schools/${schoolSlug}/emploi-du-temps`}
+                  className="flex items-center gap-3 rounded-[14px] border border-white/80 bg-white/85 px-3 py-2.5 shadow-sm ring-1 ring-orange-100/60 hover:bg-white"
+                >
+                  <span className="w-12 shrink-0 font-heading text-sm font-semibold text-orange-700">
+                    {minuteToTimeLabel(occ.startMinute)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-slate-900">
+                      {occ.subject.name}
+                    </span>
+                    <span className="block truncate text-xs text-slate-500">
+                      {occ.teacherUser.lastName} {occ.teacherUser.firstName}
+                      {occ.room ? ` • ${occ.room}` : ""}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </FamilyCardShell>
+
+        <FamilyCardShell
+          title={t("dashboard.student.gradesTitle")}
+          eyebrow={t("dashboard.student.gradesEyebrow")}
+          icon={GraduationCap}
+          accent="from-[#ffd9cf] via-[#fff2e8] to-white"
+        >
+          {loading ? (
+            <div className="h-20 animate-pulse rounded-2xl bg-white/80" />
+          ) : latestEvaluations.length === 0 ? (
+            <div className="rounded-[16px] border border-dashed border-orange-200 bg-white/70 px-3 py-4 text-sm text-slate-600 min-[360px]:rounded-[18px] min-[360px]:py-5">
+              {t("dashboard.student.gradesEmpty")}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {latestEvaluations.map((ev, idx) => (
+                <Link
+                  key={`${ev.subjectLabel}-${ev.recordedAt}-${idx}`}
+                  href={`/schools/${schoolSlug}/moi/notes`}
+                  className="flex items-center justify-between gap-3 rounded-[14px] border border-white/80 bg-white/85 px-3 py-2.5 shadow-sm ring-1 ring-orange-100/60 hover:bg-white"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-slate-900">
+                      {ev.subjectLabel}
+                    </span>
+                    <span className="block text-xs text-slate-500">
+                      {formatStudentEvalDate(ev.recordedAt)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-heading text-sm font-semibold text-orange-700">
+                    {formatStudentScore(ev.score)}/{ev.maxScore}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </FamilyCardShell>
+      </div>
+    </div>
   );
 }
 
@@ -1603,7 +1896,7 @@ export default function DashboardPage() {
           ? ((await classesResponse.json()) as Array<unknown>).length
           : 0,
         studentsCount: studentsResponse.ok
-          ? ((await studentsResponse.json()) as Array<unknown>).length
+          ? ((await studentsResponse.json()) as { total: number }).total
           : 0,
         teachersCount: teachersResponse.ok
           ? ((await teachersResponse.json()) as Array<unknown>).length
@@ -1773,6 +2066,10 @@ export default function DashboardPage() {
               viewerRole={me.role}
               viewScope="GENERAL"
             />
+          ) : null}
+
+          {me?.role === "STUDENT" ? (
+            <StudentHomeSection schoolSlug={schoolSlug} t={t} />
           ) : null}
         </>
       ) : null}

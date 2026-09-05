@@ -27,6 +27,7 @@ describe("Admin messaging API e2e — mailbox agrégée SUPER_ADMIN/ADMIN", () =
   const schoolAdminAEmail = `e2e-admin-msg-schooladmin-a-${runId}@example.test`;
   const schoolAdminBEmail = `e2e-admin-msg-schooladmin-b-${runId}@example.test`;
   const parentAEmail = `e2e-admin-msg-parent-a-${runId}@example.test`;
+  const studentAEmail = `e2e-admin-msg-student-a-${runId}@example.test`;
   const password = "StrongPass1";
 
   let schoolAId = "";
@@ -35,10 +36,12 @@ describe("Admin messaging API e2e — mailbox agrégée SUPER_ADMIN/ADMIN", () =
   let schoolAdminAId = "";
   let schoolAdminBId = "";
   let parentAId = "";
+  let studentAId = "";
 
   let superAdminToken = "";
   let schoolAdminAToken = "";
   let parentAToken = "";
+  let studentAToken = "";
 
   const userIdsToCleanup: string[] = [];
 
@@ -165,9 +168,26 @@ describe("Admin messaging API e2e — mailbox agrégée SUPER_ADMIN/ADMIN", () =
     parentAId = parentA.id;
     userIdsToCleanup.push(parentAId);
 
+    const studentA = await prisma.user.create({
+      data: {
+        firstName: "Eleve",
+        lastName: "EcoleA",
+        email: studentAEmail,
+        passwordHash,
+        mustChangePassword: false,
+        profileCompleted: true,
+        activeRole: "STUDENT",
+        memberships: { create: { schoolId: schoolAId, role: "STUDENT" } },
+      },
+      select: { id: true },
+    });
+    studentAId = studentA.id;
+    userIdsToCleanup.push(studentAId);
+
     superAdminToken = await login(superAdminEmail);
     schoolAdminAToken = await login(schoolAdminAEmail);
     parentAToken = await login(parentAEmail);
+    studentAToken = await login(studentAEmail);
   });
 
   afterAll(async () => {
@@ -289,6 +309,23 @@ describe("Admin messaging API e2e — mailbox agrégée SUPER_ADMIN/ADMIN", () =
     expect(platformAdmins.some((entry) => entry.value === superAdminId)).toBe(
       true,
     );
+  });
+
+  // Régression 2026-09-05 : STUDENT était absent des rôles autorisés sur cet
+  // endpoint (@Roles sur ManagementController#listMessagingRecipients),
+  // renvoyant 403 à un élève — alors que mobile affiche le FAB de
+  // composition de message sans aucune restriction de rôle, et que
+  // MessagingController (envoi/lecture) autorise déjà STUDENT sur toutes ses
+  // routes. Sans ce endpoint, l'écran "Nouveau message" élève ne pouvait
+  // même pas lister de destinataire.
+  it("permet à un élève de lister les destinataires (STUDENT ne recevait que 403 auparavant)", async () => {
+    const { response, body } = await apiJson(
+      `/api/schools/${schoolASlug}/messaging/recipients`,
+      { headers: { authorization: `Bearer ${studentAToken}` } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(body?.platformAdmins).toBeDefined();
   });
 
   it("never exposes a message between two school users the platform admin isn't a party to", async () => {

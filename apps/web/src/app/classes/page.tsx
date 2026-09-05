@@ -605,14 +605,16 @@ export default function ClassesPage() {
         (await curriculumsResponse.json()) as CurriculumRow[];
       const teachersPayload = (await teachersResponse.json()) as TeacherRow[];
       const subjectsPayload = (await subjectsResponse.json()) as SubjectRow[];
-      const studentsPayload = (await studentsResponse.json()) as StudentRow[];
+      const studentsPayload = (await studentsResponse.json()) as {
+        students: StudentRow[];
+      };
 
       setClassrooms(classesPayload);
       setSchoolYears(schoolYearsPayload);
       setCurriculums(curriculumsPayload);
       setTeachers(teachersPayload);
       setSubjects(subjectsPayload);
-      setAllStudents(studentsPayload);
+      setAllStudents(studentsPayload.students);
 
       if (!selectedClassId && classesPayload.length > 0) {
         setSelectedClassId(classesPayload[0].id);
@@ -664,6 +666,7 @@ export default function ClassesPage() {
       const studentsParams = new URLSearchParams({
         classId: classEntity.id,
         schoolYearId: classEntity.schoolYear.id,
+        limit: "100",
       });
 
       const curriculumSubjectsPromise = classEntity.curriculum?.id
@@ -724,7 +727,9 @@ export default function ClassesPage() {
 
       const assignmentsPayload =
         (await assignmentsResponse.json()) as AssignmentRow[];
-      const studentsPayload = (await studentsResponse.json()) as StudentRow[];
+      const studentsPayload = (
+        (await studentsResponse.json()) as { students: StudentRow[] }
+      ).students;
       const overridesPayload =
         (await overridesResponse.json()) as ClassSubjectOverrideRow[];
 

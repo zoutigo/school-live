@@ -69,9 +69,9 @@ function mockFetchBase(overrides?: {
       ]);
     }
     if (url.includes("/admin/students?")) {
-      return jsonResponse([
-        { id: "student-1", firstName: "Remi", lastName: "Ntamack" },
-      ]);
+      return jsonResponse({
+        students: [{ id: "student-1", firstName: "Remi", lastName: "Ntamack" }],
+      });
     }
     if (url.includes("/admin/finance/students/") && url.includes("/summary")) {
       if (overrides?.summaryStatus && overrides.summaryStatus !== 200) {

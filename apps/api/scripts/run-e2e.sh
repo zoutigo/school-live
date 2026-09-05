@@ -40,7 +40,20 @@ echo "==> Waiting for redis readiness"
 docker compose -f "${COMPOSE_FILE}" exec -T redis sh -lc "until redis-cli ping >/dev/null 2>&1; do sleep 1; done"
 
 echo "==> Ensuring test database '${TEST_DB_NAME}' exists"
-docker compose -f "${COMPOSE_FILE}" exec -T postgres sh -lc "psql -U '${TEST_DB_USER}' -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='${TEST_DB_NAME}'\" | grep -q 1 || psql -U '${TEST_DB_USER}' -d postgres -c \"CREATE DATABASE \\\"${TEST_DB_NAME}\\\"\""
+# The official postgres image restarts once internally after initdb (stop the
+# temp init server, start the real one). pg_isready above can observe that
+# temp server and report ready right as it's about to stop, leaving a short
+# window where this exec has no socket to connect to ("No such file or
+# directory"). Retrying absorbs that restart instead of failing the whole run.
+ensure_test_db_attempts=0
+until docker compose -f "${COMPOSE_FILE}" exec -T postgres sh -lc "psql -U '${TEST_DB_USER}' -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='${TEST_DB_NAME}'\" | grep -q 1 || psql -U '${TEST_DB_USER}' -d postgres -c \"CREATE DATABASE \\\"${TEST_DB_NAME}\\\"\""; do
+  ensure_test_db_attempts=$((ensure_test_db_attempts + 1))
+  if [ "${ensure_test_db_attempts}" -ge 30 ]; then
+    echo "Failed to ensure test database '${TEST_DB_NAME}' after ${ensure_test_db_attempts} attempts" >&2
+    exit 1
+  fi
+  sleep 1
+done
 
 echo "==> Applying prisma migrations on test database"
 NODE_ENV=test DATABASE_URL="${DATABASE_URL}" npx prisma migrate deploy --schema prisma/schema.prisma

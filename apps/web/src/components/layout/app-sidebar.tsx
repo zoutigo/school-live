@@ -385,6 +385,12 @@ function buildRoleItems(
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
+        label: t("sidebar.nav.users"),
+        href: `${schoolBase}/utilisateurs`,
+        icon: Users,
+        matchPrefix: `${schoolBase}/utilisateurs`,
+      },
+      {
         label: t("sidebar.nav.grades"),
         href: `${schoolBase}/notes`,
         icon: BookOpen,
@@ -529,13 +535,14 @@ function buildRoleItems(
     ];
   }
 
+  // STUDENT: doit rester le miroir exact du menu mobile (nav-config.ts#STUDENT_NAV)
+  // — Accueil, Fil, Notes, Devoirs, Emploi du temps, Discipline, Vie de classe,
+  // Ressources, Messagerie, Documents, Mon compte. Aucune situation financière
+  // ni paiement en ligne côté élève (ça n'existe pas sur mobile), et la page
+  // `/student-grades` (formulaire de saisie admin, table brute non liée aux
+  // évaluations réelles) n'est pas une vue élève : elle ne doit jamais
+  // apparaître ici.
   return [
-    {
-      label: t("sidebar.nav.myAccount"),
-      href: "/account",
-      icon: UserSquare2,
-      matchPrefix: "/account",
-    },
     {
       label: t("sidebar.nav.home"),
       href: `${schoolBase}/dashboard`,
@@ -543,10 +550,10 @@ function buildRoleItems(
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
-      label: t("sidebar.nav.yourInfo"),
-      href: `${schoolBase}/dashboard#infos`,
+      label: t("sidebar.nav.myAccount"),
+      href: "/account",
       icon: UserSquare2,
-      matchPrefix: `${schoolBase}/dashboard`,
+      matchPrefix: "/account",
     },
     {
       label: t("sidebar.nav.newsFeed"),
@@ -556,22 +563,16 @@ function buildRoleItems(
       unread: feedUnread,
     },
     {
-      label: t("sidebar.nav.financialSituation"),
-      href: `${schoolBase}/dashboard#finance`,
-      icon: Wallet,
-      matchPrefix: `${schoolBase}/dashboard`,
+      label: t("sidebar.nav.grades"),
+      href: `${schoolBase}/moi/notes`,
+      icon: BookOpen,
+      matchPrefix: `${schoolBase}/moi/notes`,
     },
     {
-      label: t("sidebar.nav.onlinePayments"),
-      href: `${schoolBase}/dashboard#payments`,
-      icon: CreditCard,
-      matchPrefix: `${schoolBase}/dashboard`,
-    },
-    {
-      label: t("sidebar.nav.settings"),
-      href: "/settings",
-      icon: Settings,
-      matchPrefix: "/settings",
+      label: t("homework.sidebar.cahierDeTexte"),
+      href: `${schoolBase}/moi/cahier-de-texte`,
+      icon: FileText,
+      matchPrefix: `${schoolBase}/moi/cahier-de-texte`,
     },
     {
       label: t("timetable.sidebar.emploiDuTemps"),
@@ -592,6 +593,12 @@ function buildRoleItems(
       matchPrefix: `${schoolBase}/moi/vie-de-classe`,
     },
     {
+      label: t("sidebar.nav.resources"),
+      href: "/resources",
+      icon: Library,
+      matchPrefix: "/resources",
+    },
+    {
       label: t("messaging.nav.title"),
       href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
@@ -600,27 +607,15 @@ function buildRoleItems(
     },
     {
       label: t("sidebar.nav.documents"),
-      href: `${schoolBase}/dashboard#docs`,
+      href: `${schoolBase}/moi/documents`,
       icon: FileText,
-      matchPrefix: `${schoolBase}/dashboard`,
+      matchPrefix: `${schoolBase}/moi/documents`,
     },
     {
-      label: t("sidebar.nav.gradesAndHomework"),
-      href: `${schoolBase}/student-grades`,
-      icon: BookOpen,
-      matchPrefix: `${schoolBase}/student-grades`,
-    },
-    {
-      label: t("sidebar.nav.grades"),
-      href: `${schoolBase}/moi/notes`,
-      icon: BookOpen,
-      matchPrefix: `${schoolBase}/moi/notes`,
-    },
-    {
-      label: t("homework.sidebar.cahierDeTexte"),
-      href: `${schoolBase}/moi/cahier-de-texte`,
-      icon: FileText,
-      matchPrefix: `${schoolBase}/moi/cahier-de-texte`,
+      label: t("sidebar.nav.settings"),
+      href: "/settings",
+      icon: Settings,
+      matchPrefix: "/settings",
     },
   ];
 }

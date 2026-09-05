@@ -187,6 +187,9 @@ function mockFetch(
     if (url.includes("/student-grades/context")) {
       return jsonResponse(contextPayload);
     }
+    if (url.endsWith("/timetable/me")) {
+      return jsonResponse({ class: { id: "class-1", name: "6eC" } });
+    }
     if (url.match(/\/homework\/hw-\d+$/) || url.match(/\/homework\/hw-\d+\?/)) {
       return jsonResponse(detail);
     }
@@ -339,6 +342,46 @@ describe("Teacher class homework page", () => {
     expect(screen.getByTestId("homework-toggle-done")).toHaveTextContent(
       "Marquer fait",
     );
+  });
+
+  // Régression 2026-09-05 : `/student-grades/context` est un endpoint
+  // enseignant/admin qui renvoie 403 à un compte STUDENT sans autre rôle
+  // (memberships school-staff/teacher) — avant ce correctif, la page entière
+  // restait bloquée sur "Classe non accessible avec vos affectations." pour
+  // un vrai élève, alors qu'elle fonctionnait par accident pour un compte de
+  // test cumulant STUDENT + des rôles admin. Le nom de classe est maintenant
+  // résolu via `/timetable/me` pour ce rôle, sans dépendre de ce contexte
+  // enseignant.
+  it("un élève sans rôle admin/enseignant voit sa liste malgré un /student-grades/context inaccessible (403)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "STUDENT", onboardingHelpEnabled: false });
+      }
+      if (url.includes("/student-grades/context")) {
+        return jsonResponse({ message: "Forbidden" }, 403);
+      }
+      if (url.endsWith("/timetable/me")) {
+        return jsonResponse({ class: { id: "class-1", name: "6eC" } });
+      }
+      if (url.includes("/classes/class-1/homework")) {
+        return jsonResponse(mockHomeworks);
+      }
+
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Devoirs - 6eC")).toBeInTheDocument();
+      expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText("Classe non accessible avec vos affectations."),
+    ).not.toBeInTheDocument();
   });
 
   it("affiche les boutons modifier/supprimer dans le detail pour un enseignant", async () => {

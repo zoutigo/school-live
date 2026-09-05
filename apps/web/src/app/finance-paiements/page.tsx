@@ -151,8 +151,8 @@ export default function FinancePaiementsPage() {
         setError(t("financePayments.errors.search"));
         return;
       }
-      const rows = (await res.json()) as StudentRow[];
-      setStudents(rows);
+      const payload = (await res.json()) as { students: StudentRow[] };
+      setStudents(payload.students);
     } catch {
       setError(t("financePayments.errors.network"));
     }

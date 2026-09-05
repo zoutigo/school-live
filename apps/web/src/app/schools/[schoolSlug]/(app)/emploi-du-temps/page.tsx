@@ -101,6 +101,30 @@ type MyTimetableResponse = {
   }>;
 };
 
+type TeacherTimetableResponse = {
+  teacher: { id: string; firstName: string; lastName: string };
+  classes: Array<{ id: string; name: string }>;
+  slots: Array<{
+    id: string;
+    weekday: number;
+    startMinute: number;
+    endMinute: number;
+    room: string | null;
+    classId: string;
+    subject: { id: string; name: string };
+  }>;
+  oneOffSlots: Array<{
+    id: string;
+    occurrenceDate: string;
+    startMinute: number;
+    endMinute: number;
+    room: string | null;
+    classId: string;
+    subject: { id: string; name: string };
+  }>;
+  subjectStyles: Array<{ subjectId: string; colorHex: string }>;
+};
+
 const CLASS_SLOTS: TimetableSlot[] = [
   {
     id: "m-0845-fr",
@@ -416,6 +440,75 @@ export default function StudentTimetablePage() {
             TIMETABLE_TOUR_STEPS,
           );
         }
+      }
+
+      if (payload.role === "TEACHER") {
+        const teacherResponse = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/me/teacher`,
+          { credentials: "include" },
+        );
+
+        if (!teacherResponse.ok) {
+          setError(t("timetable.myTimetable.errors.loadFailed"));
+          return;
+        }
+
+        const teacherPayload =
+          (await teacherResponse.json()) as TeacherTimetableResponse;
+        const classNameById = new Map(
+          teacherPayload.classes.map((entry) => [entry.id, entry.name]),
+        );
+
+        setActiveChildLabel(
+          `${teacherPayload.teacher.firstName} ${teacherPayload.teacher.lastName}`,
+        );
+        setActiveChildClassName(
+          teacherPayload.classes.length > 0
+            ? teacherPayload.classes.map((entry) => entry.name).join(", ")
+            : null,
+        );
+        // The "teacher" field usually names who teaches the slot; here the
+        // viewer already knows that (it's themselves), so it is repurposed
+        // to show which class the slot belongs to instead — the piece of
+        // context that actually varies across a teacher's own agenda.
+        setClassSlots(
+          teacherPayload.slots.map((slot) => ({
+            id: slot.id,
+            subjectId: slot.subject.id,
+            weekday: slot.weekday,
+            start: minuteToTime(slot.startMinute),
+            end: minuteToTime(slot.endMinute),
+            subject: slot.subject.name,
+            teacher: classNameById.get(slot.classId) ?? "-",
+            room: slot.room?.trim() || "-",
+          })),
+        );
+        setOneOffSlots(
+          teacherPayload.oneOffSlots.map((slot) => ({
+            id: `${slot.id}-${normalizeApiDateOnly(slot.occurrenceDate)}`,
+            occurrenceDate: normalizeApiDateOnly(slot.occurrenceDate),
+            weekday: toWeekdayMondayFirst(
+              new Date(normalizeApiDateOnly(slot.occurrenceDate)),
+            ),
+            startMinute: slot.startMinute,
+            endMinute: slot.endMinute,
+            subjectId: slot.subject.id,
+            subjectName: slot.subject.name,
+            teacherName: classNameById.get(slot.classId) ?? "-",
+            room: slot.room?.trim() || null,
+            status: "PLANNED",
+            source: "ONE_OFF",
+          })),
+        );
+        setSubjectColorsBySubjectId(
+          Object.fromEntries(
+            teacherPayload.subjectStyles.map((entry) => [
+              entry.subjectId,
+              entry.colorHex.toUpperCase(),
+            ]),
+          ),
+        );
+        return;
       }
 
       if (payload.role !== "STUDENT" && payload.role !== "PARENT") {

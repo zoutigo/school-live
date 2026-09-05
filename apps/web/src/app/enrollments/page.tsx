@@ -251,12 +251,13 @@ export default function EnrollmentsPage() {
         (await schoolYearsResponse.json()) as SchoolYearRow[];
       const classroomsPayload =
         (await classroomsResponse.json()) as ClassroomRow[];
-      const studentsPayload =
-        (await studentsResponse.json()) as StudentEnrollmentRow[];
+      const studentsPayload = (await studentsResponse.json()) as {
+        students: StudentEnrollmentRow[];
+      };
 
       setSchoolYears(schoolYearsPayload);
       setClassrooms(classroomsPayload);
-      setStudents(studentsPayload);
+      setStudents(studentsPayload.students);
 
       const latestFilters = filtersForm.getValues();
       if (!latestFilters.schoolYearId && schoolYearsPayload.length > 0) {

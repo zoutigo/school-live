@@ -43,6 +43,11 @@ type MePayload = {
   onboardingHelpEnabled?: boolean;
 };
 
+// STUDENT doit rester dans cette liste : sur mobile, le FAB de composition
+// est visible sans restriction de rôle dans app/(home)/messages/index.tsx,
+// et l'API (`MessagingController`) autorise déjà STUDENT sur l'ensemble de
+// ses routes (envoi, recherche de destinataires, etc.) — seule cette liste
+// côté web excluait le rôle par erreur.
 const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
@@ -52,6 +57,7 @@ const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
   "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
+  "STUDENT",
 ];
 
 export default function SchoolMessageriePage() {

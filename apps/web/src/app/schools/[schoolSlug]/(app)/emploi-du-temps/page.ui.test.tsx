@@ -594,11 +594,11 @@ describe("StudentTimetablePage UI", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("redirects non-student/non-parent roles to dashboard", async () => {
+  it("redirects roles with no timetable view (e.g. accountant) to dashboard", async () => {
     mockMeResponse({
-      firstName: "Teacher",
+      firstName: "Accountant",
       lastName: "User",
-      role: "TEACHER",
+      role: "SCHOOL_ACCOUNTANT",
     });
 
     render(<StudentTimetablePage />);
@@ -608,6 +608,67 @@ describe("StudentTimetablePage UI", () => {
         "/schools/college-vogt/dashboard",
       );
     });
+  });
+
+  it("renders a teacher's own agenda across all of their classes via /timetable/me/teacher", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/schools/college-vogt/me")) {
+        return new Response(
+          JSON.stringify({
+            firstName: "Guy",
+            lastName: "Ndem",
+            role: "TEACHER",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      if (url.includes("/schools/college-vogt/timetable/me/teacher")) {
+        return new Response(
+          JSON.stringify({
+            teacher: { id: "teacher-1", firstName: "Guy", lastName: "Ndem" },
+            classes: [
+              { id: "class-6eb", name: "6eB" },
+              { id: "class-6ec", name: "6eC" },
+            ],
+            slots: [
+              {
+                id: "slot-chimie-mon",
+                weekday: 1,
+                startMinute: 600,
+                endMinute: 705,
+                room: "Labo",
+                classId: "class-6ec",
+                subject: { id: "subject-chimie", name: "CHIMIE" },
+              },
+            ],
+            oneOffSlots: [],
+            subjectStyles: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<StudentTimetablePage />);
+
+    expect(await screen.findByText("Guy Ndem - 6eB, 6eC")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    const daySlotButton = screen
+      .getAllByRole("button")
+      .find((button) =>
+        /\d{2}:\d{2}\s-\s\d{2}:\d{2}\s·/i.test(button.textContent ?? ""),
+      );
+    expect(daySlotButton).toBeDefined();
+    expect(daySlotButton?.textContent ?? "").toMatch(/CHIMIE/i);
+    expect(daySlotButton?.textContent ?? "").toMatch(/6eC/);
   });
 
   it("renders mobile week grid and shows selected course details on click", async () => {

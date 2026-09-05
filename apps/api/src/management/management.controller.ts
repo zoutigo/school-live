@@ -1160,6 +1160,7 @@ export class ManagementController {
     "SCHOOL_HEALTH_OFFICER",
     "TEACHER",
     "PARENT",
+    "STUDENT",
     "ADMIN",
     "SUPER_ADMIN",
   )

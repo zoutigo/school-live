@@ -725,6 +725,17 @@ describe("AppSidebar messaging link for platform roles", () => {
     expect(link.getAttribute("href")).toBe("/schools/college-vogt/notes");
   });
 
+  it("shows an Utilisateurs link pointing to the school users page for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", { name: "Utilisateurs" });
+    expect(link.getAttribute("href")).toBe(
+      "/schools/college-vogt/utilisateurs",
+    );
+  });
+
   it("shows a Messagerie link pointing to /messagerie for SUPER_ADMIN", async () => {
     mockUnreadCount(0);
 
@@ -846,13 +857,76 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
     ).not.toBeInTheDocument();
   });
 
-  it("conserve les entrées existantes (Notes & devoirs, Situation financière)", async () => {
+  // Régression 2026-09-05 : le menu élève exposait "Notes & devoirs" vers
+  // `/student-grades` (vieux formulaire de saisie admin adossé à la table
+  // `Grade`, déconnecté du vrai système d'évaluations publiées) en plus
+  // d'un lien "Notes" séparé vers `/moi/notes` — un doublon dont le premier
+  // membre était faux pour un élève. Il exposait aussi "Situation
+  // financière"/"Paiements en ligne" (ancres `dashboard#finance`/`#payments`
+  // mortes : ces sections ne sont jamais rendues pour STUDENT) et
+  // "Vos informations" (ancre `dashboard#infos`, également morte). Rien de
+  // tout cela n'existe côté mobile (STUDENT_NAV) : miroir strict désormais.
+  it("n'expose plus les entrées mortes ou dupliquées (Notes & devoirs, Situation financière, Paiements en ligne, Vos informations)", async () => {
     render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
 
     await screen.findByRole("link", { name: "Emploi du temps" });
     expect(
-      screen.getByRole("link", { name: /Notes.*devoirs|Grades.*homework/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("link", { name: /Notes.*devoirs|Grades.*homework/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", {
+        name: /Situation financière|Financial situation/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", {
+        name: /Paiements en ligne|Online payments/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", {
+        name: /Vos informations|Your information/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("expose un lien Notes unique vers /moi/notes", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const gradesLinks = await screen.findAllByRole("link", {
+      name: "Notes",
+    });
+    expect(gradesLinks).toHaveLength(1);
+    expect(gradesLinks[0]).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/notes",
+    );
+  });
+
+  // Régression : Ressources était totalement absent du menu élève web alors
+  // qu'il existe côté mobile (STUDENT_NAV).
+  it("expose un lien Ressources vers /resources", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const resourcesLink = await screen.findByRole("link", {
+      name: "Ressources",
+    });
+    expect(resourcesLink).toHaveAttribute("href", "/resources");
+  });
+
+  // Régression : Documents pointait vers `/schools/:slug/documents`, une
+  // page réservée au rôle PARENT (redirection muette vers le dashboard pour
+  // un élève). Elle pointe maintenant vers un espace élève dédié.
+  it("expose un lien Documents vers /moi/documents (pas la page reservee PARENT)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const documentsLink = await screen.findByRole("link", {
+      name: "Documents",
+    });
+    expect(documentsLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/documents",
+    );
   });
 
   // Régression : le fil d'actualité général était absent du menu élève alors
