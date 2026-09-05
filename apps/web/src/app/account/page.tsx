@@ -1616,7 +1616,10 @@ export default function AccountPage() {
                             : "-"
                     }
                   />
-                  <InfoBlock label="Role" value={me?.role ?? "-"} />
+                  <InfoBlock
+                    label="Role"
+                    value={me?.role ? ROLE_LABEL[me.role] : "-"}
+                  />
                   <InfoBlock
                     label="Ecole"
                     value={me?.schoolSlug ?? "Plateforme"}

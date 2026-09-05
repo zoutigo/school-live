@@ -61,7 +61,9 @@ describe("SchoolNewMessagePage — accès par rôle", () => {
     render(<SchoolNewMessagePage />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Objet du message")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Objet du message"),
+      ).toBeInTheDocument();
     });
     expect(
       screen.queryByText("Your current role cannot send messages."),

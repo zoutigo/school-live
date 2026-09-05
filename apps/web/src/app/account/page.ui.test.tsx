@@ -277,6 +277,45 @@ describe("AccountPage recovery settings UI", () => {
     );
   });
 
+  // Régression 2026-09-05 : le bloc "Role" de l'onglet Informations
+  // personnelles affichait la valeur brute de l'API ("STUDENT", "TEACHER",
+  // ...) au lieu du libellé traduit — alors que ROLE_LABEL existe déjà dans
+  // ce même fichier et est utilisé ailleurs (sélecteur de rôle actif). Le
+  // rôle STUDENT est le cas qui a révélé le bug (Accueil affiche "Élève"
+  // partout ailleurs), mais le correctif s'applique à tous les rôles.
+  it("affiche le libellé traduit du rôle (Eleve) plutôt que la valeur brute STUDENT", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Kevin",
+              lastName: "Fouda",
+              email: "eleve-test-kevin@noemail.scolive.local",
+              role: "STUDENT",
+              schoolSlug: "college-vogt",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ message: `Unhandled ${url}` }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Eleve")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("STUDENT")).not.toBeInTheDocument();
+  });
+
   it("permet de choisir la classe et l'enfant via les listes deroulantes filtrables (compte parent)", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
