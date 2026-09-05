@@ -63,6 +63,8 @@ type MessagingRecipientsPayload = {
   }>;
 };
 
+// Garder en phase avec ../page.tsx (même liste dupliquée) et avec le FAB de
+// composition mobile, visible pour STUDENT sans restriction de rôle.
 const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
@@ -72,6 +74,7 @@ const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
   "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
+  "STUDENT",
 ];
 
 export default function SchoolNewMessagePage() {

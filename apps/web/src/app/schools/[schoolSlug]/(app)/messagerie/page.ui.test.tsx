@@ -514,6 +514,18 @@ describe("SchoolMessageriePage — tour d'aide guidée et aide enseignant", () =
     ]);
   });
 
+  // Régression 2026-09-05 : STUDENT était absent de COMPOSER_ALLOWED_ROLES,
+  // masquant le bouton "Nouveau message" — alors que mobile affiche le FAB
+  // de composition sans restriction de rôle pour un élève.
+  it("affiche le bouton Nouveau message pour un élève", async () => {
+    makeFetchMock({ folder: "inbox", role: "STUDENT" });
+
+    render(<MessagingPage />);
+
+    await screen.findByText("Réunion parents");
+    expect(screen.getByText("Nouveau message")).toBeInTheDocument();
+  });
+
   it("ne démarre pas le tour ni n'enregistre d'aide pour un parent (page partagée)", async () => {
     makeFetchMock({ folder: "inbox", role: "PARENT" });
 
