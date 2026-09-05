@@ -28,7 +28,6 @@ describe("MessagingToolbar", () => {
     expect(
       screen.getByPlaceholderText("Rechercher un message..."),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Annee en cours").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Nouveau message" }));
     expect(onCompose).toHaveBeenCalled();
     assertNoHorizontalOverflowAt320(screen.getByTestId("messaging-toolbar"));
@@ -50,5 +49,35 @@ describe("MessagingToolbar", () => {
     });
 
     expect(onSearchChange).toHaveBeenCalledWith("parent");
+  });
+
+  it("calls onRefresh when the refresh button is clicked", () => {
+    // Regression: the refresh button used to render with no onClick handler
+    // at all — clicking it fired zero network requests (confirmed live).
+    const onRefresh = vi.fn();
+
+    render(
+      <MessagingToolbar
+        title="Messagerie"
+        search=""
+        onSearchChange={vi.fn()}
+        onRefresh={onRefresh}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Rafraichir"));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("no longer renders the non-functional year-scope selector", () => {
+    // Regression: "Annee en cours" / "Annee precedente" was a purely
+    // decorative dropdown backed by local state only, with no API filter
+    // behind it — removed rather than left misleading users.
+    render(
+      <MessagingToolbar title="Messagerie" search="" onSearchChange={vi.fn()} />,
+    );
+
+    expect(screen.queryByText("Annee en cours")).not.toBeInTheDocument();
+    expect(screen.queryByText("Annee precedente")).not.toBeInTheDocument();
   });
 });

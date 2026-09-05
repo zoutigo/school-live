@@ -340,6 +340,7 @@ export function MessagingMailboxView({
                 search={search}
                 onSearchChange={setSearch}
                 onCompose={canCompose ? onOpenCompose : undefined}
+                onRefresh={() => void loadMessages(folder, search)}
               />
             </OnboardingTarget>
 

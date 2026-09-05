@@ -1,7 +1,5 @@
 import { Plus, RefreshCw, Search } from "lucide-react";
-import { useState } from "react";
 import { FormTextInput } from "../ui/form-controls";
-import { SearchableSelect } from "../ui/searchable-select";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
@@ -10,6 +8,7 @@ type Props = {
   search: string;
   onSearchChange: (value: string) => void;
   onCompose?: () => void;
+  onRefresh?: () => void;
 };
 
 export function MessagingToolbar({
@@ -18,17 +17,13 @@ export function MessagingToolbar({
   search,
   onSearchChange,
   onCompose,
+  onRefresh,
 }: Props) {
   const { t } = useTranslation();
-  const [yearScope, setYearScope] = useState("current");
-  const yearScopeOptions = [
-    { value: "current", label: t("messaging.toolbar.currentYear") },
-    { value: "previous", label: t("messaging.toolbar.previousYear") },
-  ];
   return (
     <div
       data-testid="messaging-toolbar"
-      className="grid min-w-0 gap-2.5 rounded-card border border-border bg-background px-3 py-3 sm:px-4 lg:grid-cols-[minmax(220px,auto)_minmax(260px,1fr)_auto] lg:items-center lg:gap-3"
+      className="grid min-w-0 gap-2.5 rounded-card border border-border bg-background px-3 py-3 sm:px-4 lg:grid-cols-[minmax(220px,auto)_minmax(260px,1fr)] lg:items-center lg:gap-3"
     >
       <div className="grid min-w-0 gap-2 lg:block">
         <div className="flex min-w-0 items-start justify-between gap-2">
@@ -56,15 +51,6 @@ export function MessagingToolbar({
             </p>
           ) : null}
         </div>
-        <div className="flex lg:hidden">
-          <SearchableSelect
-            className="h-8 min-w-0 w-full bg-surface px-3 text-xs text-text-secondary"
-            ariaLabel={t("messaging.toolbar.yearScopeAria")}
-            value={yearScope}
-            onChange={setYearScope}
-            options={yearScopeOptions}
-          />
-        </div>
       </div>
 
       <div data-testid="messaging-toolbar-search" className="min-w-0">
@@ -78,22 +64,13 @@ export function MessagingToolbar({
           />
           <button
             type="button"
+            onClick={onRefresh}
             className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background text-text-secondary transition hover:bg-primary/10 hover:text-primary"
             aria-label={t("messaging.toolbar.refresh")}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </label>
-      </div>
-
-      <div className="hidden lg:block">
-        <SearchableSelect
-          className="h-9 min-w-0 w-auto max-w-full bg-surface px-3 text-sm text-text-secondary lg:min-w-[170px] lg:h-10 lg:w-auto"
-          ariaLabel={t("messaging.toolbar.yearScopeAria")}
-          value={yearScope}
-          onChange={setYearScope}
-          options={yearScopeOptions}
-        />
       </div>
     </div>
   );

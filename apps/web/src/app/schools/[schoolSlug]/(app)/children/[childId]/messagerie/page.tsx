@@ -324,6 +324,7 @@ export default function ChildMessageriePage() {
                 }
                 search={search}
                 onSearchChange={setSearch}
+                onRefresh={() => void loadMessages(schoolSlug, folder, search)}
               />
             </OnboardingTarget>
 
