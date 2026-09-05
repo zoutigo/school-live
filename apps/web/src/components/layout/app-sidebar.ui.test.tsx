@@ -460,6 +460,116 @@ describe("AppSidebar parent child links", () => {
   });
 });
 
+// Régression 2026-09-05 : parité mobile/web du menu parent — "Boutique en
+// ligne" et "Formulaire" (top-niveau) ainsi que "Manuels & ressources" et
+// "Formulaires & sondages" (par enfant) étaient des stubs sans backend réel
+// et n'existent pas sur mobile (PARENT_NAV / buildChildNavItems dans
+// nav-config.ts) : masqués du menu parent web. "Ressources" existe sur
+// mobile mais manquait du menu parent web top-niveau : ajouté. "Cursus"
+// (par enfant) est une vraie fonctionnalité connectée à l'API
+// (life-events) : conservée malgré l'absence de mobile.
+describe("AppSidebar parent menu — parité mobile (stubs masqués, Ressources ajouté)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/schools/college-vogt/dashboard";
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ linkedStudents: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  });
+
+  it("expose un lien Ressources vers /resources dans le menu parent", async () => {
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    const resourcesLink = await screen.findByRole("link", {
+      name: "Ressources",
+    });
+    expect(resourcesLink).toHaveAttribute("href", "/resources");
+  });
+
+  it("n'expose plus les liens Boutique en ligne et Formulaire (stubs sans mobile)", async () => {
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Ressources" });
+    expect(
+      screen.queryByRole("link", { name: /Boutique en ligne/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Formulaire" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("n'expose plus les liens Manuels & ressources et Formulaires & sondages par enfant (stubs sans mobile)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return new Response(
+          JSON.stringify({
+            linkedStudents: [
+              { id: "child-1", firstName: "Lisa", lastName: "MBELE" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "MBELE Lisa" }));
+
+    expect(
+      await screen.findByRole("link", { name: "Discipline" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Manuels/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Formulaires.*sondages/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("conserve le lien Cursus par enfant (vraie fonctionnalité connectée à l'API)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return new Response(
+          JSON.stringify({
+            linkedStudents: [
+              { id: "child-1", firstName: "Lisa", lastName: "MBELE" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "MBELE Lisa" }));
+
+    const cursusLink = await screen.findByRole("link", { name: "Cursus" });
+    expect(cursusLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/child-1/cursus",
+    );
+  });
+});
+
 describe("AppSidebar badges", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

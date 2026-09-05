@@ -2844,9 +2844,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.toolbar.searchPlaceholder": "Rechercher un message...",
     "messaging.toolbar.refresh": "Rafraichir",
     "messaging.toolbar.newMessage": "Nouveau message",
-    "messaging.toolbar.currentYear": "Annee en cours",
-    "messaging.toolbar.previousYear": "Annee precedente",
-    "messaging.toolbar.yearScopeAria": "Periode",
 
     "messaging.compose.pageTitle": "Nouveau message",
     "messaging.compose.defaultSubtitle": "Messagerie de l'etablissement",
@@ -8084,9 +8081,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.toolbar.searchPlaceholder": "Search a message...",
     "messaging.toolbar.refresh": "Refresh",
     "messaging.toolbar.newMessage": "New message",
-    "messaging.toolbar.currentYear": "Current year",
-    "messaging.toolbar.previousYear": "Previous year",
-    "messaging.toolbar.yearScopeAria": "Period",
 
     "messaging.compose.pageTitle": "New message",
     "messaging.compose.defaultSubtitle": "School messaging",

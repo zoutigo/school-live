@@ -529,6 +529,89 @@ describe("AccountPage recovery settings UI", () => {
     expect(screen.getByText("650597838")).toBeInTheDocument();
   });
 
+  it("does not silently default gender to Masculin when saving another field with gender unset", async () => {
+    // Regression: opening the edit form for an account whose gender was
+    // never set used to pre-select "M" in the field, so saving any
+    // unrelated change (e.g. the phone number) silently wrote gender: "M"
+    // to the profile — confirmed live against a real dev account.
+    let profileUpdateBody: unknown = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Pierre",
+              lastName: "Wome",
+              email: "contact@lisaweb.fr",
+              role: "PARENT",
+              gender: null,
+              phone: null,
+              schoolSlug: "college-vogt",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (url.endsWith("/me/profile")) {
+        profileUpdateBody = JSON.parse(String(init?.body));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Pierre",
+              lastName: "Wome",
+              email: "contact@lisaweb.fr",
+              role: "PARENT",
+              gender: "F",
+              phone: "+237677889900",
+              schoolSlug: "college-vogt",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Modifier" }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+
+    const submitButton = screen.getByRole("button", { name: "Enregistrer" });
+    fireEvent.change(screen.getByLabelText("Telephone"), {
+      target: { value: "677889900" },
+    });
+
+    // Gender was never selected: submit must stay blocked rather than
+    // silently sending a default value.
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("account-gender-select"));
+    fireEvent.click(screen.getByTestId("account-gender-select-option-F"));
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(profileUpdateBody).toMatchObject({ gender: "F" });
+    });
+  });
+
   it("shows inline password validation and keeps submit disabled until valid", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
