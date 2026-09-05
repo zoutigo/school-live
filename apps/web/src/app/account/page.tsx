@@ -119,9 +119,16 @@ const GENDER_OPTIONS = [
 const personalProfileSchema = z.object({
   firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),
-  gender: z.enum(["M", "F", "OTHER"], {
-    message: "Le genre est obligatoire.",
-  }),
+  // Includes "" as a valid input (never a valid output) so the form can
+  // represent "no gender selected yet" without silently defaulting to a
+  // real value — see the gender defaultValues below.
+  gender: z
+    .enum(["M", "F", "OTHER", ""], {
+      message: "Le genre est obligatoire.",
+    })
+    .refine((value) => value !== "", {
+      message: "Le genre est obligatoire.",
+    }),
   phone: z.string().regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
 });
 
@@ -384,7 +391,7 @@ export default function AccountPage() {
     defaultValues: {
       firstName: "",
       lastName: "",
-      gender: "M",
+      gender: "",
       phone: "",
     },
   });
@@ -521,7 +528,7 @@ export default function AccountPage() {
     personalForm.reset({
       firstName: payload.firstName ?? "",
       lastName: payload.lastName ?? "",
-      gender: payload.gender ?? "M",
+      gender: payload.gender ?? "",
       phone: toLocalPhoneDisplay(payload.phone),
     });
     const availableRoles = extractAvailableRoles(payload);
@@ -581,7 +588,8 @@ export default function AccountPage() {
         body: JSON.stringify({
           firstName: values.firstName,
           lastName: values.lastName,
-          gender: values.gender,
+          // Validated non-empty by the schema's refine above.
+          gender: values.gender as "M" | "F" | "OTHER",
           phone: values.phone,
         }),
       });
@@ -603,7 +611,7 @@ export default function AccountPage() {
       personalForm.reset({
         firstName: updatedMe.firstName ?? "",
         lastName: updatedMe.lastName ?? "",
-        gender: updatedMe.gender ?? "M",
+        gender: updatedMe.gender ?? "",
         phone: toLocalPhoneDisplay(updatedMe.phone),
       });
       setPersonalSuccess("Informations personnelles mises a jour.");
@@ -1272,7 +1280,7 @@ export default function AccountPage() {
                         personalForm.reset({
                           firstName: me.firstName ?? "",
                           lastName: me.lastName ?? "",
-                          gender: me.gender ?? "M",
+                          gender: me.gender ?? "",
                           phone: toLocalPhoneDisplay(me.phone),
                         });
                       }
