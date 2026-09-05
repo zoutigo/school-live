@@ -129,15 +129,22 @@ describe("Pages self /moi/*", () => {
     });
   });
 
-  it("moi/cahier-de-texte ne redirige pas un élève vers le dashboard", async () => {
+  // Régression 2026-09-05 : moi/cahier-de-texte était une coquille marketing
+  // (titre/sous-titre/puces, aucune fonctionnalité réelle). Il redirige
+  // maintenant vers la vraie page Devoirs de la classe de l'élève, comme
+  // /homework/me côté mobile redirige vers l'écran de classe générique.
+  it("moi/cahier-de-texte redirige vers la page Devoirs de la classe de l'élève", async () => {
     mockSelfFetch();
     render(<MyCahierDeTextePage />);
 
     await waitFor(() => {
-      expect(replaceMock).not.toHaveBeenCalledWith(
-        "/schools/college-vogt/dashboard",
+      expect(replaceMock).toHaveBeenCalledWith(
+        "/schools/college-vogt/classes/class-1/devoirs",
       );
     });
+    expect(replaceMock).not.toHaveBeenCalledWith(
+      "/schools/college-vogt/dashboard",
+    );
   });
 
   // Régression : le lien "Documents" du menu élève pointait vers

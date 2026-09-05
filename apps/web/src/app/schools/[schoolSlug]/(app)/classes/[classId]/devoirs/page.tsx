@@ -132,6 +132,10 @@ export default function TeacherClassHomeworkPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [context, setContext] = useState<GradesContext | null>(null);
+  // Résolution du nom de classe pour un élève : `/student-grades/context`
+  // (utilisé pour `context`/`classCtx` ci-dessous) est un endpoint enseignant
+  // qui renvoie 403 à un compte STUDENT sans autre rôle — voir bootstrap().
+  const [selfClassName, setSelfClassName] = useState<string | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [homeworks, setHomeworks] = useState<HomeworkRow[]>([]);
   const [selectedDetail, setSelectedDetail] = useState<HomeworkDetail | null>(
@@ -203,6 +207,7 @@ export default function TeacherClassHomeworkPage() {
     () => getClassContext(context, classId),
     [context, classId],
   );
+  const effectiveClassName = classCtx?.className ?? selfClassName;
 
   const canManage =
     role === "TEACHER" ||
@@ -274,18 +279,36 @@ export default function TeacherClassHomeworkPage() {
         }
       }
 
-      const contextResponse = await fetch(
-        `${API_URL}/schools/${schoolSlug}/student-grades/context`,
-        { credentials: "include" },
-      );
+      if (me.role === "STUDENT") {
+        // `/student-grades/context` est un endpoint enseignant/admin : un
+        // compte STUDENT sans autre rôle reçoit un 403 et ne verrait jamais
+        // sa propre liste de devoirs. Le nom de classe suffit ici (pas de
+        // formulaire de création pour ce rôle), résolu via `/timetable/me`
+        // — même identité self que moi/discipline, moi/notes, moi/vie-de-classe.
+        const timetableResponse = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/me`,
+          { credentials: "include" },
+        );
+        if (timetableResponse.ok) {
+          const timetable = (await timetableResponse.json()) as {
+            class?: { name?: string };
+          };
+          setSelfClassName(timetable.class?.name ?? null);
+        }
+      } else {
+        const contextResponse = await fetch(
+          `${API_URL}/schools/${schoolSlug}/student-grades/context`,
+          { credentials: "include" },
+        );
 
-      if (!contextResponse.ok) {
-        setError(t("homework.errors.loadFailed"));
-        return;
+        if (!contextResponse.ok) {
+          setError(t("homework.errors.loadFailed"));
+          return;
+        }
+
+        const contextPayload = (await contextResponse.json()) as GradesContext;
+        setContext(contextPayload);
       }
-
-      const contextPayload = (await contextResponse.json()) as GradesContext;
-      setContext(contextPayload);
 
       await loadHomeworks();
     } catch {
@@ -551,7 +574,7 @@ export default function TeacherClassHomeworkPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title={`${t("homework.page.title")} - ${classCtx?.className ?? t("homework.page.defaultClassName")}`}
+        title={`${t("homework.page.title")} - ${effectiveClassName ?? t("homework.page.defaultClassName")}`}
         subtitle={t("homework.page.subtitle")}
       >
         {isStudentOrParent ? (
@@ -636,7 +659,7 @@ export default function TeacherClassHomeworkPage() {
           </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
-        ) : !classCtx ? (
+        ) : !effectiveClassName ? (
           <p className="text-sm text-notification">
             {t("homework.page.classNotAccessible")}
           </p>
@@ -783,7 +806,7 @@ export default function TeacherClassHomeworkPage() {
                 {t("homework.summary.class")}
               </p>
               <p className="text-sm font-semibold text-text-primary">
-                {classCtx.className}
+                {effectiveClassName}
               </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
