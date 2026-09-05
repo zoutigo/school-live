@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+import { ChildHomeworkPanel } from "../../../../../../../components/homework/child-homework-panel";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 export default function ChildCahierDeTextePage() {
@@ -24,6 +25,24 @@ export default function ChildCahierDeTextePage() {
         t("homework.cahierDeTexte.bullet2"),
         t("homework.cahierDeTexte.bullet3"),
       ]}
+      hideModuleHeader
+      hidePrimaryTabs
+      hideSecondaryTabs
+      content={({ child }) => {
+        const childFullName = child
+          ? `${child.lastName.toUpperCase()} ${child.firstName}`
+          : t("homework.cahierDeTexte.subtitle");
+
+        return (
+          <ChildHomeworkPanel
+            schoolSlug={schoolSlug}
+            classId={child?.classId ?? null}
+            studentId={childId}
+            childFullName={childFullName}
+            className={child?.className ?? null}
+          />
+        );
+      }}
     />
   );
 }
