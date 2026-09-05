@@ -946,6 +946,116 @@ describe("DashboardPage role dashboards", () => {
       );
     expect(messagingLink).toBeDefined();
   });
+
+  // Régression 2026-09-05 : la page d'accueil élève ne rendait rien de plus
+  // que le bandeau de bienvenue (aucune section STUDENT dans le composant
+  // dashboard), contrairement au mobile (StudentHome.tsx) qui affiche
+  // moyenne/matières/devoirs, le planning du jour et les dernières notes.
+  it("renders the student home section with stats, today's timetable and latest grades", async () => {
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.split("?")[0]?.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Valery",
+          lastName: "Mbele",
+          role: "STUDENT",
+        });
+      }
+
+      if (url.includes("/timetable/me")) {
+        return createJsonResponse({
+          student: { id: "student-1" },
+          class: { id: "class-1" },
+          occurrences: [
+            {
+              id: "occ-1",
+              occurrenceDate: todayIso,
+              startMinute: 480,
+              status: "PLANNED",
+              subject: { name: "Anglais" },
+              teacherUser: { firstName: "Sarah", lastName: "Assade" },
+              room: "A08",
+            },
+          ],
+        });
+      }
+
+      if (url.includes("/students/student-1/notes")) {
+        return createJsonResponse([
+          {
+            term: "TERM_1",
+            label: "1er Trimestre",
+            councilLabel: "",
+            generatedAtLabel: "",
+            generalAverage: {
+              student: 13.5,
+              class: null,
+              min: null,
+              max: null,
+            },
+            sequences: [],
+            subjects: [
+              {
+                id: "anglais",
+                subjectLabel: "Anglais",
+                teachers: [],
+                coefficient: 1,
+                studentAverage: 14,
+                classAverage: null,
+                classMin: null,
+                classMax: null,
+                evaluations: [
+                  {
+                    id: "ev-1",
+                    label: "Devoir",
+                    score: 17,
+                    maxScore: 20,
+                    recordedAt: "2026-06-26T00:00:00.000Z",
+                    countsForAverage: false,
+                    isFinalExam: false,
+                  },
+                ],
+              },
+            ],
+          },
+        ]);
+      }
+
+      if (url.includes("/classes/class-1/homework")) {
+        return createJsonResponse([
+          { id: "hw-1", myDoneAt: null },
+          { id: "hw-2", myDoneAt: "2026-06-20T00:00:00.000Z" },
+        ]);
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Bienvenue, Valery Mbele" }),
+      ).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("student-dashboard")).toBeInTheDocument();
+      // "Anglais" apparait deux fois : cours du jour + derniere note.
+      expect(screen.getAllByText("Anglais").length).toBe(2);
+    });
+
+    // 1 seule matière notée (Anglais) et 1 seul devoir non fait sur les 2
+    // seedés (hw-2 a myDoneAt renseigné) -> deux stats à "1".
+    expect(screen.getAllByText("1")).toHaveLength(2);
+    expect(screen.getByText("17/20")).toBeInTheDocument();
+
+    assertNoHorizontalOverflowAt320(screen.getByTestId("dashboard-root"));
+  });
 });
 
 describe("DashboardPage parent-landing onboarding tour", () => {

@@ -10,6 +10,7 @@ import MyDisciplinePage from "./discipline/page";
 import MyClassLifePage from "./vie-de-classe/page";
 import MyNotesPage from "./notes/page";
 import MyCahierDeTextePage from "./cahier-de-texte/page";
+import MyDocumentsPage from "./documents/page";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import { usePageHelpStore } from "../../../../../store/page-help";
 
@@ -137,6 +138,21 @@ describe("Pages self /moi/*", () => {
         "/schools/college-vogt/dashboard",
       );
     });
+  });
+
+  // Régression : le lien "Documents" du menu élève pointait vers
+  // `/schools/:slug/documents`, une page réservée au rôle PARENT qui
+  // redirige silencieusement tout autre rôle vers le dashboard. `/moi/documents`
+  // est un espace dédié, à l'image du placeholder mobile équivalent — pas de
+  // dépendance réseau, donc pas de mock fetch nécessaire ici.
+  it("moi/documents affiche un espace dédié 'module en cours de développement' sans redirection", () => {
+    render(<MyDocumentsPage />);
+
+    expect(screen.getByText("Documents")).toBeInTheDocument();
+    expect(
+      screen.getByText("Module en cours de developpement"),
+    ).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 });
 
