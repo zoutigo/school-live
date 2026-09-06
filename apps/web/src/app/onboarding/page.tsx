@@ -59,6 +59,7 @@ function OnboardingContent() {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [setupToken, setSetupToken] = useState("");
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const onboardingSessionRef = useRef("");
@@ -104,6 +105,7 @@ function OnboardingContent() {
   async function loadOptions() {
     setLoadingOptions(true);
     setError(null);
+    setErrorCode(null);
     try {
       const query = new URLSearchParams();
       if (setupToken) {
@@ -118,7 +120,16 @@ function OnboardingContent() {
       );
 
       if (!response.ok) {
-        setError(t("onboarding.errors.loadOptionsFailed"));
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+          code?: string;
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("onboarding.errors.loadOptionsFailed"));
+        setError(String(message));
+        setErrorCode(payload?.code ?? null);
         return;
       }
 
@@ -478,6 +489,7 @@ function OnboardingContent() {
 
   async function nextStep() {
     setError(null);
+    setErrorCode(null);
     const isCurrentStepValid =
       step === 1
         ? isTokenFlow
@@ -596,12 +608,14 @@ function OnboardingContent() {
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
           message?: string | string[];
+          code?: string;
         } | null;
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
             : (payload?.message ?? t("onboarding.errors.activationFailed"));
         setError(String(message));
+        setErrorCode(payload?.code ?? null);
         return;
       }
 
@@ -1213,7 +1227,19 @@ function OnboardingContent() {
               </p>
             ) : null}
             {error ? (
-              <p className="text-sm text-notification">{error}</p>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-notification">{error}</p>
+                {errorCode === "ONBOARDING_TOKEN_EXPIRED" ||
+                errorCode === "ONBOARDING_TOKEN_INVALID" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSuccessRedirect}
+                  >
+                    {t("onboarding.errors.tokenBackToLogin")}
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             <FormSubmitHint visible={!canContinueCurrentStep} />
 

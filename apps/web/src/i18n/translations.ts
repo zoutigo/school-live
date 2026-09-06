@@ -207,6 +207,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboarding.errors.passwordChangeFailed":
       "Changement de mot de passe impossible.",
     "onboarding.errors.activationFailed": "Activation impossible.",
+    "onboarding.errors.tokenBackToLogin": "Se reconnecter",
     "onboarding.errors.networkError": "Erreur reseau.",
     "onboarding.errors.invalidLinkMissingEmail":
       "Lien invalide: email manquant.",
@@ -4658,6 +4659,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.actions.homework": "Devoirs",
     "users.actions.createAccess": "Créer un accès",
     "users.actions.resetPassword": "Réinitialiser MDP",
+    "users.actions.resetPin": "Réinitialiser le PIN",
     "users.actions.assignParent": "Associer un parent",
     "users.actions.assignChild": "Affecter un enfant",
     "users.actions.payments": "Paiements",
@@ -4713,11 +4715,16 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Accès créé. L'élève peut maintenant se connecter.",
     "users.resetPwd.title": "Réinitialiser le mot de passe",
     "users.resetPwd.success": "Mot de passe temporaire généré.",
+    "users.resetPin.success": "Nouveau PIN généré.",
     "users.credentials.title": "Accès créé",
     "users.credentials.subtitle":
       "Communiquez ces identifiants à l'élève. Ils ne seront plus affichés ensuite.",
+    "users.credentials.pinTitle": "PIN réinitialisé",
+    "users.credentials.pinSubtitle":
+      "Communiquez ce PIN à l'utilisateur par un canal sûr (téléphone, SMS). Il ne sera plus affiché ensuite.",
     "users.credentials.username": "Identifiant",
     "users.credentials.temporaryPassword": "Mot de passe temporaire",
+    "users.credentials.temporaryPin": "PIN temporaire",
     "users.credentials.close": "J'ai noté les identifiants",
     "users.status.active": "Actif",
     "users.status.pending": "En attente",
@@ -5564,6 +5571,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboarding.errors.connectionError": "Connection error.",
     "onboarding.errors.passwordChangeFailed": "Unable to change the password.",
     "onboarding.errors.activationFailed": "Unable to activate the account.",
+    "onboarding.errors.tokenBackToLogin": "Log in again",
     "onboarding.errors.networkError": "Network error.",
     "onboarding.errors.invalidLinkMissingEmail": "Invalid link: missing email.",
     "onboarding.errors.temporaryPasswordRequired":
@@ -9825,6 +9833,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.actions.homework": "Homework",
     "users.actions.createAccess": "Create access",
     "users.actions.resetPassword": "Reset password",
+    "users.actions.resetPin": "Reset PIN",
     "users.actions.assignParent": "Link parent",
     "users.actions.assignChild": "Assign child",
     "users.actions.payments": "Payments",
@@ -9879,10 +9888,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.credentials.title": "Access created",
     "users.credentials.subtitle":
       "Share these credentials with the student. They won't be shown again.",
+    "users.credentials.pinTitle": "PIN reset",
+    "users.credentials.pinSubtitle":
+      "Share this PIN with the user through a secure channel (phone, SMS). It won't be shown again.",
     "users.credentials.username": "Username",
     "users.credentials.temporaryPassword": "Temporary password",
+    "users.credentials.temporaryPin": "Temporary PIN",
     "users.credentials.close": "I've noted the credentials",
     "users.resetPwd.success": "Temporary password generated.",
+    "users.resetPin.success": "New PIN generated.",
     "users.status.active": "Active",
     "users.status.pending": "Pending",
     "users.status.suspended": "Suspended",

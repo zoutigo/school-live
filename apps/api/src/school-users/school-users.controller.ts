@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -45,5 +46,13 @@ export class SchoolUsersController {
     @Body() dto: UpdateUserRolesDto,
   ) {
     return this.schoolUsersService.updateMemberRoles(schoolId, userId, dto);
+  }
+
+  @Post(":userId/reset-pin")
+  resetPin(
+    @CurrentSchoolId() schoolId: string,
+    @Param("userId") userId: string,
+  ) {
+    return this.schoolUsersService.resetMemberPin(schoolId, userId);
   }
 }
