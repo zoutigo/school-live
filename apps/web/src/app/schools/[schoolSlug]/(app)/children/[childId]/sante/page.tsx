@@ -202,13 +202,29 @@ function reportTypeLabel(t: TranslateFn, type: ReportType) {
 }
 
 function createConditionSchema(t: TranslateFn) {
-  return z.object({
-    type: z.enum(["ALLERGY", "PATHOLOGY", "TREATMENT", "INSTRUCTION", "OTHER"]),
-    alertLevel: z.enum(["INFO", "ATTENTION", "URGENT"]),
-    label: z.string().trim().min(1, t("health.validation.labelRequired")),
-    description: z.string().trim().optional(),
-    active: z.boolean(),
-  });
+  return z
+    .object({
+      type: z.enum([
+        "ALLERGY",
+        "PATHOLOGY",
+        "TREATMENT",
+        "INSTRUCTION",
+        "OTHER",
+      ]),
+      alertLevel: z.enum(["INFO", "ATTENTION", "URGENT"]),
+      label: z.string().trim().min(1, t("health.validation.labelRequired")),
+      description: z.string().trim().optional(),
+      active: z.boolean(),
+      isVisibleToAllTeachers: z.boolean(),
+      publicAlertLabel: z.string().trim().optional(),
+    })
+    .refine(
+      (values) => !values.isVisibleToAllTeachers || !!values.publicAlertLabel,
+      {
+        message: t("health.validation.publicAlertLabelRequired"),
+        path: ["publicAlertLabel"],
+      },
+    );
 }
 
 function createReportSchema(t: TranslateFn) {
@@ -311,6 +327,8 @@ export default function ChildSantePage() {
       label: "",
       description: "",
       active: true,
+      isVisibleToAllTeachers: false,
+      publicAlertLabel: "",
     },
   });
 
@@ -520,6 +538,8 @@ export default function ChildSantePage() {
       label: "",
       description: "",
       active: true,
+      isVisibleToAllTeachers: false,
+      publicAlertLabel: "",
     });
     setFormError(null);
     setSuccess(null);
@@ -533,6 +553,8 @@ export default function ChildSantePage() {
       label: item.label,
       description: item.description ?? "",
       active: item.active,
+      isVisibleToAllTeachers: item.isVisibleToAllTeachers,
+      publicAlertLabel: item.publicAlertLabel ?? "",
     });
     setFormError(null);
     setSuccess(null);
@@ -589,6 +611,10 @@ export default function ChildSantePage() {
           alertLevel: values.alertLevel,
           label: values.label,
           description: values.description || undefined,
+          isVisibleToAllTeachers: values.isVisibleToAllTeachers,
+          publicAlertLabel: values.isVisibleToAllTeachers
+            ? values.publicAlertLabel
+            : undefined,
           ...(editing ? { active: values.active } : {}),
         }),
       });
@@ -1113,6 +1139,43 @@ function ConditionFormPanel(props: {
           />
           {t("health.parent.form.active")}
         </label>
+      ) : null}
+
+      <label className="inline-flex items-center gap-2 text-sm text-text-secondary md:col-span-2">
+        <FormCheckbox
+          checked={props.values.isVisibleToAllTeachers ?? false}
+          onChange={(event) =>
+            form.setValue("isVisibleToAllTeachers", event.target.checked, {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true,
+            })
+          }
+          data-testid="condition-form-visibleToAllTeachers"
+        />
+        {t("health.form.visibleToAllTeachers")}
+      </label>
+
+      {props.values.isVisibleToAllTeachers ? (
+        <FormField
+          label={t("health.form.publicAlertLabel")}
+          error={form.formState.errors.publicAlertLabel?.message}
+          className="md:col-span-2"
+        >
+          <FormTextInput
+            invalid={!!form.formState.errors.publicAlertLabel}
+            value={props.values.publicAlertLabel}
+            onChange={(event) =>
+              form.setValue("publicAlertLabel", event.target.value, {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              })
+            }
+            placeholder={t("health.form.publicAlertLabelPlaceholder")}
+            data-testid="condition-form-publicAlertLabel"
+          />
+        </FormField>
       ) : null}
 
       <div className="md:col-span-2 flex items-center gap-3">

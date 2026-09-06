@@ -111,6 +111,67 @@ describe("School sante student page (fiche élève)", () => {
     });
   });
 
+  it("acquitte un signalement en attente depuis la fiche élève", async () => {
+    let acknowledgeCalled = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (
+        url.includes(
+          "/students/student-1/health/reports/report-1/acknowledge",
+        ) &&
+        init?.method === "POST"
+      ) {
+        acknowledgeCalled = true;
+        return jsonResponse({
+          ...REPORT_1,
+          acknowledgedAt: "2026-02-06T08:00:00Z",
+        });
+      }
+      if (url.includes("/health/history")) {
+        return jsonResponse({
+          items: [
+            { kind: "REPORT", at: REPORT_1.createdAt, payload: REPORT_1 },
+          ],
+        });
+      }
+      return jsonResponse({ items: [] });
+    });
+
+    render(<SchoolSanteStudentPage />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("sante-report-acknowledge-report-1"),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("sante-report-acknowledge-report-1"));
+
+    await waitFor(() => expect(acknowledgeCalled).toBe(true));
+  });
+
+  it("n'affiche pas le bouton d'acquittement pour un signalement déjà acquitté", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/health/history")) {
+        return jsonResponse({
+          items: [
+            {
+              kind: "REPORT",
+              at: REPORT_1.createdAt,
+              payload: { ...REPORT_1, acknowledgedAt: "2026-02-06T08:00:00Z" },
+            },
+          ],
+        });
+      }
+      return jsonResponse({ items: [] });
+    });
+
+    render(<SchoolSanteStudentPage />);
+    await waitFor(() => screen.getByText("Crise d'asthme"));
+    expect(
+      screen.queryByTestId("sante-report-acknowledge-report-1"),
+    ).not.toBeInTheDocument();
+  });
+
   it("onglet Conditions : charge les conditions au clic sur l'onglet", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);

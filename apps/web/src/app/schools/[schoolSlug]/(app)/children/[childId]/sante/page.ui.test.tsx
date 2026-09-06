@@ -315,6 +315,50 @@ describe("Child sante page (vue parent)", () => {
     });
   });
 
+  it("condition visible de tous les enseignants : bloque sans libellé, envoie le libellé une fois renseigné", async () => {
+    let createBody: unknown = null;
+    mockFetchDefault({
+      onRequest: (url, init) => {
+        if (url.includes("/health/conditions") && init?.method === "POST") {
+          createBody = JSON.parse(String(init.body));
+          return jsonResponse({ id: "cond-2" }, 201) as unknown as Response;
+        }
+        return undefined;
+      },
+    });
+
+    render(<ChildSantePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId("sante-conditions-add")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("sante-conditions-add"));
+    fireEvent.change(screen.getByTestId("condition-form-label"), {
+      target: { value: "Asthme sévère" },
+    });
+    fireEvent.click(screen.getByTestId("condition-form-visibleToAllTeachers"));
+    fireEvent.click(screen.getByTestId("condition-form-submit"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("condition-form-publicAlertLabel"),
+      ).toBeInTheDocument();
+    });
+    expect(createBody).toBeNull();
+
+    fireEvent.change(screen.getByTestId("condition-form-publicAlertLabel"), {
+      target: { value: "Asthme — inhalateur dans le cartable" },
+    });
+    fireEvent.click(screen.getByTestId("condition-form-submit"));
+
+    await waitFor(() => {
+      expect(createBody).toMatchObject({
+        isVisibleToAllTeachers: true,
+        publicAlertLabel: "Asthme — inhalateur dans le cartable",
+      });
+    });
+  });
+
   it("carte condition → détail → Modifier → PATCH avec active=false", async () => {
     let patchBody: unknown = null;
     mockFetchDefault({

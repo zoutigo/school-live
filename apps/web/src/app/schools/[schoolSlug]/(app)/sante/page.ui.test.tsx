@@ -5,10 +5,16 @@ import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import { HEALTH_SCHOOL_TOUR_ID } from "../../../../../components/health/health-school-tour.config";
 
 const pushMock = vi.fn();
+const replaceMock = vi.fn();
+const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ schoolSlug: "college-vogt" }),
-  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
+}));
+
+vi.mock("../../../../../lib/auth-cookies", () => ({
+  getCsrfTokenCookie: () => getCsrfTokenCookieMock(),
 }));
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -74,6 +80,9 @@ describe("School sante page (vue école — responsable santé)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     pushMock.mockReset();
+    replaceMock.mockReset();
+    getCsrfTokenCookieMock.mockReset();
+    getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
     useOnboardingTourStore.setState({
       completedTours: {},
       activeTourId: null,
@@ -178,6 +187,61 @@ describe("School sante page (vue école — responsable santé)", () => {
       expect.stringContaining("/schools/college-vogt/sante/student-1?"),
     );
     expect(pushMock.mock.calls[0][0]).toContain("firstName=Nathan");
+  });
+
+  it("onglet Cares : acquitte un signalement sans naviguer vers la fiche élève", async () => {
+    let acknowledgeCalled = false;
+    const fetchMock = mockFetchDefault();
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      if (
+        url.includes(
+          "/students/student-1/health/reports/report-1/acknowledge",
+        ) &&
+        init?.method === "POST"
+      ) {
+        acknowledgeCalled = true;
+        return jsonResponse({
+          ...REPORT_1,
+          acknowledgedAt: "2026-02-06T08:00:00Z",
+        });
+      }
+      if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+      if (url.includes("/health/reports"))
+        return jsonResponse({ items: [REPORT_1], total: 1 });
+      return jsonResponse({}, 404);
+    });
+
+    render(<SchoolSantePage />);
+    fireEvent.click(screen.getByTestId("sante-tab-cares"));
+    await waitFor(() => screen.getByTestId("sante-cares-acknowledge-report-1"));
+
+    fireEvent.click(screen.getByTestId("sante-cares-acknowledge-report-1"));
+
+    await waitFor(() => expect(acknowledgeCalled).toBe(true));
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("onglet Cares : pas de bouton d'acquittement pour un signalement déjà acquitté", async () => {
+    const fetchMock = mockFetchDefault();
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+      if (url.includes("/health/reports"))
+        return jsonResponse({
+          items: [{ ...REPORT_1, acknowledgedAt: "2026-02-06T08:00:00Z" }],
+          total: 1,
+        });
+      return jsonResponse({}, 404);
+    });
+
+    render(<SchoolSantePage />);
+    fireEvent.click(screen.getByTestId("sante-tab-cares"));
+    await waitFor(() => screen.getByTestId("sante-cares-item-report-1"));
+
+    expect(
+      screen.queryByTestId("sante-cares-acknowledge-report-1"),
+    ).not.toBeInTheDocument();
   });
 
   it("onglet Élèves : charge, recherche avec debounce, et pagine", async () => {
