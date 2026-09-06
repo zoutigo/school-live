@@ -85,6 +85,17 @@ describe("School sante student page (fiche élève)", () => {
     });
   });
 
+  it("n'affiche jamais le libellé technique 'Cares' pour l'onglet historique", async () => {
+    mockFetchDefault();
+    render(<SchoolSanteStudentPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Mbele Nathan")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Cares")).not.toBeInTheDocument();
+    expect(screen.getByText("Historique")).toBeInTheDocument();
+  });
+
   it("onglet Cares : affiche l'historique fusionné (soins + signalements)", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
@@ -109,6 +120,11 @@ describe("School sante student page (fiche élève)", () => {
       expect(screen.getByText("Crise d'asthme")).toBeInTheDocument();
       expect(screen.getByText("Chute dans la cour")).toBeInTheDocument();
     });
+    expect(screen.getByText("Chute dans la cour")).toHaveClass(
+      "min-w-0",
+      "truncate",
+    );
+    expect(screen.getByText("Accident")).toHaveClass("min-w-0", "truncate");
   });
 
   it("acquitte un signalement en attente depuis la fiche élève", async () => {
@@ -187,6 +203,10 @@ describe("School sante student page (fiche élève)", () => {
     await waitFor(() => {
       expect(screen.getByText("Allergie arachides")).toBeInTheDocument();
     });
+    expect(screen.getByText("Allergie arachides")).toHaveClass(
+      "min-w-0",
+      "truncate",
+    );
   });
 
   it("le bouton d'ajout ouvre le formulaire de création", async () => {

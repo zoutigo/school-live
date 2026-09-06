@@ -121,6 +121,15 @@ describe("School sante page (vue école — responsable santé)", () => {
     });
   });
 
+  it("n'affiche jamais le libellé technique 'Cares' pour l'onglet signalements", async () => {
+    mockFetchDefault();
+    render(<SchoolSantePage />);
+
+    await waitFor(() => expect(screen.getByText("6")).toBeInTheDocument());
+    expect(screen.queryByText("Cares")).not.toBeInTheDocument();
+    expect(screen.getByText("Événements hors école")).toBeInTheDocument();
+  });
+
   it("recharge les statistiques quand on change de classe", async () => {
     const fetchMock = mockFetchDefault();
     render(<SchoolSantePage />);
@@ -154,6 +163,9 @@ describe("School sante page (vue école — responsable santé)", () => {
 
     await waitFor(() => screen.getByTestId("sante-cares-item-report-1"));
     expect(screen.getByText("Mbele Nathan")).toBeInTheDocument();
+    expect(screen.getByTestId("sante-cares-item-report-1")).toHaveClass(
+      "min-w-0",
+    );
 
     fireEvent.click(screen.getByTestId("sante-cares-filter-status"));
     fireEvent.click(await screen.findByRole("option", { name: "En attente" }));

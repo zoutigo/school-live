@@ -507,14 +507,14 @@ export default function SchoolSantePage() {
                       ).toString()}`,
                     );
                   }}
-                  className="cursor-pointer rounded-card border border-border bg-background p-3 text-left"
+                  className="min-w-0 cursor-pointer rounded-card border border-border bg-background p-3 text-left"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-text-primary">
+                    <span className="min-w-0 truncate text-sm font-semibold text-text-primary">
                       {row.student.lastName} {row.student.firstName}
                     </span>
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
+                      className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
                     >
                       {t(`health.alertLevel.${row.alertLevel}`)}
                     </span>
@@ -609,12 +609,12 @@ export default function SchoolSantePage() {
                       ).toString()}`,
                     )
                   }
-                  className="flex items-center justify-between rounded-card border border-border bg-background p-3 text-left"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-card border border-border bg-background p-3 text-left"
                 >
-                  <span className="text-sm font-semibold text-text-primary">
+                  <span className="min-w-0 truncate text-sm font-semibold text-text-primary">
                     {row.lastName} {row.firstName}
                   </span>
-                  <span className="text-xs text-text-secondary">
+                  <span className="shrink-0 text-xs text-text-secondary">
                     {row.class?.name ?? t("health.admin.eleves.noClass")}
                     {row.age != null
                       ? ` · ${row.age} ${t("health.admin.eleves.ageUnit")}`

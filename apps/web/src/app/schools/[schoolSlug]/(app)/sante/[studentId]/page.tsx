@@ -236,9 +236,9 @@ export default function SchoolSanteStudentPage() {
   return (
     <div className="grid gap-4" data-testid="school-sante-student-page">
       <Card>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-lg font-semibold text-text-primary">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-heading text-lg font-semibold text-text-primary truncate">
               {studentName || t("health.title")}
             </h2>
             <p className="text-sm text-text-secondary">
@@ -415,11 +415,11 @@ export default function SchoolSanteStudentPage() {
                       data-testid={`sante-care-item-${item.payload.id}`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-text-primary">
+                        <p className="min-w-0 truncate text-sm font-semibold text-text-primary">
                           {item.payload.summary}
                         </p>
                         <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
+                          className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
                         >
                           {t(`health.alertLevel.${item.payload.alertLevel}`)}
                         </span>
@@ -448,11 +448,11 @@ export default function SchoolSanteStudentPage() {
                       data-testid={`sante-report-item-${item.payload.id}`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-text-primary">
+                        <p className="min-w-0 truncate text-sm font-semibold text-text-primary">
                           {t(`health.reportType.${item.payload.type}`)}
                         </p>
                         <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
+                          className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
                         >
                           {t(`health.alertLevel.${item.payload.alertLevel}`)}
                         </span>
@@ -497,11 +497,11 @@ export default function SchoolSanteStudentPage() {
                     data-testid={`sante-condition-item-${row.id}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-text-primary">
+                      <p className="min-w-0 truncate text-sm font-semibold text-text-primary">
                         {row.label}
                       </p>
                       <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
+                        className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
                       >
                         {t(`health.alertLevel.${row.alertLevel}`)}
                       </span>
