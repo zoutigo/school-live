@@ -205,7 +205,11 @@ async function main() {
     where: {
       parentUserId_studentId: { parentUserId: parent.id, studentId: robert.id },
     },
-    create: { schoolId: school.id, parentUserId: parent.id, studentId: robert.id },
+    create: {
+      schoolId: school.id,
+      parentUserId: parent.id,
+      studentId: robert.id,
+    },
     update: {},
   });
 
