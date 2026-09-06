@@ -4528,15 +4528,31 @@ export class AuthService {
       };
 
       if (payload.purpose !== "ONBOARDING_SETUP" || !payload.sub) {
-        throw new UnauthorizedException("Jeton onboarding invalide");
+        throw new UnauthorizedException({
+          code: "ONBOARDING_TOKEN_INVALID",
+          message:
+            "Votre session d'activation n'est plus valide. Reconnectez-vous avec votre numéro de téléphone et votre code PIN : l'application relancera automatiquement l'activation de votre compte.",
+        });
       }
 
       return {
         userId: payload.sub,
         schoolSlug: payload.schoolSlug ?? null,
       };
-    } catch {
-      throw new UnauthorizedException("Jeton onboarding invalide");
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      const isExpired =
+        error instanceof Error && error.name === "TokenExpiredError";
+      throw new UnauthorizedException({
+        code: isExpired
+          ? "ONBOARDING_TOKEN_EXPIRED"
+          : "ONBOARDING_TOKEN_INVALID",
+        message: isExpired
+          ? "Votre session d'activation a expiré : elle n'est valable que 30 minutes après votre connexion. Reconnectez-vous avec votre numéro de téléphone et votre code PIN, puis terminez l'activation sans dépasser 30 minutes cette fois-ci."
+          : "Votre session d'activation n'est plus valide. Reconnectez-vous avec votre numéro de téléphone et votre code PIN : l'application relancera automatiquement l'activation de votre compte.",
+      });
     }
   }
 

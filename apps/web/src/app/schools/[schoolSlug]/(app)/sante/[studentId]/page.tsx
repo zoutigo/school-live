@@ -96,6 +96,8 @@ export default function SchoolSanteStudentPage() {
   const [editing, setEditing] = useState<CareEventRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [acknowledgeError, setAcknowledgeError] = useState<string | null>(null);
 
   const schema = useMemo(() => careEventSchema(), []);
   const form = useForm<CareEventFormValues>({
@@ -198,14 +200,45 @@ export default function SchoolSanteStudentPage() {
     }
   }
 
+  async function acknowledgeReport(reportId: string) {
+    if (!schoolSlug || !studentId) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAcknowledgeError(t("health.common.csrfInvalid"));
+      router.replace(`/schools/${schoolSlug}/login`);
+      return;
+    }
+    setAcknowledgingId(reportId);
+    setAcknowledgeError(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/students/${studentId}/health/reports/${reportId}/acknowledge`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "X-CSRF-Token": csrfToken },
+        },
+      );
+      if (!response.ok) {
+        setAcknowledgeError(t("health.errors.createFailed"));
+        return;
+      }
+      loadHistory();
+    } catch {
+      setAcknowledgeError(t("health.common.networkError"));
+    } finally {
+      setAcknowledgingId(null);
+    }
+  }
+
   const studentName = `${lastName} ${firstName}`.trim();
 
   return (
     <div className="grid gap-4" data-testid="school-sante-student-page">
       <Card>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-lg font-semibold text-text-primary">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-heading text-lg font-semibold text-text-primary truncate">
               {studentName || t("health.title")}
             </h2>
             <p className="text-sm text-text-secondary">
@@ -358,6 +391,14 @@ export default function SchoolSanteStudentPage() {
           {loadError ? (
             <p className="mt-3 text-sm text-notification">{loadError}</p>
           ) : null}
+          {acknowledgeError ? (
+            <p
+              className="mt-3 text-sm text-notification"
+              data-testid="sante-report-acknowledge-error"
+            >
+              {acknowledgeError}
+            </p>
+          ) : null}
 
           {tab === "cares" ? (
             <div className="mt-3 grid gap-2">
@@ -374,11 +415,11 @@ export default function SchoolSanteStudentPage() {
                       data-testid={`sante-care-item-${item.payload.id}`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-text-primary">
+                        <p className="min-w-0 truncate text-sm font-semibold text-text-primary">
                           {item.payload.summary}
                         </p>
                         <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
+                          className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
                         >
                           {t(`health.alertLevel.${item.payload.alertLevel}`)}
                         </span>
@@ -407,11 +448,11 @@ export default function SchoolSanteStudentPage() {
                       data-testid={`sante-report-item-${item.payload.id}`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-text-primary">
+                        <p className="min-w-0 truncate text-sm font-semibold text-text-primary">
                           {t(`health.reportType.${item.payload.type}`)}
                         </p>
                         <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
+                          className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(item.payload.alertLevel)}`}
                         >
                           {t(`health.alertLevel.${item.payload.alertLevel}`)}
                         </span>
@@ -424,6 +465,19 @@ export default function SchoolSanteStudentPage() {
                           ? t("health.admin.cares.acknowledged")
                           : t("health.admin.cares.pending")}
                       </p>
+                      {!item.payload.acknowledgedAt ? (
+                        <button
+                          type="button"
+                          className="mt-2 rounded-card bg-accent-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                          disabled={acknowledgingId === item.payload.id}
+                          onClick={() => acknowledgeReport(item.payload.id)}
+                          data-testid={`sante-report-acknowledge-${item.payload.id}`}
+                        >
+                          {acknowledgingId === item.payload.id
+                            ? t("health.admin.cares.card.acknowledging")
+                            : t("health.admin.cares.card.acknowledgeAction")}
+                        </button>
+                      ) : null}
                     </div>
                   ),
                 )
@@ -443,11 +497,11 @@ export default function SchoolSanteStudentPage() {
                     data-testid={`sante-condition-item-${row.id}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-text-primary">
+                      <p className="min-w-0 truncate text-sm font-semibold text-text-primary">
                         {row.label}
                       </p>
                       <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
+                        className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
                       >
                         {t(`health.alertLevel.${row.alertLevel}`)}
                       </span>

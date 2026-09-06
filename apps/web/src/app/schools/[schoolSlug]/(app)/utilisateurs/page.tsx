@@ -80,6 +80,7 @@ type SchoolMember = SchoolUserItem | StudentOnlyItem;
 type SchoolUserDetail = SchoolUserItem & {
   lastLoginAt: string | null;
   updatedAt: string;
+  hasPhoneCredential: boolean;
   enrollments: {
     id: string;
     classId: string;
@@ -974,11 +975,13 @@ function PromoteStudentModal({
 function CredentialDisplayModal({
   username,
   temporaryPassword,
+  temporaryPin,
   onClose,
   t,
 }: {
   username: string | null;
-  temporaryPassword: string;
+  temporaryPassword: string | null;
+  temporaryPin: string | null;
   onClose: () => void;
   t: (k: string) => string;
 }) {
@@ -986,8 +989,16 @@ function CredentialDisplayModal({
     <ModalOverlay onClose={onClose} testId="credential-display-modal">
       <ModalHeader
         eyebrow={t("users.roles.student")}
-        title={t("users.credentials.title")}
-        subtitle={t("users.credentials.subtitle")}
+        title={
+          temporaryPin
+            ? t("users.credentials.pinTitle")
+            : t("users.credentials.title")
+        }
+        subtitle={
+          temporaryPin
+            ? t("users.credentials.pinSubtitle")
+            : t("users.credentials.subtitle")
+        }
         onClose={onClose}
       />
       <div className="space-y-3">
@@ -1004,17 +1015,32 @@ function CredentialDisplayModal({
             </p>
           </div>
         ) : null}
-        <div>
-          <p className="text-xs font-semibold text-text-secondary">
-            {t("users.credentials.temporaryPassword")}
-          </p>
-          <p
-            data-testid="credential-temporary-password"
-            className="rounded-xl border border-warm-border bg-white px-3 py-2 font-mono text-sm"
-          >
-            {temporaryPassword}
-          </p>
-        </div>
+        {temporaryPassword ? (
+          <div>
+            <p className="text-xs font-semibold text-text-secondary">
+              {t("users.credentials.temporaryPassword")}
+            </p>
+            <p
+              data-testid="credential-temporary-password"
+              className="rounded-xl border border-warm-border bg-white px-3 py-2 font-mono text-sm"
+            >
+              {temporaryPassword}
+            </p>
+          </div>
+        ) : null}
+        {temporaryPin ? (
+          <div>
+            <p className="text-xs font-semibold text-text-secondary">
+              {t("users.credentials.temporaryPin")}
+            </p>
+            <p
+              data-testid="credential-temporary-pin"
+              className="rounded-xl border border-warm-border bg-white px-3 py-2 font-mono text-sm"
+            >
+              {temporaryPin}
+            </p>
+          </div>
+        ) : null}
       </div>
       <ModalActions
         onCancel={onClose}
@@ -2120,7 +2146,8 @@ function UserDetailPanel({
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [credentials, setCredentials] = useState<{
     username: string | null;
-    temporaryPassword: string;
+    temporaryPassword: string | null;
+    temporaryPin: string | null;
   } | null>(null);
 
   const loadDetail = useCallback(async () => {
@@ -2183,6 +2210,7 @@ function UserDetailPanel({
         setCredentials({
           username: null,
           temporaryPassword: result.temporaryPassword,
+          temporaryPin: null,
         });
         onShowToast(t("users.resetPwd.success"), "success");
       } catch (err) {
@@ -2191,6 +2219,27 @@ function UserDetailPanel({
     },
     t,
   };
+
+  async function handleResetPin() {
+    const csrf = getCsrfTokenCookie();
+    try {
+      const result = await apiFetch<{ temporaryPin: string }>(
+        `/schools/${schoolSlug}/users/${member.id}/reset-pin`,
+        {
+          method: "POST",
+          headers: { "X-CSRF-Token": csrf ?? "" },
+        },
+      );
+      setCredentials({
+        username: null,
+        temporaryPassword: null,
+        temporaryPin: result.temporaryPin,
+      });
+      onShowToast(t("users.resetPin.success"), "success");
+    } catch (err) {
+      onShowToast(extractError(err), "error");
+    }
+  }
 
   function renderRoleSections() {
     if (!detail) return null;
@@ -2324,6 +2373,17 @@ function UserDetailPanel({
                   data-testid="action-edit-roles"
                   onClick={() => setEditRolesOpen(true)}
                 />
+                {detail &&
+                "hasPhoneCredential" in detail &&
+                detail.hasPhoneCredential ? (
+                  <ActionBtn
+                    icon={<Key size={12} />}
+                    label={t("users.actions.resetPin")}
+                    color="#08467D"
+                    data-testid="action-reset-pin"
+                    onClick={() => void handleResetPin()}
+                  />
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -2483,7 +2543,7 @@ function UserDetailPanel({
           onClose={() => setPromoteOpen(false)}
           onSuccess={(result) => {
             setPromoteOpen(false);
-            setCredentials(result);
+            setCredentials({ ...result, temporaryPin: null });
             void loadDetail();
             onRefreshList();
             onShowToast(t("users.promote.success"), "success");
@@ -2496,6 +2556,7 @@ function UserDetailPanel({
         <CredentialDisplayModal
           username={credentials.username}
           temporaryPassword={credentials.temporaryPassword}
+          temporaryPin={credentials.temporaryPin}
           onClose={() => setCredentials(null)}
           t={t}
         />

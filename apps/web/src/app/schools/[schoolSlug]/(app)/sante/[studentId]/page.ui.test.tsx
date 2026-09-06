@@ -85,6 +85,17 @@ describe("School sante student page (fiche élève)", () => {
     });
   });
 
+  it("n'affiche jamais le libellé technique 'Cares' pour l'onglet historique", async () => {
+    mockFetchDefault();
+    render(<SchoolSanteStudentPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Mbele Nathan")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Cares")).not.toBeInTheDocument();
+    expect(screen.getByText("Historique")).toBeInTheDocument();
+  });
+
   it("onglet Cares : affiche l'historique fusionné (soins + signalements)", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
@@ -109,6 +120,72 @@ describe("School sante student page (fiche élève)", () => {
       expect(screen.getByText("Crise d'asthme")).toBeInTheDocument();
       expect(screen.getByText("Chute dans la cour")).toBeInTheDocument();
     });
+    expect(screen.getByText("Chute dans la cour")).toHaveClass(
+      "min-w-0",
+      "truncate",
+    );
+    expect(screen.getByText("Accident")).toHaveClass("min-w-0", "truncate");
+  });
+
+  it("acquitte un signalement en attente depuis la fiche élève", async () => {
+    let acknowledgeCalled = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (
+        url.includes(
+          "/students/student-1/health/reports/report-1/acknowledge",
+        ) &&
+        init?.method === "POST"
+      ) {
+        acknowledgeCalled = true;
+        return jsonResponse({
+          ...REPORT_1,
+          acknowledgedAt: "2026-02-06T08:00:00Z",
+        });
+      }
+      if (url.includes("/health/history")) {
+        return jsonResponse({
+          items: [
+            { kind: "REPORT", at: REPORT_1.createdAt, payload: REPORT_1 },
+          ],
+        });
+      }
+      return jsonResponse({ items: [] });
+    });
+
+    render(<SchoolSanteStudentPage />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("sante-report-acknowledge-report-1"),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("sante-report-acknowledge-report-1"));
+
+    await waitFor(() => expect(acknowledgeCalled).toBe(true));
+  });
+
+  it("n'affiche pas le bouton d'acquittement pour un signalement déjà acquitté", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/health/history")) {
+        return jsonResponse({
+          items: [
+            {
+              kind: "REPORT",
+              at: REPORT_1.createdAt,
+              payload: { ...REPORT_1, acknowledgedAt: "2026-02-06T08:00:00Z" },
+            },
+          ],
+        });
+      }
+      return jsonResponse({ items: [] });
+    });
+
+    render(<SchoolSanteStudentPage />);
+    await waitFor(() => screen.getByText("Crise d'asthme"));
+    expect(
+      screen.queryByTestId("sante-report-acknowledge-report-1"),
+    ).not.toBeInTheDocument();
   });
 
   it("onglet Conditions : charge les conditions au clic sur l'onglet", async () => {
@@ -126,6 +203,10 @@ describe("School sante student page (fiche élève)", () => {
     await waitFor(() => {
       expect(screen.getByText("Allergie arachides")).toBeInTheDocument();
     });
+    expect(screen.getByText("Allergie arachides")).toHaveClass(
+      "min-w-0",
+      "truncate",
+    );
   });
 
   it("le bouton d'ajout ouvre le formulaire de création", async () => {

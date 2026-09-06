@@ -54,6 +54,19 @@ const makePrismaMock = () => ({
     upsert: jest.fn(),
     deleteMany: jest.fn(),
   },
+  userPhoneCredential: {
+    findUnique: jest.fn(),
+    update: jest.fn(),
+  },
+  authAuditLog: {
+    create: jest.fn(),
+  },
+  internalMessage: {
+    create: jest.fn(),
+  },
+  internalMessageRecipient: {
+    create: jest.fn(),
+  },
   $transaction: jest.fn(),
 });
 
@@ -719,6 +732,116 @@ describe("SchoolUsersService", () => {
       expect(prisma.teacher.deleteMany).toHaveBeenCalledWith({
         where: { schoolId: SCHOOL_ID, userId: USER_ID },
       });
+    });
+  });
+
+  // ── resetMemberPin — unitaires ────────────────────────────────────────────────
+
+  describe("resetMemberPin", () => {
+    it("lève NotFoundException si l'utilisateur n'est pas membre", async () => {
+      prisma.schoolMembership.findFirst.mockResolvedValue(null);
+
+      await expect(service.resetMemberPin(SCHOOL_ID, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("lève NotFoundException si l'utilisateur n'a pas d'identifiant téléphone/PIN", async () => {
+      prisma.schoolMembership.findFirst.mockResolvedValue({
+        schoolId: SCHOOL_ID,
+        userId: USER_ID,
+      });
+      prisma.userPhoneCredential.findUnique.mockResolvedValue(null);
+
+      await expect(service.resetMemberPin(SCHOOL_ID, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("génère un PIN à 6 chiffres, met à jour le hash et trace l'audit", async () => {
+      prisma.schoolMembership.findFirst
+        .mockResolvedValueOnce({ schoolId: SCHOOL_ID, userId: USER_ID }) // membership du user cible
+        .mockResolvedValueOnce({ userId: "admin-1" }); // recherche du SCHOOL_ADMIN pour la notif
+      prisma.userPhoneCredential.findUnique.mockResolvedValue({
+        id: "cred-1",
+        phoneE164: "+237691234567",
+      });
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-1" });
+
+      const result = await service.resetMemberPin(SCHOOL_ID, USER_ID);
+
+      expect(result.temporaryPin).toMatch(/^\d{6}$/);
+      expect(prisma.userPhoneCredential.update).toHaveBeenCalledWith({
+        where: { id: "cred-1" },
+        data: { pinHash: expect.any(String) },
+      });
+      expect(prisma.authAuditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: USER_ID,
+          schoolId: SCHOOL_ID,
+          event: "CHANGE_PIN",
+          status: "SUCCESS",
+          reasonCode: "ADMIN_MANUAL_RESET",
+          principal: "+237691234567",
+        }),
+      });
+    });
+
+    it("envoie une notification interne au titulaire du compte quand un SCHOOL_ADMIN existe", async () => {
+      prisma.schoolMembership.findFirst
+        .mockResolvedValueOnce({ schoolId: SCHOOL_ID, userId: USER_ID })
+        .mockResolvedValueOnce({ userId: "admin-1" });
+      prisma.userPhoneCredential.findUnique.mockResolvedValue({
+        id: "cred-1",
+        phoneE164: "+237691234567",
+      });
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-1" });
+
+      await service.resetMemberPin(SCHOOL_ID, USER_ID);
+
+      expect(prisma.internalMessage.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          schoolId: SCHOOL_ID,
+          senderUserId: "admin-1",
+        }),
+      });
+      expect(prisma.internalMessageRecipient.create).toHaveBeenCalledWith({
+        data: {
+          messageId: "msg-1",
+          schoolId: SCHOOL_ID,
+          recipientUserId: USER_ID,
+        },
+      });
+    });
+
+    it("n'échoue pas si aucun SCHOOL_ADMIN n'est trouvé pour la notification", async () => {
+      prisma.schoolMembership.findFirst
+        .mockResolvedValueOnce({ schoolId: SCHOOL_ID, userId: USER_ID })
+        .mockResolvedValueOnce(null);
+      prisma.userPhoneCredential.findUnique.mockResolvedValue({
+        id: "cred-1",
+        phoneE164: "+237691234567",
+      });
+
+      const result = await service.resetMemberPin(SCHOOL_ID, USER_ID);
+
+      expect(result.temporaryPin).toMatch(/^\d{6}$/);
+      expect(prisma.internalMessage.create).not.toHaveBeenCalled();
+    });
+
+    it("n'échoue pas si l'envoi de la notification lève une erreur (best-effort)", async () => {
+      prisma.schoolMembership.findFirst
+        .mockResolvedValueOnce({ schoolId: SCHOOL_ID, userId: USER_ID })
+        .mockResolvedValueOnce({ userId: "admin-1" });
+      prisma.userPhoneCredential.findUnique.mockResolvedValue({
+        id: "cred-1",
+        phoneE164: "+237691234567",
+      });
+      prisma.internalMessage.create.mockRejectedValue(new Error("db down"));
+
+      const result = await service.resetMemberPin(SCHOOL_ID, USER_ID);
+
+      expect(result.temporaryPin).toMatch(/^\d{6}$/);
     });
   });
 });

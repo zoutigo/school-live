@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { ListSchoolUsersQueryDto } from "./dto/list-school-users-query.dto.js";
 import type { UpdateUserRolesDto } from "./dto/update-user-roles.dto.js";
@@ -502,6 +504,7 @@ export class SchoolUsersService {
             function: { select: { id: true, name: true } },
           },
         },
+        phoneCredential: { select: { id: true } },
       },
     });
 
@@ -539,6 +542,7 @@ export class SchoolUsersService {
       roles: user.memberships.map((m) => m.role),
       activationStatus: user.activationStatus,
       profileCompleted: user.profileCompleted,
+      hasPhoneCredential: Boolean(user.phoneCredential),
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLoginAt: null,
@@ -614,5 +618,84 @@ export class SchoolUsersService {
     });
 
     return { roles: updated.map((m) => m.role) };
+  }
+
+  async resetMemberPin(
+    schoolId: string,
+    userId: string,
+  ): Promise<{ temporaryPin: string }> {
+    const membership = await this.prisma.schoolMembership.findFirst({
+      where: { schoolId, userId },
+    });
+    if (!membership) {
+      throw new NotFoundException(
+        "Cet utilisateur n'est pas membre de cet établissement.",
+      );
+    }
+
+    const phoneCredential = await this.prisma.userPhoneCredential.findUnique({
+      where: { userId },
+      select: { id: true, phoneE164: true },
+    });
+    if (!phoneCredential) {
+      throw new NotFoundException(
+        "Cet utilisateur ne dispose pas d'une connexion par téléphone/PIN.",
+      );
+    }
+
+    const temporaryPin = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const pinHash = await bcrypt.hash(temporaryPin, 10);
+
+    await this.prisma.userPhoneCredential.update({
+      where: { id: phoneCredential.id },
+      data: { pinHash },
+    });
+
+    await this.prisma.authAuditLog.create({
+      data: {
+        userId,
+        schoolId,
+        event: "CHANGE_PIN",
+        status: "SUCCESS",
+        principal: phoneCredential.phoneE164,
+        reasonCode: "ADMIN_MANUAL_RESET",
+      },
+    });
+
+    await this.sendPinResetNotification(schoolId, userId);
+
+    return { temporaryPin };
+  }
+
+  private async sendPinResetNotification(
+    schoolId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      const senderMembership = await this.prisma.schoolMembership.findFirst({
+        where: { schoolId, role: "SCHOOL_ADMIN" },
+        select: { userId: true },
+      });
+      if (!senderMembership || senderMembership.userId === userId) {
+        return;
+      }
+
+      const message = await this.prisma.internalMessage.create({
+        data: {
+          schoolId,
+          senderUserId: senderMembership.userId,
+          subject: "Réinitialisation de votre code PIN",
+          body: "<p>Bonjour,</p><p>Votre code PIN de connexion vient d'être réinitialisé par l'administration de votre établissement, à votre demande. Le nouveau code vous a été communiqué séparément.</p><p>Si vous n'êtes pas à l'origine de cette demande, contactez immédiatement l'administration.</p>",
+          status: "SENT",
+          sentAt: new Date(),
+        },
+      });
+
+      await this.prisma.internalMessageRecipient.create({
+        data: { messageId: message.id, schoolId, recipientUserId: userId },
+      });
+    } catch {
+      // Notification best-effort — ne doit jamais faire échouer la réinitialisation.
+    }
   }
 }

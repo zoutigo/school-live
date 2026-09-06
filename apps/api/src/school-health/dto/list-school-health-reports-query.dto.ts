@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsBoolean,
   IsEnum,
@@ -27,7 +27,7 @@ export class ListSchoolHealthReportsQueryDto {
   reportType?: StudentHealthReportType;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => value === "true" || value === true)
   @IsBoolean()
   acknowledged?: boolean;
 

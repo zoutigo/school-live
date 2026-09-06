@@ -6,6 +6,7 @@ import { Card } from "../../../../../components/ui/card";
 import { FormTextInput } from "../../../../../components/ui/form-controls";
 import { PaginationControls } from "../../../../../components/ui/pagination-controls";
 import { SearchableSelect } from "../../../../../components/ui/searchable-select";
+import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
@@ -215,6 +216,40 @@ export default function SchoolSantePage() {
   useEffect(() => {
     if (tab === "cares") loadCares(caresPage);
   }, [tab, caresPage, loadCares]);
+
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [acknowledgeError, setAcknowledgeError] = useState<string | null>(null);
+
+  async function acknowledgeReport(studentId: string, reportId: string) {
+    if (!schoolSlug) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAcknowledgeError(t("health.common.csrfInvalid"));
+      router.replace(`/schools/${schoolSlug}/login`);
+      return;
+    }
+    setAcknowledgingId(reportId);
+    setAcknowledgeError(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/students/${studentId}/health/reports/${reportId}/acknowledge`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "X-CSRF-Token": csrfToken },
+        },
+      );
+      if (!response.ok) {
+        setAcknowledgeError(t("health.errors.createFailed"));
+        return;
+      }
+      loadCares(caresPage);
+    } catch {
+      setAcknowledgeError(t("health.common.networkError"));
+    } finally {
+      setAcknowledgingId(null);
+    }
+  }
 
   // ── Élèves ───────────────────────────────────────────────────────────────
 
@@ -427,6 +462,15 @@ export default function SchoolSantePage() {
             />
           </div>
 
+          {acknowledgeError ? (
+            <p
+              className="mt-3 text-sm text-notification"
+              data-testid="sante-cares-acknowledge-error"
+            >
+              {acknowledgeError}
+            </p>
+          ) : null}
+
           <div className="mt-4 grid gap-2">
             {cares.length === 0 ? (
               <p className="text-sm text-text-secondary">
@@ -434,9 +478,10 @@ export default function SchoolSantePage() {
               </p>
             ) : (
               cares.map((row) => (
-                <button
+                <div
                   key={row.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   data-testid={`sante-cares-item-${row.id}`}
                   onClick={() =>
                     router.push(
@@ -449,14 +494,27 @@ export default function SchoolSantePage() {
                       ).toString()}`,
                     )
                   }
-                  className="rounded-card border border-border bg-background p-3 text-left"
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    router.push(
+                      `/schools/${schoolSlug}/sante/${row.student.id}?${new URLSearchParams(
+                        {
+                          firstName: row.student.firstName,
+                          lastName: row.student.lastName,
+                          className: row.student.class?.name ?? "",
+                        },
+                      ).toString()}`,
+                    );
+                  }}
+                  className="min-w-0 cursor-pointer rounded-card border border-border bg-background p-3 text-left"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-text-primary">
+                    <span className="min-w-0 truncate text-sm font-semibold text-text-primary">
                       {row.student.lastName} {row.student.firstName}
                     </span>
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
+                      className={`inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${alertLevelClass(row.alertLevel)}`}
                     >
                       {t(`health.alertLevel.${row.alertLevel}`)}
                     </span>
@@ -473,7 +531,23 @@ export default function SchoolSantePage() {
                       ? t("health.admin.cares.acknowledged")
                       : t("health.admin.cares.pending")}
                   </p>
-                </button>
+                  {!row.acknowledgedAt ? (
+                    <button
+                      type="button"
+                      className="mt-2 rounded-card bg-accent-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                      disabled={acknowledgingId === row.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        acknowledgeReport(row.student.id, row.id);
+                      }}
+                      data-testid={`sante-cares-acknowledge-${row.id}`}
+                    >
+                      {acknowledgingId === row.id
+                        ? t("health.admin.cares.card.acknowledging")
+                        : t("health.admin.cares.card.acknowledgeAction")}
+                    </button>
+                  ) : null}
+                </div>
               ))
             )}
           </div>
@@ -535,12 +609,12 @@ export default function SchoolSantePage() {
                       ).toString()}`,
                     )
                   }
-                  className="flex items-center justify-between rounded-card border border-border bg-background p-3 text-left"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-card border border-border bg-background p-3 text-left"
                 >
-                  <span className="text-sm font-semibold text-text-primary">
+                  <span className="min-w-0 truncate text-sm font-semibold text-text-primary">
                     {row.lastName} {row.firstName}
                   </span>
-                  <span className="text-xs text-text-secondary">
+                  <span className="shrink-0 text-xs text-text-secondary">
                     {row.class?.name ?? t("health.admin.eleves.noClass")}
                     {row.age != null
                       ? ` · ${row.age} ${t("health.admin.eleves.ageUnit")}`
