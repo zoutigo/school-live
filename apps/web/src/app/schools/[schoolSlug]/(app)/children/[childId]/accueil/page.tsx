@@ -31,7 +31,14 @@ type ChildContext = {
   id: string;
   firstName: string;
   lastName: string;
+  classId?: string | null;
   className?: string | null;
+};
+
+type NotesEvaluation = {
+  score: number | null;
+  maxScore: number;
+  recordedAt: string;
 };
 
 type NotesSnapshot = {
@@ -44,8 +51,62 @@ type NotesSnapshot = {
     id: string;
     subjectLabel: string;
     studentAverage: number | null;
+    evaluations: NotesEvaluation[];
   }>;
 };
+
+type FlatEvaluation = {
+  subject: string;
+  score: number | null;
+  maxScore: number;
+  recordedAt: string;
+};
+
+function extractLatestEvaluations(
+  notes: NotesSnapshot[],
+  count: number,
+): FlatEvaluation[] {
+  const all: FlatEvaluation[] = [];
+  for (const snapshot of notes) {
+    for (const subject of snapshot.subjects) {
+      for (const ev of subject.evaluations ?? []) {
+        all.push({
+          subject: subject.subjectLabel,
+          score: ev.score,
+          maxScore: ev.maxScore,
+          recordedAt: ev.recordedAt,
+        });
+      }
+    }
+  }
+  return all
+    .sort(
+      (a, b) =>
+        new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+    )
+    .slice(0, count);
+}
+
+type HomeworkRow = {
+  id: string;
+  myDoneAt?: string | null;
+};
+
+type FeedPostRow = {
+  id: string;
+  title: string;
+  createdAt: string;
+  author: { fullName: string };
+};
+
+function authorInitials(fullName: string): string {
+  return fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 type LifeEventRow = {
   id: string;
@@ -143,6 +204,8 @@ function ChildAccueilDashboard({
   const [messages, setMessages] = useState<MessagesListResponse["items"]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [supplyList, setSupplyList] = useState<ChildSupplyList | null>(null);
+  const [homework, setHomework] = useState<HomeworkRow[]>([]);
+  const [feedPosts, setFeedPosts] = useState<FeedPostRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,6 +220,8 @@ function ChildAccueilDashboard({
           unreadResponse,
           messagesResponse,
           supplyListResponse,
+          homeworkResponse,
+          feedResponse,
         ] = await Promise.all([
           fetch(`${API_URL}/schools/${schoolSlug}/students/${childId}/notes`, {
             credentials: "include",
@@ -177,7 +242,7 @@ function ChildAccueilDashboard({
             credentials: "include",
           }),
           fetch(
-            `${API_URL}/schools/${schoolSlug}/messages?folder=inbox&page=1&limit=5`,
+            `${API_URL}/schools/${schoolSlug}/messages?folder=inbox&page=1&limit=20`,
             {
               credentials: "include",
             },
@@ -187,6 +252,16 @@ function ChildAccueilDashboard({
             {
               credentials: "include",
             },
+          ),
+          child?.classId
+            ? fetch(
+                `${API_URL}/schools/${schoolSlug}/classes/${child.classId}/homework?studentId=${encodeURIComponent(childId)}`,
+                { credentials: "include" },
+              )
+            : Promise.resolve(null),
+          fetch(
+            `${API_URL}/schools/${schoolSlug}/feed?viewScope=GENERAL&limit=2`,
+            { credentials: "include" },
           ),
         ]);
 
@@ -225,6 +300,22 @@ function ChildAccueilDashboard({
               ? ((await supplyListResponse.json()) as ChildSupplyList)
               : null,
           );
+          if (homeworkResponse?.ok) {
+            const homeworkPayload = await homeworkResponse.json();
+            setHomework(Array.isArray(homeworkPayload) ? homeworkPayload : []);
+          } else {
+            setHomework([]);
+          }
+          if (feedResponse.ok) {
+            const feedPayload = (await feedResponse.json()) as {
+              items?: FeedPostRow[];
+            };
+            setFeedPosts(
+              Array.isArray(feedPayload.items) ? feedPayload.items : [],
+            );
+          } else {
+            setFeedPosts([]);
+          }
         }
       } finally {
         if (!cancelled) {
@@ -238,9 +329,21 @@ function ChildAccueilDashboard({
     return () => {
       cancelled = true;
     };
-  }, [childId, schoolSlug]);
+  }, [childId, schoolSlug, child?.classId]);
 
   const latestSnapshot = notes[0] ?? null;
+  const undoneHomework = useMemo(
+    () => homework.filter((hw) => !hw.myDoneAt).length,
+    [homework],
+  );
+  const latestEvaluations = useMemo(
+    () => extractLatestEvaluations(notes, 3),
+    [notes],
+  );
+  const unreadMessages = useMemo(
+    () => messages.filter((m) => m.unread).slice(0, 3),
+    [messages],
+  );
   const nextOccurrence = useMemo(() => {
     const now = Date.now();
 
@@ -260,7 +363,6 @@ function ChildAccueilDashboard({
         }) ?? null
     );
   }, [timetable]);
-  const latestMessage = messages[0] ?? null;
   const unjustifiedCount = events.filter(
     (entry) => entry.type === "ABSENCE" && entry.justified === false,
   ).length;
@@ -333,27 +435,19 @@ function ChildAccueilDashboard({
                 label={t("messaging.nav.unreadMessages")}
                 value={`${unreadCount}`}
                 hint={
-                  latestMessage?.subject
-                    ? `${t("messaging.nav.lastMessagePrefix")} : ${latestMessage.subject}`
+                  unreadMessages[0]?.subject
+                    ? `${t("messaging.nav.lastMessagePrefix")} : ${unreadMessages[0].subject}`
                     : t("messaging.nav.noRecentMessageShort")
                 }
                 accent="teal"
               />
               <SummaryStat
-                label={t("discipline.sidebar.discipline")}
-                value={`${events.length}`}
+                label={t("childAccueil.stats.homework")}
+                value={child?.classId ? `${undoneHomework}` : "–"}
                 hint={
-                  unjustifiedCount > 0
-                    ? t("discipline.accueil.summaryHint.unjustified").replace(
-                        "{count}",
-                        String(unjustifiedCount),
-                      )
-                    : sanctionsCount > 0
-                      ? t("discipline.accueil.summaryHint.sanctions").replace(
-                          "{count}",
-                          String(sanctionsCount),
-                        )
-                      : t("discipline.accueil.summaryHint.none")
+                  child?.classId
+                    ? t("childAccueil.stats.homeworkNotDone")
+                    : t("childAccueil.stats.unknownClass")
                 }
                 accent="gold"
               />
@@ -434,6 +528,37 @@ function ChildAccueilDashboard({
                         : "-"
                     }
                   />
+                </div>
+                <div
+                  className="grid gap-1"
+                  data-testid="child-accueil-latest-evaluations"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                    {t("childAccueil.panel.grades.latestTitle")}
+                  </p>
+                  {latestEvaluations.length === 0 ? (
+                    <p className="text-sm text-text-secondary">
+                      {t("childAccueil.panel.grades.latestEmpty")}
+                    </p>
+                  ) : (
+                    <ul className="grid gap-1">
+                      {latestEvaluations.map((ev, idx) => (
+                        <li
+                          key={`${ev.subject}-${ev.recordedAt}-${idx}`}
+                          data-testid={`child-accueil-eval-row-${idx}`}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="text-text-primary">
+                            {ev.subject}
+                          </span>
+                          <span className="font-medium text-text-primary">
+                            {ev.score !== null ? formatScore(ev.score) : "–"}/
+                            {formatScore(ev.maxScore)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </DashboardPanel>
@@ -522,28 +647,42 @@ function ChildAccueilDashboard({
 
         <div className="grid gap-4">
           <DashboardPanel
-            title={t("messaging.nav.lastMessage")}
+            title={t("childAccueil.panel.unreadMessages.title")}
             icon={<MessageSquare className="h-4 w-4" />}
             actionHref={`/schools/${schoolSlug}/children/${childId}/messagerie`}
             actionLabel={t("messaging.nav.openLink")}
           >
-            {latestMessage ? (
-              <div className="grid gap-2">
-                <p className="font-heading text-base font-semibold text-text-primary">
-                  {latestMessage.subject}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {latestMessage.preview?.trim() ||
-                    t("messaging.nav.previewUnavailable")}
-                </p>
-                <p className="text-xs text-text-secondary">
-                  {formatDateLabel(latestMessage.createdAt)}
-                </p>
-              </div>
-            ) : (
-              <p className="text-sm text-text-secondary">
-                {t("messaging.nav.noRecentMessage")}
+            {unreadMessages.length === 0 ? (
+              <p
+                className="text-sm text-text-secondary"
+                data-testid="child-accueil-unread-empty"
+              >
+                {t("childAccueil.panel.unreadMessages.empty")}
               </p>
+            ) : (
+              <ul
+                className="grid gap-2"
+                data-testid="child-accueil-unread-list"
+              >
+                {unreadMessages.map((msg, idx) => (
+                  <li
+                    key={msg.id}
+                    data-testid={`child-accueil-unread-row-${idx}`}
+                    className="grid gap-0.5"
+                  >
+                    <p className="text-sm font-semibold text-text-primary">
+                      {msg.subject}
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      {msg.sender
+                        ? `${msg.sender.firstName} ${msg.sender.lastName}`
+                        : t("childAccueil.panel.unreadMessages.unknownSender")}
+                      {" · "}
+                      {formatDateLabel(msg.createdAt)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             )}
           </DashboardPanel>
 
@@ -581,24 +720,33 @@ function ChildAccueilDashboard({
             actionHref={`/schools/${schoolSlug}/children/${childId}/vie-de-classe`}
             actionLabel={t("childAccueil.panel.classFeed.action")}
           >
-            <div className="grid gap-2 text-sm text-text-secondary">
-              <p>{t("childAccueil.panel.classFeed.desc1")}</p>
-              <p>
-                {t("childAccueil.panel.classFeed.desc2")}{" "}
-                <span className="font-semibold text-text-primary">
-                  {t("childAccueil.panel.classFeed.title")}
-                </span>
-                .
+            {feedPosts.length === 0 ? (
+              <p
+                className="text-sm text-text-secondary"
+                data-testid="child-accueil-feed-empty"
+              >
+                {t("childAccueil.panel.classFeed.empty")}
               </p>
-              <p>
-                {child?.className
-                  ? t("childAccueil.panel.classFeed.desc3WithClass").replace(
-                      "{className}",
-                      child.className,
-                    )
-                  : t("childAccueil.panel.classFeed.desc3Default")}
-              </p>
-            </div>
+            ) : (
+              <ul className="grid gap-2" data-testid="child-accueil-feed-list">
+                {feedPosts.map((post, idx) => (
+                  <li
+                    key={post.id}
+                    data-testid={`child-accueil-feed-row-${idx}`}
+                    className="grid gap-0.5"
+                  >
+                    <p className="text-sm font-semibold text-text-primary">
+                      {post.title}
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      {authorInitials(post.author.fullName)}
+                      {" · "}
+                      {formatDateLabel(post.createdAt)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </DashboardPanel>
         </div>
       </OnboardingTarget>

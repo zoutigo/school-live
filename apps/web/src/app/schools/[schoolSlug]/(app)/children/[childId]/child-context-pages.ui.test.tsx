@@ -125,6 +125,14 @@ describe("Child context web pages", () => {
         });
       }
 
+      if (url.includes("/classes/class-6ec/homework")) {
+        return createJsonResponse([]);
+      }
+
+      if (url.includes("/feed?viewScope=GENERAL")) {
+        return createJsonResponse({ items: [] });
+      }
+
       return createJsonResponse({});
     });
 
@@ -134,7 +142,7 @@ describe("Child context web pages", () => {
       expect(screen.getByText("Tableau de bord enfant")).toBeInTheDocument();
     });
     expect(screen.getByText("Moyenne generale")).toBeInTheDocument();
-    expect(screen.getByText("Messages non lus")).toBeInTheDocument();
+    expect(screen.getAllByText("Messages non lus").length).toBeGreaterThan(0);
     expect(screen.getByText("Acces rapides")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Notes Evaluations et moyennes" }),
@@ -255,6 +263,17 @@ describe("Child context web pages", () => {
         });
       }
 
+      if (url.includes("/classes/class-6ec/homework")) {
+        return createJsonResponse([
+          { id: "hw-1", myDoneAt: null },
+          { id: "hw-2", myDoneAt: "2026-04-16T12:00:00.000Z" },
+        ]);
+      }
+
+      if (url.includes("/feed?viewScope=GENERAL")) {
+        return createJsonResponse({ items: [] });
+      }
+
       return createJsonResponse({});
     });
 
@@ -268,18 +287,13 @@ describe("Child context web pages", () => {
       screen.getByText("Vue synthese des modules de 6e C."),
     ).toBeInTheDocument();
     expect(screen.getAllByText("13,40").length).toBeGreaterThan(0);
-    expect(
-      screen.getByText("1 absence(s) non justifiee(s)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Devoirs non faits")).toBeInTheDocument();
+    expect(screen.getByText("non faits")).toBeInTheDocument();
     expect(screen.getByText("Mathematiques · 15,20")).toBeInTheDocument();
     expect(
       screen.getByText("Absence : Absence non justifiee"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Accedez aux publications, rappels et temps forts de 6e C.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Aucune actualite recente.")).toBeInTheDocument();
   });
 
   it("renders accueil fallbacks when no child data is available", async () => {
@@ -324,6 +338,14 @@ describe("Child context web pages", () => {
         return createJsonResponse({ items: [] });
       }
 
+      if (url.includes("/classes/class-6ec/homework")) {
+        return createJsonResponse([]);
+      }
+
+      if (url.includes("/feed?viewScope=GENERAL")) {
+        return createJsonResponse({ items: [] });
+      }
+
       return createJsonResponse({});
     });
 
@@ -332,7 +354,7 @@ describe("Child context web pages", () => {
     await waitFor(() => {
       expect(screen.getByText("Aucune periode publiee")).toBeInTheDocument();
     });
-    expect(screen.getByText("Aucun point de vigilance")).toBeInTheDocument();
+    expect(screen.getByText("Devoirs non faits")).toBeInTheDocument();
     expect(
       screen.getByText("Aucun evenement discipline recent."),
     ).toBeInTheDocument();
