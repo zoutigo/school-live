@@ -20,13 +20,25 @@ import { TrainingQuizIcon } from "../../../components/training-quiz/training-qui
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 // Cooldown (seconds) applied before "Retry" is re-enabled, indexed by the
-// question's total attempt count. Discourages clicking through options at
-// random rather than thinking about the hint/explanation shown after a miss.
-const RETRY_COOLDOWN_SECONDS = [0, 0, 3, 6, 9, 12];
+// number of wrong attempts made so far on this question (a single honest
+// mistake stays free). Deliberately steep past that — up to 8 minutes — to
+// make random clicking through options a genuinely unattractive strategy
+// rather than a shortcut around thinking about the hint/explanation.
+const RETRY_COOLDOWN_SECONDS = [0, 120, 240, 480];
 
 function retryCooldownFor(attemptsCount: number): number {
-  const index = Math.min(attemptsCount, RETRY_COOLDOWN_SECONDS.length - 1);
+  const index = Math.min(
+    Math.max(attemptsCount - 1, 0),
+    RETRY_COOLDOWN_SECONDS.length - 1,
+  );
   return RETRY_COOLDOWN_SECONDS[index];
+}
+
+function formatCooldown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}min ${String(seconds).padStart(2, "0")}s`;
 }
 
 function shuffle<T>(items: T[], seed: number): T[] {
@@ -518,8 +530,8 @@ export default function TrainingQuizChapterPage() {
                     >
                       {cooldownSecondsLeft > 0
                         ? t("trainingQuiz.chapter.retryCooldown").replace(
-                            "{seconds}",
-                            String(cooldownSecondsLeft),
+                            "{time}",
+                            formatCooldown(cooldownSecondsLeft),
                           )
                         : t("trainingQuiz.chapter.retry")}
                     </Button>
@@ -528,7 +540,11 @@ export default function TrainingQuizChapterPage() {
                     <Button
                       variant="ghost"
                       onClick={() =>
-                        router.push(`${schoolBase}${resolvedDeepLink}`)
+                        window.open(
+                          `${schoolBase}${resolvedDeepLink}`,
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
                       }
                       className="w-full sm:w-auto"
                     >

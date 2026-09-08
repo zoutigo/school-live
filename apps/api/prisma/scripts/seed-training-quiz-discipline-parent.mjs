@@ -247,6 +247,140 @@ const QUESTIONS = [
       },
     ],
   },
+  {
+    order: 7,
+    type: "MCQ_SINGLE",
+    difficulty: "HARD",
+    image: IMG("q7-punition-sanction"),
+    deepLinkRoute: "/children/{childId}/discipline",
+    textFr:
+      "Quelle affirmation décrit le mieux la différence entre une punition et une sanction ?",
+    textEn:
+      "Which statement best describes the difference between a punishment and a sanction?",
+    hintFr:
+      "Regardez qui décide de chaque mesure dans la fiche de l'évènement : l'enseignant ou la direction.",
+    hintEn:
+      "Look at who decides each measure on the event card: the teacher or the school management.",
+    explanationFr:
+      "Une punition est décidée par un enseignant pour un manquement mineur (bavardage, oubli de matériel...), tandis qu'une sanction relève de la direction pour un fait plus grave.",
+    explanationEn:
+      "A punishment is given by a teacher for a minor issue (talking in class, missing equipment...), while a sanction comes from school management for a more serious matter.",
+    options: [
+      {
+        textFr:
+          "La punition est décidée par un enseignant pour un manquement mineur, la sanction relève de la direction pour un fait plus grave",
+        textEn:
+          "A punishment is decided by a teacher for a minor issue, a sanction comes from management for a more serious matter",
+        isCorrect: true,
+      },
+      {
+        textFr: "Ce sont deux mots pour désigner exactement la même chose",
+        textEn: "They are two words for exactly the same thing",
+        isCorrect: false,
+      },
+      {
+        textFr: "La sanction est toujours plus légère qu'une punition",
+        textEn: "A sanction is always lighter than a punishment",
+        isCorrect: false,
+      },
+      {
+        textFr: "Seule la sanction est visible par les parents",
+        textEn: "Only sanctions are visible to parents",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 8,
+    type: "TRUE_FALSE",
+    difficulty: "HARD",
+    image: IMG("q8-kpi-filtre"),
+    deepLinkRoute: "/children/{childId}/discipline",
+    textFr:
+      "Les cartes chiffrées en haut du module (absences, retards, sanctions, punitions) permettent de filtrer la liste en un clic.",
+    textEn:
+      "The number cards at the top of the module (absences, latenesses, sanctions, punishments) let you filter the list with one click.",
+    hintFr:
+      "Essayez de cliquer sur une des cartes chiffrées en haut de la page.",
+    hintEn: "Try clicking one of the number cards at the top of the page.",
+    explanationFr:
+      "Chaque carte KPI (absences, retards, sanctions, punitions) est cliquable et filtre instantanément le tableau sur cette catégorie.",
+    explanationEn:
+      "Each KPI card (absences, latenesses, sanctions, punishments) is clickable and instantly filters the table to that category.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 9,
+    type: "MCQ_SINGLE",
+    difficulty: "HARD",
+    image: IMG("q9-detail-evenement"),
+    deepLinkRoute: "/children/{childId}/discipline",
+    textFr:
+      "Où pouvez-vous consulter le motif détaillé d'une punition et l'enseignant qui l'a saisie ?",
+    textEn:
+      "Where can you see the detailed reason for a punishment and which teacher recorded it?",
+    hintFr:
+      "Cliquez sur une ligne du tableau pour ouvrir le détail de l'évènement.",
+    hintEn: "Click a row in the table to open the event's detail.",
+    explanationFr:
+      "En cliquant sur une ligne du tableau, la fiche détaillée de l'évènement s'ouvre avec le motif complet et l'auteur de la saisie.",
+    explanationEn:
+      "Clicking a table row opens the event's detail card with the full reason and who recorded it.",
+    options: [
+      {
+        textFr:
+          "En ouvrant la fiche détaillée de l'évènement depuis le tableau",
+        textEn: "By opening the event's detail card from the table",
+        isCorrect: true,
+      },
+      {
+        textFr: "Ce n'est jamais indiqué",
+        textEn: "It is never shown",
+        isCorrect: false,
+      },
+      {
+        textFr: "Uniquement en appelant l'école",
+        textEn: "Only by calling the school",
+        isCorrect: false,
+      },
+      {
+        textFr: "Dans un email envoyé chaque mois",
+        textEn: "In a monthly email",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 10,
+    type: "MCQ_MULTI",
+    difficulty: "HARD",
+    image: IMG("q10-categories-suivies"),
+    deepLinkRoute: "/children/{childId}/discipline",
+    textFr:
+      "Parmi ces catégories, lesquelles sont suivies par le module Discipline ? (plusieurs réponses)",
+    textEn:
+      "Which of these categories does the Discipline module track? (select all that apply)",
+    hintFr: "Regardez les quatre cartes chiffrées tout en haut de la page.",
+    hintEn: "Look at the four number cards at the very top of the page.",
+    explanationFr:
+      "Le module suit quatre catégories : absences, retards, sanctions et punitions. Les notes de contrôle relèvent du module Notes, pas Discipline.",
+    explanationEn:
+      "The module tracks four categories: absences, latenesses, sanctions and punishments. Test grades belong to the Grades module, not Discipline.",
+    options: [
+      { textFr: "Les absences", textEn: "Absences", isCorrect: true },
+      { textFr: "Les retards", textEn: "Latenesses", isCorrect: true },
+      { textFr: "Les sanctions", textEn: "Sanctions", isCorrect: true },
+      { textFr: "Les punitions", textEn: "Punishments", isCorrect: true },
+      {
+        textFr: "Les notes de contrôle",
+        textEn: "Test grades",
+        isCorrect: false,
+      },
+    ],
+  },
 ];
 
 async function main() {

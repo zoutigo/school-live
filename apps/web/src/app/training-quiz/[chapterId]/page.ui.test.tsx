@@ -156,8 +156,10 @@ describe("TrainingQuizChapterPage", () => {
     expect(screen.queryByText("Pas tout à fait")).not.toBeInTheDocument();
   });
 
-  it("navigates to the app via the deep link", async () => {
+  it("opens the deep link in a new tab, keeping the quiz in place", async () => {
     mockFetch();
+    const openMock = vi.fn();
+    vi.stubGlobal("open", openMock);
     render(<TrainingQuizChapterPage />);
 
     await screen.findByText("Onglet Discipline");
@@ -167,9 +169,13 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Voir dans l'application");
     fireEvent.click(screen.getByText("Voir dans l'application"));
 
-    expect(pushMock).toHaveBeenCalledWith(
+    expect(openMock).toHaveBeenCalledWith(
       "/schools/ecole-test/children/child-1/discipline",
+      "_blank",
+      "noopener,noreferrer",
     );
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(screen.getByText("Onglet Discipline")).toBeInTheDocument();
   });
 
   it("hides the deep-link CTA when the parent has no linked child yet", async () => {
