@@ -2,7 +2,12 @@
 
 import { useParams } from "next/navigation";
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
-import { ChildHomeworkPanel } from "../../../../../../../components/homework/child-homework-panel";
+import { StudentHomeworkPanel } from "../../../../../../../components/homework/student-homework-panel";
+import {
+  HOMEWORK_TOUR_ID,
+  HOMEWORK_TOUR_STEPS,
+} from "../../../../../../../components/homework/homework-tour.config";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 export default function ChildCahierDeTextePage() {
@@ -28,18 +33,31 @@ export default function ChildCahierDeTextePage() {
       hideModuleHeader
       hidePrimaryTabs
       hideSecondaryTabs
+      onReady={({ onboardingHelpEnabled }) => {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          onboardingHelpEnabled &&
+          !tourStore.isCompleted("parent", HOMEWORK_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(HOMEWORK_TOUR_ID, "parent", HOMEWORK_TOUR_STEPS);
+        }
+      }}
       content={({ child }) => {
         const childFullName = child
           ? `${child.lastName.toUpperCase()} ${child.firstName}`
           : t("homework.cahierDeTexte.subtitle");
+        const cardSubtitle = child?.className
+          ? `${childFullName} - ${child.className}`
+          : childFullName;
 
         return (
-          <ChildHomeworkPanel
+          <StudentHomeworkPanel
             schoolSlug={schoolSlug}
             classId={child?.classId ?? null}
             studentId={childId}
-            childFullName={childFullName}
-            className={child?.className ?? null}
+            cardTitle={t("homework.cahierDeTexte.title")}
+            cardSubtitle={cardSubtitle}
           />
         );
       }}

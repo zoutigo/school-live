@@ -585,17 +585,6 @@ describe("Tour + aide guidee - vue eleve", () => {
     });
   });
 
-  it("démarre le tour pour un parent (pas seulement pour un élève)", async () => {
-    mockFetch({ role: "PARENT", homeworks: mockHomeworkWithDone });
-
-    render(<TeacherClassHomeworkPage />);
-
-    await waitFor(() =>
-      expect(useOnboardingTourStore.getState().activeTourId).toBe("homework"),
-    );
-    expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
-  });
-
   it("n'enregistre aucune aide pour un enseignant", async () => {
     usePageHelpStore.setState({ entry: null, open: false });
     mockFetch({ role: "TEACHER" });

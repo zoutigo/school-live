@@ -1644,3 +1644,165 @@ describe("UtilisateursPage", () => {
     });
   });
 });
+
+// ── Personnel modal (staff functions + assignments) ────────────────────────────
+
+describe("UtilisateursPage — onglet Personnel", () => {
+  const SCHOOL_ADMIN_ME = { role: "SCHOOL_ADMIN" };
+  const SUPERVISOR_ME = { role: "SUPERVISOR" };
+
+  const STAFF_FUNCTIONS = [
+    { id: "fn-1", name: "Surveillant", description: null },
+    { id: "fn-2", name: "Infirmier", description: "Infirmerie" },
+  ];
+
+  const STAFF_CANDIDATES = [
+    { userId: "u-1", firstName: "Anne", lastName: "Rousselet", role: "STAFF" },
+    { userId: "u-2", firstName: "Paul", lastName: "Diallo", role: "STAFF" },
+  ];
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pushMock.mockReset();
+    getCsrfMock.mockReturnValue("csrf-test");
+  });
+
+  function mockStaffFetch(opts: {
+    me: { role: string };
+    assignments?: unknown[];
+  }) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/schools/college-vogt/users")) {
+        return jsonRes(makeListResponse([]));
+      }
+      if (url.endsWith("/me")) {
+        return jsonRes(opts.me);
+      }
+      if (
+        url.endsWith("/schools/college-vogt/admin/staff-functions") &&
+        method === "GET"
+      ) {
+        return jsonRes(STAFF_FUNCTIONS);
+      }
+      if (
+        url.endsWith("/schools/college-vogt/admin/staff-assignments") &&
+        method === "GET"
+      ) {
+        return jsonRes(opts.assignments ?? []);
+      }
+      if (
+        url.endsWith("/schools/college-vogt/admin/staff-assignments") &&
+        method === "POST"
+      ) {
+        return jsonRes({ id: "assignment-1" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/staff-candidates")) {
+        return jsonRes(STAFF_CANDIDATES);
+      }
+      return jsonRes({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+  }
+
+  it("ouvre le modal Personnel et affiche les fonctions existantes", async () => {
+    mockStaffFetch({ me: SCHOOL_ADMIN_ME });
+    render(<UtilisateursPage />);
+
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
+
+    expect(
+      await screen.findByTestId("staff-function-row-fn-1"),
+    ).toHaveTextContent("Surveillant");
+    expect(screen.getByTestId("staff-function-row-fn-2")).toHaveTextContent(
+      "Infirmier",
+    );
+  });
+
+  it("cree une nouvelle fonction du personnel", async () => {
+    const fetchMock = mockStaffFetch({ me: SCHOOL_ADMIN_ME });
+    render(<UtilisateursPage />);
+
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
+    await screen.findByTestId("staff-function-row-fn-1");
+
+    fireEvent.change(screen.getByTestId("staff-function-name-input"), {
+      target: { value: "Vie scolaire" },
+    });
+    fireEvent.click(screen.getByTestId("staff-function-create"));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/staff-functions") &&
+          init?.method === "POST",
+      );
+      expect(postCall).toBeTruthy();
+      expect(JSON.parse(String(postCall?.[1]?.body))).toEqual({
+        name: "Vie scolaire",
+      });
+    });
+  });
+
+  it("affecte un membre du personnel via les listes Fonction/Personnel", async () => {
+    const fetchMock = mockStaffFetch({ me: SCHOOL_ADMIN_ME });
+    render(<UtilisateursPage />);
+
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
+    await screen.findByTestId("staff-function-row-fn-1");
+
+    fireEvent.change(screen.getByTestId("staff-assignment-function-select"), {
+      target: { value: "fn-2" },
+    });
+    fireEvent.change(screen.getByTestId("staff-assignment-user-select"), {
+      target: { value: "u-2" },
+    });
+    fireEvent.click(screen.getByTestId("staff-assignment-create"));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/staff-assignments") &&
+          init?.method === "POST",
+      );
+      expect(postCall).toBeTruthy();
+      expect(JSON.parse(String(postCall?.[1]?.body))).toEqual({
+        functionId: "fn-2",
+        userId: "u-2",
+      });
+    });
+  });
+
+  it("masque les actions d'ecriture pour un role lecture seule (superviseur)", async () => {
+    mockStaffFetch({
+      me: SUPERVISOR_ME,
+      assignments: [
+        {
+          id: "asg-1",
+          function: { id: "fn-1", name: "Surveillant" },
+          user: {
+            id: "u-1",
+            firstName: "Anne",
+            lastName: "Rousselet",
+            email: "a.rousselet@ecole.cm",
+          },
+        },
+      ],
+    });
+    render(<UtilisateursPage />);
+
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
+
+    await screen.findByTestId("staff-assignment-row-asg-1");
+    expect(
+      screen.queryByTestId("staff-function-name-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("staff-assignment-create"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("staff-assignment-row-asg-1-remove"),
+    ).not.toBeInTheDocument();
+  });
+});

@@ -719,13 +719,41 @@ describe("DashboardPage role dashboards", () => {
       );
     expect(messagingLinks.length).toBeGreaterThanOrEqual(1);
 
-    const notesLinks = screen
+    // Chaque carte classe pointe vers le fil de cette classe précise (pas
+    // vers la page legacy /student-grades, sans équivalent mobile).
+    const classCardLink = screen.getByTestId("teacher-class-card-6e-a");
+    expect(classCardLink.getAttribute("href")).toBe(
+      "/schools/college-vogt/classes/6e-a/fil",
+    );
+
+    // La ligne d'évaluation pointe vers les notes de la classe concernée.
+    const evalLink = screen.getByTestId("teacher-eval-eval-1");
+    expect(evalLink.getAttribute("href")).toBe(
+      "/schools/college-vogt/classes/6e-a/notes",
+    );
+
+    // La ligne de devoir pointe vers les devoirs de la classe concernée.
+    const homeworkLink = screen.getByTestId("teacher-hw-hw-1");
+    expect(homeworkLink.getAttribute("href")).toBe(
+      "/schools/college-vogt/classes/6e-a/devoirs",
+    );
+
+    // Les liens "Voir tout" des sections évaluations/devoirs renvoient vers
+    // la liste des classes (pas de vue agrégée toutes classes côté mobile).
+    const viewAllClassesLinks = screen
+      .getAllByRole("link")
+      .filter(
+        (l) => l.getAttribute("href") === "/schools/college-vogt/mes-classes",
+      );
+    expect(viewAllClassesLinks.length).toBeGreaterThanOrEqual(2);
+
+    const legacyStudentGradesLinks = screen
       .getAllByRole("link")
       .filter(
         (l) =>
           l.getAttribute("href") === "/schools/college-vogt/student-grades",
       );
-    expect(notesLinks.length).toBeGreaterThanOrEqual(1);
+    expect(legacyStudentGradesLinks).toHaveLength(0);
   });
 
   it("renders teacher empty states when no data is available", async () => {

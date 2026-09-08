@@ -2,10 +2,20 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TestsPage from "./page";
 
+const appShellPropsSpy = vi.fn();
+
 vi.mock("../../components/layout/app-shell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  AppShell: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    schoolSlug?: string | null;
+    schoolName?: string;
+  }) => {
+    appShellPropsSpy(props);
+    return <div>{children}</div>;
+  },
 }));
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -57,11 +67,15 @@ const TO_REDO = [
   },
 ];
 
-function mockFetch(isTester = true) {
+function mockFetch(isTester = true, schoolSlug: string | null = null) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = String(input);
     if (url.endsWith("/api/me")) {
-      return jsonResponse({ isTester, onboardingHelpEnabled: false });
+      return jsonResponse({
+        isTester,
+        onboardingHelpEnabled: false,
+        schoolSlug,
+      });
     }
     if (url.endsWith("/tests/campaigns")) {
       return jsonResponse(CAMPAIGNS);
@@ -76,6 +90,20 @@ function mockFetch(isTester = true) {
 describe("TestsPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    appShellPropsSpy.mockReset();
+  });
+
+  it("forwards the current schoolSlug to AppShell so the sidebar keeps school-scoped links (regression: teacher losing navigation after visiting Tests)", async () => {
+    mockFetch(true, "college-vogt");
+    render(<TestsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tests-summary-tab")).toBeInTheDocument();
+    });
+
+    expect(appShellPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ schoolSlug: "college-vogt" }),
+    );
   });
 
   it("shows a restricted message for non-tester users", async () => {

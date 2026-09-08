@@ -24,6 +24,8 @@ import {
   statusLabel,
 } from "../../../../components/tests/tests-format";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
 const SUBMIT_STATUSES: TestExecutionStatus[] = [
   "PASSED",
   "FAILED",
@@ -69,8 +71,22 @@ export default function TestCaseDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
   const resultRef = useRef<HTMLTextAreaElement | null>(null);
   const statusRef = useRef<HTMLSelectElement | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const meRes = await fetch(`${API_URL}/me`, { credentials: "include" });
+        if (!meRes.ok) return;
+        const me = (await meRes.json()) as { schoolSlug?: string | null };
+        setSchoolSlug(me.schoolSlug ?? null);
+      } catch {
+        // Keep the shell available even if the school context can't be resolved.
+      }
+    })();
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -151,7 +167,7 @@ export default function TestCaseDetailPage() {
   const hasResults = !!detail?.latestOwnExecution;
 
   return (
-    <AppShell schoolName="Scolive Platform">
+    <AppShell schoolSlug={schoolSlug} schoolName="Scolive Platform">
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
         <BackLinkButton
           href={detail ? `/tests/${detail.campaign.id}` : "/tests"}

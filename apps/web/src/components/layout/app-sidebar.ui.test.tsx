@@ -164,6 +164,40 @@ describe("AppSidebar teacher class links", () => {
 
     expect(mockPush).toHaveBeenCalledWith("/schools/college-vogt/dashboard");
   });
+
+  it("mirrors the mobile teacher menu: Agenda + Ressources present, legacy Cahier de notes gone", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return new Response(JSON.stringify({ assignments: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="TEACHER" schoolSlug="college-vogt" />);
+
+    const agendaLink = await screen.findByRole("link", { name: "Agenda" });
+    expect(agendaLink.getAttribute("href")).toBe(
+      "/schools/college-vogt/emploi-du-temps",
+    );
+
+    const resourcesLink = await screen.findByRole("link", {
+      name: "Ressources",
+    });
+    expect(resourcesLink.getAttribute("href")).toBe("/resources");
+
+    expect(
+      screen.queryByRole("link", { name: "Cahier de notes" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("AppSidebar parent child links", () => {

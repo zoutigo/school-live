@@ -1023,7 +1023,7 @@ function TeacherClassesGrid({
         return (
           <Link
             key={cls.classId}
-            href={`/schools/${schoolSlug}/student-grades`}
+            href={`/schools/${schoolSlug}/classes/${cls.classId}/fil`}
             className="relative min-w-[110px] flex-1 overflow-hidden rounded-2xl px-3 py-3 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
             style={{ backgroundColor: bg }}
             data-testid={`teacher-class-card-${cls.classId}`}
@@ -1349,7 +1349,7 @@ function TeacherEvalsSection({
       iconColor={accent}
       count={dashboard?.pendingEvals.length}
       linkLabel={t("dashboard.teacher.evalsLinkLabel")}
-      linkHref={`/schools/${schoolSlug}/student-grades`}
+      linkHref={`/schools/${schoolSlug}/mes-classes`}
       testId="section-teacher-evals"
       linkTourTargetId={TEACHER_HOME_TOUR_TARGETS.evalsLink}
     >
@@ -1383,7 +1383,7 @@ function TeacherEvalsSection({
                 {ev.gradedCount}/{ev.studentCount}
               </span>
             }
-            href={`/schools/${schoolSlug}/student-grades`}
+            href={`/schools/${schoolSlug}/classes/${ev.classId}/notes`}
             testId={`teacher-eval-${ev.id}`}
           >
             <p className="truncate text-sm font-semibold text-slate-900">
@@ -1418,7 +1418,7 @@ function TeacherHomeworkSection({
       iconColor={accent}
       count={dashboard?.openHomework.length}
       linkLabel={t("homework.dashboard.viewAll")}
-      linkHref={`/schools/${schoolSlug}/student-grades`}
+      linkHref={`/schools/${schoolSlug}/mes-classes`}
       testId="section-teacher-homework"
     >
       {loading && !dashboard ? (
@@ -1453,7 +1453,7 @@ function TeacherHomeworkSection({
                 </span>
               </div>
             }
-            href={`/schools/${schoolSlug}/student-grades`}
+            href={`/schools/${schoolSlug}/classes/${hw.classId}/devoirs`}
             testId={`teacher-hw-${hw.id}`}
           >
             <p className="truncate text-sm font-semibold text-slate-900">
@@ -1953,7 +1953,7 @@ export default function DashboardPage() {
       id: "grades",
       label: t("sidebar.nav.grades"),
       value: t("dashboard.school.moduleValue"),
-      href: `/schools/${schoolSlug}/student-grades`,
+      href: `/schools/${schoolSlug}/notes`,
     },
     {
       id: "curriculums",

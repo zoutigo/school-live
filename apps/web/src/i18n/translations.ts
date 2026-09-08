@@ -26,12 +26,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.passwordHint.digit": "Au moins 1 chiffre",
 
     "settings.title": "Parametres",
-    "settings.subtitle": "Preferences de navigation",
-    "settings.tab.navigation": "Navigation",
-    "settings.tab.help": "Aide",
-    "settings.tab.staff": "Personnel",
+    "settings.subtitle": "Niveaux academiques de l'etablissement",
     "settings.tab.levels": "Niveaux",
-    "settings.tab.language": "Langue",
     "settings.language.title": "Langue de ce navigateur",
     "settings.language.subtitle": "Choisissez la langue de l'interface",
     "settings.language.hint":
@@ -46,6 +42,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "schoolSettings.levels.alwaysActive": "Toujours actif",
     "schoolSettings.levels.empty.message":
       "Aucun niveau academique n'est disponible pour cette ecole.",
+    "schoolSettings.help.title": "Niveaux academiques",
+    "schoolSettings.help.section1Title": "Activer un niveau national",
+    "schoolSettings.help.section1Body":
+      "Cochez les niveaux nationaux reellement utilises par votre ecole. Les niveaux propres a l'ecole restent toujours actifs.",
+    "schoolSettings.help.section2Title": "Ordonner les niveaux propres",
+    "schoolSettings.help.section2Body":
+      "Renseignez l'ordre sur vos niveaux propres pour piloter la suggestion automatique du niveau suivant lors d'une decision de passage (Promu ou Redouble).",
 
     "settings.accountLanguage.title": "Langue du compte",
     "settings.accountLanguage.subtitle":
@@ -1512,7 +1515,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.grades": "Notes",
     "sidebar.nav.dashboard": "Tableau de bord",
     "sidebar.nav.myClasses": "Mes classes",
-    "sidebar.nav.gradesNotebook": "Cahier de notes",
+    "sidebar.nav.agenda": "Agenda",
     "sidebar.nav.financialSituation": "Situation financiere",
     "sidebar.nav.reinscription": "Reinscription",
     "sidebar.nav.onlineShop": "Boutique en ligne",
@@ -3474,16 +3477,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.help.title": "Accueil enfant",
     "childAccueil.help.section1Title": "Trois indicateurs",
     "childAccueil.help.section1Body":
-      "La moyenne générale, les messages non lus et la discipline sont résumés en un coup d'œil en haut de la page.",
+      "La moyenne générale, les messages non lus et les devoirs non faits sont résumés en un coup d'œil en haut de la page.",
     "childAccueil.help.section2Title": "Des blocs résumés",
     "childAccueil.help.section2Body":
-      "Chaque bloc (notes, discipline, accès rapide, dernier message, vie de classe) affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
+      "Chaque bloc (notes, discipline, messages non lus, vie de classe, accès rapide) affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
     "childAccueil.help.section3Title": "Fournitures scolaires",
     "childAccueil.help.section3Body":
       "Quand votre enfant est promu et que l'annee suivante est ouverte, un bloc affiche un apercu de la liste de fournitures a prevoir, avec un lien vers l'ecran Reinscription pour la consulter en entier.",
     "onboardingTour.childHome.kpisTitle": "Trois indicateurs",
     "onboardingTour.childHome.kpisBody":
-      "Moyenne générale, messages non lus et discipline, résumés en un coup d'œil.",
+      "Moyenne générale, messages non lus et devoirs non faits, résumés en un coup d'œil.",
     "onboardingTour.childHome.sectionsTitle": "Des blocs résumés",
     "onboardingTour.childHome.sectionsBody":
       "Chaque bloc affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
@@ -3502,8 +3505,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.panel.grades.action": "Voir les notes",
     "childAccueil.panel.grades.period": "Derniere periode publiee : {label}",
     "childAccueil.panel.grades.empty": "Aucune note publiee pour le moment.",
+    "childAccueil.panel.grades.latestTitle": "Dernieres evaluations",
+    "childAccueil.panel.grades.latestEmpty": "Aucune evaluation publiee.",
     "childAccueil.metric.average": "Moyenne",
     "childAccueil.metric.bestSubject": "Matiere forte",
+    "childAccueil.stats.homework": "Devoirs non faits",
+    "childAccueil.stats.homeworkNotDone": "non faits",
+    "childAccueil.stats.unknownClass": "Classe inconnue",
+    "childAccueil.panel.unreadMessages.title": "Messages non lus",
+    "childAccueil.panel.unreadMessages.empty": "Aucun message non lu.",
+    "childAccueil.panel.unreadMessages.unknownSender": "Expediteur inconnu",
+    "childAccueil.panel.classFeed.empty": "Aucune actualite recente.",
     "childAccueil.panel.quickAccess.title": "Acces rapides",
     "childAccueil.quickLink.notes.label": "Notes",
     "childAccueil.quickLink.notes.hint": "Evaluations et moyennes",
@@ -3519,14 +3531,6 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Aucune liste de fournitures definie pour le moment.",
     "childAccueil.panel.classFeed.title": "Vie de classe",
     "childAccueil.panel.classFeed.action": "Voir la vie de classe",
-    "childAccueil.panel.classFeed.desc1":
-      "L'accueil enfant regroupe maintenant les indicateurs utiles pour eviter de dupliquer le fil dans plusieurs espaces.",
-    "childAccueil.panel.classFeed.desc2":
-      "Le fil d'actualite et les informations collectives de la classe sont regroupes dans",
-    "childAccueil.panel.classFeed.desc3WithClass":
-      "Accedez aux publications, rappels et temps forts de {className}.",
-    "childAccueil.panel.classFeed.desc3Default":
-      "Accedez aux publications, rappels et temps forts de la classe.",
 
     // schools page (platform admin)
     "schools.title": "Ecoles",
@@ -4733,6 +4737,32 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.gender.F": "Féminin",
     "users.gender.OTHER": "Autre",
     "users.toast.error": "Erreur",
+    "users.staff.button": "Personnel",
+    "users.staff.eyebrow": "Personnel",
+    "users.staff.title": "Fonctions et affectations",
+    "users.staff.subtitle":
+      "Gerez les fonctions du personnel et leurs affectations.",
+    "users.staff.functions.title": "Fonctions du personnel",
+    "users.staff.functions.namePlaceholder": "Ex: Vie scolaire",
+    "users.staff.functions.descriptionPlaceholder": "Description (optionnelle)",
+    "users.staff.functions.add": "Ajouter",
+    "users.staff.functions.colFunction": "Fonction",
+    "users.staff.functions.colDescription": "Description",
+    "users.staff.functions.colAssignments": "Affectations",
+    "users.staff.functions.empty": "Aucune fonction definie.",
+    "users.staff.functions.created": "Fonction creee.",
+    "users.staff.assignments.title": "Affectations",
+    "users.staff.assignments.chooseFunction": "Choisir une fonction",
+    "users.staff.assignments.chooseUser": "Choisir un personnel",
+    "users.staff.assignments.assign": "Affecter",
+    "users.staff.assignments.colUser": "Personnel",
+    "users.staff.assignments.colFunction": "Fonction",
+    "users.staff.assignments.colEmail": "Email",
+    "users.staff.assignments.colAction": "Action",
+    "users.staff.assignments.remove": "Retirer",
+    "users.staff.assignments.empty": "Aucune affectation.",
+    "users.staff.assignments.created": "Affectation enregistree.",
+    "users.staff.assignments.removed": "Affectation supprimee.",
     "users.create.button": "Nouvel utilisateur",
     "users.create.eyebrow": "Nouvel utilisateur",
     "users.create.chooseType.title": "Choisir le type de compte",
@@ -5397,12 +5427,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.passwordHint.digit": "At least 1 digit",
 
     "settings.title": "Settings",
-    "settings.subtitle": "Navigation preferences",
-    "settings.tab.navigation": "Navigation",
-    "settings.tab.help": "Help",
-    "settings.tab.staff": "Staff",
+    "settings.subtitle": "Academic levels of the school",
     "settings.tab.levels": "Levels",
-    "settings.tab.language": "Language",
     "settings.language.title": "Language of this browser",
     "settings.language.subtitle": "Choose the interface language",
     "settings.language.hint":
@@ -5417,6 +5443,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "schoolSettings.levels.alwaysActive": "Always active",
     "schoolSettings.levels.empty.message":
       "No academic level is available for this school.",
+    "schoolSettings.help.title": "Academic levels",
+    "schoolSettings.help.section1Title": "Activate a national level",
+    "schoolSettings.help.section1Body":
+      "Check the national levels actually used by your school. School-owned levels remain always active.",
+    "schoolSettings.help.section2Title": "Order school-owned levels",
+    "schoolSettings.help.section2Body":
+      "Set the order on your school-owned levels to drive the automatic suggestion of the next level during a promotion decision (Promoted or Repeated).",
 
     "settings.accountLanguage.title": "Account language",
     "settings.accountLanguage.subtitle":
@@ -6818,7 +6851,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.grades": "Grades",
     "sidebar.nav.dashboard": "Dashboard",
     "sidebar.nav.myClasses": "My classes",
-    "sidebar.nav.gradesNotebook": "Grade book",
+    "sidebar.nav.agenda": "Agenda",
     "sidebar.nav.financialSituation": "Financial situation",
     "sidebar.nav.reinscription": "Re-enrollment",
     "sidebar.nav.onlineShop": "Online store",
@@ -8678,16 +8711,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.help.title": "Child home",
     "childAccueil.help.section1Title": "Three indicators",
     "childAccueil.help.section1Body":
-      "The overall average, unread messages and discipline are summarized at a glance at the top of the page.",
+      "The overall average, unread messages and undone homework are summarized at a glance at the top of the page.",
     "childAccueil.help.section2Title": "Summary blocks",
     "childAccueil.help.section2Body":
-      "Each block (grades, discipline, quick access, last message, class life) shows a preview of the module, with a link to open it in full.",
+      "Each block (grades, discipline, unread messages, class life, quick access) shows a preview of the module, with a link to open it in full.",
     "childAccueil.help.section3Title": "School supplies",
     "childAccueil.help.section3Body":
       "When your child is promoted and the next school year is open, a block shows a preview of the supply list to prepare, with a link to the Re-enrollment screen to view it in full.",
     "onboardingTour.childHome.kpisTitle": "Three indicators",
     "onboardingTour.childHome.kpisBody":
-      "Overall average, unread messages and discipline, summarized at a glance.",
+      "Overall average, unread messages and undone homework, summarized at a glance.",
     "onboardingTour.childHome.sectionsTitle": "Summary blocks",
     "onboardingTour.childHome.sectionsBody":
       "Each block shows a preview of the module, with a link to open it in full.",
@@ -8705,8 +8738,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.panel.grades.action": "View grades",
     "childAccueil.panel.grades.period": "Last published period: {label}",
     "childAccueil.panel.grades.empty": "No grades published yet.",
+    "childAccueil.panel.grades.latestTitle": "Latest evaluations",
+    "childAccueil.panel.grades.latestEmpty": "No evaluation published yet.",
     "childAccueil.metric.average": "Average",
     "childAccueil.metric.bestSubject": "Best subject",
+    "childAccueil.stats.homework": "Undone homework",
+    "childAccueil.stats.homeworkNotDone": "not done",
+    "childAccueil.stats.unknownClass": "Unknown class",
+    "childAccueil.panel.unreadMessages.title": "Unread messages",
+    "childAccueil.panel.unreadMessages.empty": "No unread message.",
+    "childAccueil.panel.unreadMessages.unknownSender": "Unknown sender",
+    "childAccueil.panel.classFeed.empty": "No recent news.",
     "childAccueil.panel.quickAccess.title": "Quick access",
     "childAccueil.quickLink.notes.label": "Grades",
     "childAccueil.quickLink.notes.hint": "Assessments and averages",
@@ -8721,14 +8763,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.panel.supplies.empty": "No supply list defined yet.",
     "childAccueil.panel.classFeed.title": "Class life",
     "childAccueil.panel.classFeed.action": "View class life",
-    "childAccueil.panel.classFeed.desc1":
-      "The child home now gathers useful indicators to avoid duplicating the feed in multiple spaces.",
-    "childAccueil.panel.classFeed.desc2":
-      "The news feed and collective class information are grouped under",
-    "childAccueil.panel.classFeed.desc3WithClass":
-      "Access publications, reminders and highlights for {className}.",
-    "childAccueil.panel.classFeed.desc3Default":
-      "Access publications, reminders and highlights for the class.",
 
     // schools page (platform admin)
     "schools.title": "Schools",
@@ -9904,6 +9938,31 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.gender.F": "Female",
     "users.gender.OTHER": "Other",
     "users.toast.error": "Error",
+    "users.staff.button": "Staff",
+    "users.staff.eyebrow": "Staff",
+    "users.staff.title": "Functions and assignments",
+    "users.staff.subtitle": "Manage staff functions and their assignments.",
+    "users.staff.functions.title": "Staff functions",
+    "users.staff.functions.namePlaceholder": "E.g. Student life",
+    "users.staff.functions.descriptionPlaceholder": "Description (optional)",
+    "users.staff.functions.add": "Add",
+    "users.staff.functions.colFunction": "Function",
+    "users.staff.functions.colDescription": "Description",
+    "users.staff.functions.colAssignments": "Assignments",
+    "users.staff.functions.empty": "No function defined yet.",
+    "users.staff.functions.created": "Function created.",
+    "users.staff.assignments.title": "Assignments",
+    "users.staff.assignments.chooseFunction": "Choose a function",
+    "users.staff.assignments.chooseUser": "Choose a staff member",
+    "users.staff.assignments.assign": "Assign",
+    "users.staff.assignments.colUser": "Staff member",
+    "users.staff.assignments.colFunction": "Function",
+    "users.staff.assignments.colEmail": "Email",
+    "users.staff.assignments.colAction": "Action",
+    "users.staff.assignments.remove": "Remove",
+    "users.staff.assignments.empty": "No assignment yet.",
+    "users.staff.assignments.created": "Assignment saved.",
+    "users.staff.assignments.removed": "Assignment removed.",
     "users.create.button": "New user",
     "users.create.eyebrow": "New user",
     "users.create.chooseType.title": "Choose account type",

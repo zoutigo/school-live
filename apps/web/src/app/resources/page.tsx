@@ -33,6 +33,7 @@ import {
 type GlobalMe = {
   activeRole?: string | null;
   onboardingHelpEnabled?: boolean;
+  schoolSlug?: string | null;
 };
 
 /**
@@ -132,6 +133,7 @@ export default function ResourcesBrowsePage() {
 
   const [ready, setReady] = useState(false);
   const [isParentRole, setIsParentRole] = useState(false);
+  const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("ASSESSMENT");
   const [items, setItems] = useState<ResourceRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -192,6 +194,7 @@ export default function ResourcesBrowsePage() {
       const me = (await meRes.json()) as GlobalMe;
       const parentRole = me.activeRole === "PARENT";
       setIsParentRole(parentRole);
+      setSchoolSlug(me.schoolSlug ?? null);
       if (parentRole) {
         const tourStore = useOnboardingTourStore.getState();
         if (
@@ -436,7 +439,10 @@ export default function ResourcesBrowsePage() {
 
   if (!ready) {
     return (
-      <AppShell schoolName={t("resourcesBrowse.shellName")}>
+      <AppShell
+        schoolSlug={schoolSlug}
+        schoolName={t("resourcesBrowse.shellName")}
+      >
         <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
           {t("common.loading")}
         </div>
@@ -445,7 +451,10 @@ export default function ResourcesBrowsePage() {
   }
 
   return (
-    <AppShell schoolName={t("resourcesBrowse.shellName")}>
+    <AppShell
+      schoolSlug={schoolSlug}
+      schoolName={t("resourcesBrowse.shellName")}
+    >
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
