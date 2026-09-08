@@ -1710,9 +1710,7 @@ describe("UtilisateursPage — onglet Personnel", () => {
     mockStaffFetch({ me: SCHOOL_ADMIN_ME });
     render(<UtilisateursPage />);
 
-    fireEvent.click(
-      await screen.findByTestId("manage-staff-functions-button"),
-    );
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
 
     expect(
       await screen.findByTestId("staff-function-row-fn-1"),
@@ -1726,9 +1724,7 @@ describe("UtilisateursPage — onglet Personnel", () => {
     const fetchMock = mockStaffFetch({ me: SCHOOL_ADMIN_ME });
     render(<UtilisateursPage />);
 
-    fireEvent.click(
-      await screen.findByTestId("manage-staff-functions-button"),
-    );
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
     await screen.findByTestId("staff-function-row-fn-1");
 
     fireEvent.change(screen.getByTestId("staff-function-name-input"), {
@@ -1753,15 +1749,12 @@ describe("UtilisateursPage — onglet Personnel", () => {
     const fetchMock = mockStaffFetch({ me: SCHOOL_ADMIN_ME });
     render(<UtilisateursPage />);
 
-    fireEvent.click(
-      await screen.findByTestId("manage-staff-functions-button"),
-    );
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
     await screen.findByTestId("staff-function-row-fn-1");
 
-    fireEvent.change(
-      screen.getByTestId("staff-assignment-function-select"),
-      { target: { value: "fn-2" } },
-    );
+    fireEvent.change(screen.getByTestId("staff-assignment-function-select"), {
+      target: { value: "fn-2" },
+    });
     fireEvent.change(screen.getByTestId("staff-assignment-user-select"), {
       target: { value: "u-2" },
     });
@@ -1799,9 +1792,7 @@ describe("UtilisateursPage — onglet Personnel", () => {
     });
     render(<UtilisateursPage />);
 
-    fireEvent.click(
-      await screen.findByTestId("manage-staff-functions-button"),
-    );
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
 
     await screen.findByTestId("staff-assignment-row-asg-1");
     expect(

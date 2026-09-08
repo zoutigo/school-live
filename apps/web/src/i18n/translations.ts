@@ -4744,8 +4744,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Gerez les fonctions du personnel et leurs affectations.",
     "users.staff.functions.title": "Fonctions du personnel",
     "users.staff.functions.namePlaceholder": "Ex: Vie scolaire",
-    "users.staff.functions.descriptionPlaceholder":
-      "Description (optionnelle)",
+    "users.staff.functions.descriptionPlaceholder": "Description (optionnelle)",
     "users.staff.functions.add": "Ajouter",
     "users.staff.functions.colFunction": "Fonction",
     "users.staff.functions.colDescription": "Description",
@@ -9945,8 +9944,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.staff.subtitle": "Manage staff functions and their assignments.",
     "users.staff.functions.title": "Staff functions",
     "users.staff.functions.namePlaceholder": "E.g. Student life",
-    "users.staff.functions.descriptionPlaceholder":
-      "Description (optional)",
+    "users.staff.functions.descriptionPlaceholder": "Description (optional)",
     "users.staff.functions.add": "Add",
     "users.staff.functions.colFunction": "Function",
     "users.staff.functions.colDescription": "Description",

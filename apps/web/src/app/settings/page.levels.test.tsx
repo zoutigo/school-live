@@ -336,9 +336,7 @@ describe("Settings page — onglet Niveaux", () => {
 
     render(<SettingsPage />);
 
-    await screen.findByText(
-      "Gestion des niveaux indisponible pour ce role.",
-    );
+    await screen.findByText("Gestion des niveaux indisponible pour ce role.");
     expect(usePageHelpStore.getState().entry).toBeNull();
   });
 });
