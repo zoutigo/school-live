@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
@@ -73,10 +73,11 @@ function ChapterCard({
     chapter.totalQuestions === 0
       ? 0
       : Math.round((chapter.solvedQuestions / chapter.totalQuestions) * 100);
+  const inProgress = percent > 0 && percent < 100;
   const cta =
     percent >= 100
       ? t("trainingQuiz.list.completeCta")
-      : chapter.solvedQuestions > 0
+      : inProgress
         ? t("trainingQuiz.list.continueCta")
         : t("trainingQuiz.list.startCta");
 
@@ -84,7 +85,9 @@ function ChapterCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex flex-col items-start gap-4 rounded-[20px] border border-border bg-surface p-5 text-left shadow-card transition-transform duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className={`group flex flex-col items-start gap-4 rounded-[20px] border bg-surface p-5 text-left shadow-card transition-transform duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${
+        inProgress ? "border-primary/50" : "border-border"
+      }`}
     >
       <div className="flex w-full items-start justify-between gap-3">
         <span
@@ -103,9 +106,20 @@ function ChapterCard({
       </div>
 
       <div>
-        <h3 className="font-heading text-lg font-semibold text-text-primary">
-          {chapter.title}
-        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-heading text-lg font-semibold text-text-primary">
+            {chapter.title}
+          </h3>
+          {inProgress ? (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-teal-highlight/40 px-2 py-0.5 text-[11px] font-semibold text-primary">
+              {t("trainingQuiz.list.statusInProgress")}
+            </span>
+          ) : percent >= 100 ? (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-teal-border bg-teal-surface px-2 py-0.5 text-[11px] font-semibold text-accent-teal-dark">
+              {t("trainingQuiz.list.statusComplete")}
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 text-sm text-text-secondary">
           {chapter.description}
         </p>
@@ -173,6 +187,25 @@ export default function TrainingQuizPage() {
     void boot();
   }, [boot]);
 
+  const inProgressChapters = useMemo(
+    () =>
+      chapters.filter(
+        (chapter) =>
+          chapter.solvedQuestions > 0 &&
+          chapter.solvedQuestions < chapter.totalQuestions,
+      ),
+    [chapters],
+  );
+  const otherChapters = useMemo(
+    () =>
+      chapters.filter(
+        (chapter) =>
+          chapter.solvedQuestions === 0 ||
+          chapter.solvedQuestions >= chapter.totalQuestions,
+      ),
+    [chapters],
+  );
+
   if (!ready) {
     return (
       <AppShell
@@ -213,16 +246,49 @@ export default function TrainingQuizPage() {
               {t("trainingQuiz.list.empty")}
             </p>
           ) : (
-            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {chapters.map((chapter) => (
-                <ChapterCard
-                  key={chapter.id}
-                  chapter={chapter}
-                  t={t}
-                  onOpen={() => router.push(`/training-quiz/${chapter.id}`)}
-                />
-              ))}
-            </div>
+            <>
+              {inProgressChapters.length > 0 ? (
+                <div className="mt-6">
+                  <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-text-secondary">
+                    {t("trainingQuiz.list.inProgressSection")}
+                  </h2>
+                  <div className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {inProgressChapters.map((chapter) => (
+                      <ChapterCard
+                        key={chapter.id}
+                        chapter={chapter}
+                        t={t}
+                        onOpen={() =>
+                          router.push(`/training-quiz/${chapter.id}`)
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {otherChapters.length > 0 ? (
+                <div className="mt-6">
+                  {inProgressChapters.length > 0 ? (
+                    <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("trainingQuiz.list.allChaptersSection")}
+                    </h2>
+                  ) : null}
+                  <div className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {otherChapters.map((chapter) => (
+                      <ChapterCard
+                        key={chapter.id}
+                        chapter={chapter}
+                        t={t}
+                        onOpen={() =>
+                          router.push(`/training-quiz/${chapter.id}`)
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
 

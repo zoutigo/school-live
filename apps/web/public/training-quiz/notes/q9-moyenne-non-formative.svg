@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <rect width="240" height="180" rx="20" fill="#E9F7EF"/>
+  <rect x="46" y="36" width="148" height="108" rx="14" fill="#FFFDFC" stroke="#237A54" stroke-width="2"/>
+    <rect x="62" y="52" width="60" height="8" rx="4" fill="#237A54"/>
+  <rect x="62" y="68" width="116" height="18" rx="4" fill="#EFEAFB"/>
+  <text x="120" y="81" font-family="Arial" font-size="11" fill="#5B6068" text-anchor="middle">Examen final: 14/20</text>
+  <rect x="62" y="92" width="116" height="18" rx="4" fill="#F3C9C4" opacity="0.6"/>
+  <text x="120" y="105" font-family="Arial" font-size="10" fill="#8A3B33" text-anchor="middle">Formative (exclue): 9/20</text>
+</svg>

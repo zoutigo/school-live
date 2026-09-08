@@ -117,6 +117,25 @@ describe("TrainingQuizPage", () => {
     );
   });
 
+  it("surfaces an in-progress chapter in its own resume section, separate from the full list", async () => {
+    const notStarted = {
+      ...CHAPTER,
+      id: "chapter-2",
+      moduleKey: "messagerie",
+      title: "Messagerie",
+      description: "Apprenez à échanger avec l'école.",
+      solvedQuestions: 0,
+    };
+    mockFetch({ chapters: [CHAPTER, notStarted] });
+    render(<TrainingQuizPage />);
+
+    await screen.findByText("Reprendre où vous en étiez");
+    expect(screen.getByText("Tous les chapitres")).toBeInTheDocument();
+    expect(screen.getAllByText("Discipline")).toHaveLength(1);
+    expect(screen.getByText("En cours")).toBeInTheDocument();
+    expect(screen.getByText("Messagerie")).toBeInTheDocument();
+  });
+
   it("surfaces a load error without crashing", async () => {
     global.fetch = vi.fn((input: RequestInfo | URL) => {
       const url = String(input);

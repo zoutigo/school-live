@@ -5422,6 +5422,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.list.startCta": "Commencer",
     "trainingQuiz.list.continueCta": "Continuer",
     "trainingQuiz.list.completeCta": "Revoir",
+    "trainingQuiz.list.statusInProgress": "En cours",
+    "trainingQuiz.list.statusComplete": "Terminé",
+    "trainingQuiz.list.inProgressSection": "Reprendre où vous en étiez",
+    "trainingQuiz.list.allChaptersSection": "Tous les chapitres",
     "trainingQuiz.score.title": "Votre score",
     "trainingQuiz.score.globalLabel": "Score global",
     "trainingQuiz.score.encouragementEmpty":
@@ -10636,6 +10640,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.list.startCta": "Start",
     "trainingQuiz.list.continueCta": "Continue",
     "trainingQuiz.list.completeCta": "Review",
+    "trainingQuiz.list.statusInProgress": "In progress",
+    "trainingQuiz.list.statusComplete": "Complete",
+    "trainingQuiz.list.inProgressSection": "Pick up where you left off",
+    "trainingQuiz.list.allChaptersSection": "All chapters",
     "trainingQuiz.score.title": "Your score",
     "trainingQuiz.score.globalLabel": "Global score",
     "trainingQuiz.score.encouragementEmpty":

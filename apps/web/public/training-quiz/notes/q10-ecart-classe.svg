@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <rect width="240" height="180" rx="20" fill="#E9F7EF"/>
+  <rect x="50" y="40" width="140" height="90" rx="14" fill="#FFFDFC" stroke="#237A54" stroke-width="2"/>
+  <text x="120" y="76" font-family="Arial" font-size="20" font-weight="bold" fill="#237A54" text-anchor="middle">16/20</text>
+  <path d="M100 92l0-12M96 84l4-4 4 4" stroke="#237A54" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="120" y="112" font-family="Arial" font-size="12" font-weight="bold" fill="#237A54" text-anchor="middle">+3 pts vs classe</text>
+</svg>
