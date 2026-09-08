@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <rect width="240" height="180" rx="20" fill="#EAF5F3"/>
+  <rect x="24" y="40" width="46" height="52" rx="12" fill="#FFFDFC" stroke="#BFE0DA" stroke-width="2"/>
+  <rect x="78" y="40" width="46" height="52" rx="12" fill="#FFFDFC" stroke="#BFE0DA" stroke-width="2"/>
+  <rect x="132" y="40" width="46" height="52" rx="12" fill="#FFFDFC" stroke="#BFE0DA" stroke-width="2"/>
+  <rect x="186" y="40" width="30" height="52" rx="12" fill="#FFFDFC" stroke="#BFE0DA" stroke-width="2"/>
+  <text x="47" y="72" font-family="Arial" font-size="18" font-weight="bold" fill="#207FD5" text-anchor="middle">3</text>
+  <text x="101" y="72" font-family="Arial" font-size="18" font-weight="bold" fill="#B58A2E" text-anchor="middle">2</text>
+  <text x="155" y="72" font-family="Arial" font-size="18" font-weight="bold" fill="#D6534A" text-anchor="middle">1</text>
+  <rect x="78" y="34" width="46" height="64" rx="14" fill="none" stroke="#3DA5F5" stroke-width="3" stroke-dasharray="4 3"/>
+  <rect x="60" y="112" width="120" height="34" rx="10" fill="#FFFDFC" stroke="#BFE0DA" stroke-width="2"/>
+  <rect x="72" y="122" width="70" height="6" rx="3" fill="#D6DADF"/>
+  <rect x="72" y="132" width="50" height="6" rx="3" fill="#D6DADF"/>
+  <path d="M100 96l0 16" stroke="#3DA5F5" stroke-width="3" stroke-linecap="round" marker-end="url(#a)"/>
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+      <path d="M0 0l8 4-8 4Z" fill="#3DA5F5"/>
+    </marker>
+  </defs>
+</svg>

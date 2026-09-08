@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <rect width="240" height="180" rx="20" fill="#E9F7EF"/>
+  <rect x="46" y="30" width="148" height="40" rx="14" fill="#FFFDFC" stroke="#237A54" stroke-width="2"/>
+  <text x="120" y="56" font-family="Arial" font-size="16" font-weight="bold" fill="#237A54" text-anchor="middle">Note eleve: 16/20</text>
+    <rect x="46" y="82" width="46" height="54" rx="14" fill="#FFFDFC" stroke="#D6DADF" stroke-width="2"/>
+    <rect x="97" y="82" width="46" height="54" rx="14" fill="#FFFDFC" stroke="#D6DADF" stroke-width="2"/>
+    <rect x="148" y="82" width="46" height="54" rx="14" fill="#FFFDFC" stroke="#D6DADF" stroke-width="2"/>
+  <text x="69" y="114" font-family="Arial" font-size="13" fill="#5B6068" text-anchor="middle">Moy</text>
+  <text x="120" y="114" font-family="Arial" font-size="13" fill="#5B6068" text-anchor="middle">Min</text>
+  <text x="171" y="114" font-family="Arial" font-size="13" fill="#5B6068" text-anchor="middle">Max</text>
+</svg>

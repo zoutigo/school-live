@@ -1,0 +1,101 @@
+enum QuizQuestionType {
+  MCQ_SINGLE
+  MCQ_MULTI
+  TRUE_FALSE
+}
+
+enum QuizDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// Quiz de formation ludique : un chapitre = un module applicatif, pour un
+// rôle donné. Les questions/réponses sont identiques pour tous les users
+// d'un même rôle et maintenues manuellement (seeds), pas via back-office.
+model QuizChapter {
+  id          String   @id @default(cuid())
+  moduleKey   String
+  role        AppRole
+  order       Int
+  isActive    Boolean  @default(true)
+  needsReview Boolean  @default(false)
+
+  icon        String
+  colorFrom   String
+  colorTo     String
+
+  titleFr       String
+  titleEn       String
+  descriptionFr String
+  descriptionEn String
+
+  questions QuizQuestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([role, moduleKey])
+  @@index([role, isActive])
+}
+
+model QuizQuestion {
+  id        String           @id @default(cuid())
+  chapterId String
+  chapter   QuizChapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  order      Int
+  type       QuizQuestionType @default(MCQ_SINGLE)
+  difficulty QuizDifficulty   @default(EASY)
+  isActive   Boolean          @default(true)
+
+  textFr        String
+  textEn        String
+  // Indice actionnable ("cliquez sur...", "ouvrez...") consultable avant de
+  // répondre, distinct de l'explication affichée après la réponse.
+  hintFr        String
+  hintEn        String
+  explanationFr String
+  explanationEn String
+
+  imageUrl      String?
+  deepLinkRoute String?
+
+  options  QuizAnswerOption[]
+  progress QuizUserQuestionProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([chapterId, order])
+}
+
+model QuizAnswerOption {
+  id         String       @id @default(cuid())
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int
+  isCorrect  Boolean
+
+  textFr String
+  textEn String
+
+  @@unique([questionId, order])
+}
+
+// Progression par utilisateur/question. Pas de note éliminatoire : on
+// retente à volonté, `solved` passe à true dès la première bonne réponse
+// et le reste pour toujours.
+model QuizUserQuestionProgress {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attemptsCount  Int       @default(0)
+  solved         Boolean   @default(false)
+  solvedAt       DateTime?
+  lastAnsweredAt DateTime?
+
+  @@unique([userId, questionId])
+  @@index([userId, solved])
+}

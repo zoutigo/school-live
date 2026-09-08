@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <rect width="240" height="180" rx="20" fill="#EAF5F3"/>
+  <rect x="24" y="34" width="90" height="52" rx="12" fill="#FFFDFC" stroke="#3DA5F5" stroke-width="2"/>
+  <rect x="126" y="34" width="90" height="52" rx="12" fill="#FFFDFC" stroke="#B58A2E" stroke-width="2"/>
+  <rect x="24" y="96" width="90" height="52" rx="12" fill="#FFFDFC" stroke="#D6534A" stroke-width="2"/>
+  <rect x="126" y="96" width="90" height="52" rx="12" fill="#FFFDFC" stroke="#247C72" stroke-width="2"/>
+  <text x="69" y="66" font-family="Arial" font-size="13" font-weight="bold" fill="#207FD5" text-anchor="middle">Absences</text>
+  <text x="171" y="66" font-family="Arial" font-size="13" font-weight="bold" fill="#B58A2E" text-anchor="middle">Retards</text>
+  <text x="69" y="128" font-family="Arial" font-size="12" font-weight="bold" fill="#D6534A" text-anchor="middle">Sanctions</text>
+  <text x="171" y="128" font-family="Arial" font-size="12" font-weight="bold" fill="#247C72" text-anchor="middle">Punitions</text>
+  <path d="M24 90h192" stroke="#BFE0DA" stroke-width="2" stroke-dasharray="3 4"/>
+  <path d="M120 34v114" stroke="#BFE0DA" stroke-width="2" stroke-dasharray="3 4"/>
+</svg>

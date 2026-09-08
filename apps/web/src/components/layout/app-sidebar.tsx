@@ -26,6 +26,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  Trophy,
   UserRound,
   UserSquare2,
   Users,
@@ -532,6 +533,12 @@ function buildRoleItems(
         href: `${schoolBase}/documents`,
         icon: FileText,
         matchPrefix: `${schoolBase}/documents`,
+      },
+      {
+        label: t("sidebar.nav.trainingQuiz"),
+        href: "/training-quiz",
+        icon: Trophy,
+        matchPrefix: "/training-quiz",
       },
       {
         label: t("sidebar.nav.settings"),
