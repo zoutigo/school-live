@@ -7248,7 +7248,15 @@ export class ManagementService {
     });
   }
 
-  private async createParentUser(
+  /**
+   * Creates the parent User row inside the caller's transaction (locked by
+   * resolveParentUserForStudentLink's advisory lock) and returns the data
+   * needed to run post-commit side effects (email/activation code) — those
+   * must NOT run inside the transaction: they use `this.prisma` on a
+   * separate connection, which would race the still-uncommitted row.
+   */
+  private async createParentUserRecord(
+    db: Prisma.TransactionClient,
     schoolId: string,
     payload: {
       email?: string;
@@ -7294,7 +7302,7 @@ export class ManagementService {
       hasPhone && !hasEmail ? payload.pin!.trim() : payload.password!.trim();
     const passwordHash = await bcrypt.hash(rawSecret, 10);
 
-    const parent = await this.prisma.user.create({
+    const parent = await db.user.create({
       data: {
         firstName,
         lastName,
@@ -7313,24 +7321,43 @@ export class ManagementService {
       },
     });
 
-    if (hasEmail) {
+    return {
+      id: parent.id,
+      hasEmail,
+      hasPhone,
+      parentEmail,
+      firstName,
+      rawSecret,
+    };
+  }
+
+  private async applyParentCreationSideEffects(
+    schoolId: string,
+    created: {
+      id: string;
+      hasEmail: boolean;
+      hasPhone: boolean;
+      parentEmail: string | null;
+      firstName: string;
+      rawSecret: string;
+    },
+  ) {
+    if (created.hasEmail) {
       const school = await this.prisma.school.findUnique({
         where: { id: schoolId },
         select: { slug: true },
       });
       await this.mailService.sendTemporaryPasswordEmail({
-        to: parentEmail!,
-        firstName,
-        temporaryPassword: rawSecret,
+        to: created.parentEmail!,
+        firstName: created.firstName,
+        temporaryPassword: created.rawSecret,
         schoolSlug: school?.slug ?? null,
       });
     }
 
-    if (hasPhone && !hasEmail) {
-      await this.issueActivationCode(parent.id, schoolId, undefined);
+    if (created.hasPhone && !created.hasEmail) {
+      await this.issueActivationCode(created.id, schoolId, undefined);
     }
-
-    return parent.id;
   }
 
   private async resolveParentUserForStudentLink(
@@ -7354,29 +7381,54 @@ export class ManagementService {
     const normalizedPhone = payload.phone
       ? this.normalizePhone(payload.phone)
       : null;
-    const existingUser = await this.findUserByContact({
-      email: normalizedEmail,
-      phone: normalizedPhone,
+    // Concurrent submissions (double-click, double form submit) for the
+    // same contact must not race past the find-then-create check below:
+    // User.phone has no DB-level unique constraint, so without this lock
+    // two requests can both see "no existing user" and both insert one.
+    const lockKey = normalizedEmail ?? normalizedPhone!;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+      const existingUser = await this.findUserByContact(
+        { email: normalizedEmail, phone: normalizedPhone },
+        tx,
+      );
+
+      if (existingUser) {
+        const id = await this.ensureExistingParentMembership(
+          schoolId,
+          existingUser.id,
+          tx,
+        );
+        return { id, created: null };
+      }
+
+      const created = await this.createParentUserRecord(tx, schoolId, {
+        email: normalizedEmail ?? undefined,
+        phone: normalizedPhone ?? undefined,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        password: payload.password,
+        pin: payload.pin,
+      });
+      return { id: created.id, created };
     });
 
-    if (existingUser) {
-      return this.ensureExistingParentMembership(schoolId, existingUser.id);
+    if (result.created) {
+      await this.applyParentCreationSideEffects(schoolId, result.created);
     }
 
-    return this.createParentUser(schoolId, {
-      email: normalizedEmail ?? undefined,
-      phone: normalizedPhone ?? undefined,
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      password: payload.password,
-      pin: payload.pin,
-    });
+    return result.id;
   }
 
-  private async findUserByContact(input: {
-    email?: string | null;
-    phone?: string | null;
-  }) {
+  private async findUserByContact(
+    input: {
+      email?: string | null;
+      phone?: string | null;
+    },
+    db: PrismaService | Prisma.TransactionClient = this.prisma,
+  ) {
     const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
     const normalizedPhone = input.phone
       ? this.normalizePhone(input.phone)
@@ -7388,11 +7440,11 @@ export class ManagementService {
 
     if (normalizedEmail && normalizedPhone) {
       const [byEmail, byPhoneCredential, byPhoneField] = await Promise.all([
-        this.prisma.user.findUnique({
+        db.user.findUnique({
           where: { email: normalizedEmail },
           select: { id: true, firstName: true, lastName: true, email: true },
         }),
-        this.prisma.userPhoneCredential.findUnique({
+        db.userPhoneCredential.findUnique({
           where: { phoneE164: normalizedPhone },
           select: {
             user: {
@@ -7405,7 +7457,7 @@ export class ManagementService {
             },
           },
         }),
-        this.prisma.user.findFirst({
+        db.user.findFirst({
           where: { phone: normalizedPhone },
           select: { id: true, firstName: true, lastName: true, email: true },
         }),
@@ -7420,13 +7472,13 @@ export class ManagementService {
     }
 
     if (normalizedEmail) {
-      return this.prisma.user.findUnique({
+      return db.user.findUnique({
         where: { email: normalizedEmail },
         select: { id: true, firstName: true, lastName: true, email: true },
       });
     }
 
-    const byPhoneCredential = await this.prisma.userPhoneCredential.findUnique({
+    const byPhoneCredential = await db.userPhoneCredential.findUnique({
       where: { phoneE164: normalizedPhone! },
       select: {
         user: {
@@ -7439,7 +7491,7 @@ export class ManagementService {
       return byPhoneCredential.user;
     }
 
-    return this.prisma.user.findFirst({
+    return db.user.findFirst({
       where: { phone: normalizedPhone! },
       select: { id: true, firstName: true, lastName: true, email: true },
     });
@@ -7487,8 +7539,9 @@ export class ManagementService {
   private async ensureExistingParentMembership(
     schoolId: string,
     parentUserId: string,
+    db: PrismaService | Prisma.TransactionClient = this.prisma,
   ) {
-    const user = await this.prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: parentUserId },
       include: {
         memberships: {
@@ -7506,7 +7559,7 @@ export class ManagementService {
     }
 
     if (user.memberships.length === 0) {
-      await this.prisma.schoolMembership.create({
+      await db.schoolMembership.create({
         data: {
           userId: parentUserId,
           schoolId,
