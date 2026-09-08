@@ -118,10 +118,13 @@ export class TrainingQuizService {
         id: question.id,
         order: question.order,
         type: question.type,
+        difficulty: question.difficulty,
         text: locale === "EN" ? question.textEn : question.textFr,
+        hint: locale === "EN" ? question.hintEn : question.hintFr,
         imageUrl: question.imageUrl,
         deepLinkRoute: question.deepLinkRoute,
         solved: question.progress[0]?.solved ?? false,
+        attemptsCount: question.progress[0]?.attemptsCount ?? 0,
         options: question.options.map((option) => ({
           id: option.id,
           order: option.order,
@@ -167,6 +170,7 @@ export class TrainingQuizService {
       },
     });
     const wasAlreadySolved = existing?.solved ?? false;
+    const attemptsCount = (existing?.attemptsCount ?? 0) + 1;
 
     await this.prisma.quizUserQuestionProgress.upsert({
       where: {
@@ -194,6 +198,7 @@ export class TrainingQuizService {
       explanation:
         locale === "EN" ? question.explanationEn : question.explanationFr,
       correctOptionIds,
+      attemptsCount,
     };
   }
 

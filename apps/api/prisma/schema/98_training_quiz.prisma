@@ -4,6 +4,12 @@ enum QuizQuestionType {
   TRUE_FALSE
 }
 
+enum QuizDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 // Quiz de formation ludique : un chapitre = un module applicatif, pour un
 // rôle donné. Les questions/réponses sont identiques pour tous les users
 // d'un même rôle et maintenues manuellement (seeds), pas via back-office.
@@ -37,12 +43,17 @@ model QuizQuestion {
   id        String           @id @default(cuid())
   chapterId String
   chapter   QuizChapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  order     Int
-  type      QuizQuestionType @default(MCQ_SINGLE)
-  isActive  Boolean          @default(true)
+  order      Int
+  type       QuizQuestionType @default(MCQ_SINGLE)
+  difficulty QuizDifficulty   @default(EASY)
+  isActive   Boolean          @default(true)
 
   textFr        String
   textEn        String
+  // Indice actionnable ("cliquez sur...", "ouvrez...") consultable avant de
+  // répondre, distinct de l'explication affichée après la réponse.
+  hintFr        String
+  hintEn        String
   explanationFr String
   explanationEn String
 

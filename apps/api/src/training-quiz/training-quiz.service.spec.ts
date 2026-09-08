@@ -28,6 +28,42 @@ const makePrismaMock = () => ({
   },
 });
 
+const CHAPTER_WITH_QUESTION = {
+  id: "chapter-1",
+  moduleKey: "discipline",
+  order: 1,
+  icon: "shield",
+  colorFrom: "#111",
+  colorTo: "#222",
+  titleFr: "Discipline",
+  titleEn: "Discipline (EN)",
+  descriptionFr: "desc fr",
+  descriptionEn: "desc en",
+  questions: [
+    {
+      id: "q1",
+      order: 1,
+      type: "MCQ_SINGLE",
+      difficulty: "HARD",
+      textFr: "Question fr",
+      textEn: "Question en",
+      hintFr: "Indice fr",
+      hintEn: "Hint en",
+      imageUrl: null,
+      deepLinkRoute: "/children/{childId}/discipline",
+      options: [
+        {
+          id: "opt-correct",
+          order: 1,
+          textFr: "Bonne réponse",
+          textEn: "Correct answer",
+        },
+      ],
+      progress: [{ solved: true, attemptsCount: 3 }],
+    },
+  ],
+};
+
 describe("TrainingQuizService", () => {
   let service: TrainingQuizService;
   let prisma: ReturnType<typeof makePrismaMock>;
@@ -112,6 +148,37 @@ describe("TrainingQuizService", () => {
     });
   });
 
+  describe("getChapter", () => {
+    it("maps difficulty, hint and attempt count per locale", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue(CHAPTER_WITH_QUESTION);
+
+      const result = await service.getChapter(makeUser(), "chapter-1");
+
+      expect(result.questions[0]).toEqual(
+        expect.objectContaining({
+          difficulty: "HARD",
+          text: "Question fr",
+          hint: "Indice fr",
+          deepLinkRoute: "/children/{childId}/discipline",
+          solved: true,
+          attemptsCount: 3,
+        }),
+      );
+    });
+
+    it("falls back to English hint/text when preferredLocale is EN", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue(CHAPTER_WITH_QUESTION);
+
+      const result = await service.getChapter(
+        makeUser({ preferredLocale: "EN" }),
+        "chapter-1",
+      );
+
+      expect(result.questions[0].text).toBe("Question en");
+      expect(result.questions[0].hint).toBe("Hint en");
+    });
+  });
+
   describe("submitAnswer", () => {
     const question = {
       id: "q1",
@@ -147,6 +214,7 @@ describe("TrainingQuizService", () => {
       expect(result.correct).toBe(true);
       expect(result.alreadySolved).toBe(false);
       expect(result.explanation).toBe("explication");
+      expect(result.attemptsCount).toBe(1);
       expect(prisma.quizUserQuestionProgress.upsert).toHaveBeenCalled();
     });
 
@@ -154,6 +222,7 @@ describe("TrainingQuizService", () => {
       prisma.quizQuestion.findUnique.mockResolvedValue(question);
       prisma.quizUserQuestionProgress.findUnique.mockResolvedValue({
         solved: true,
+        attemptsCount: 4,
       });
       prisma.quizUserQuestionProgress.upsert.mockResolvedValue({
         solved: true,
@@ -165,6 +234,7 @@ describe("TrainingQuizService", () => {
       ]);
 
       expect(result.alreadySolved).toBe(true);
+      expect(result.attemptsCount).toBe(5);
       const updateArg =
         prisma.quizUserQuestionProgress.upsert.mock.calls[0][0].update;
       expect(updateArg.solvedAt).toBeUndefined();
@@ -183,6 +253,7 @@ describe("TrainingQuizService", () => {
       ]);
 
       expect(result.correct).toBe(false);
+      expect(result.attemptsCount).toBe(1);
     });
   });
 

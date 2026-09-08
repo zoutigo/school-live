@@ -1,23 +1,56 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, PartyPopper, X } from "lucide-react";
+import { ArrowLeft, Check, Lightbulb, PartyPopper, X } from "lucide-react";
 import { AppShell } from "../../../components/layout/app-shell";
 import { Button } from "../../../components/ui/button";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
   getChapter,
   submitAnswer,
+  type QuizAnswerOption,
   type QuizAnswerResult,
   type QuizChapterDetail,
+  type QuizDifficulty,
   type QuizQuestion,
 } from "../../../components/training-quiz/training-quiz-api";
 import { TrainingQuizIcon } from "../../../components/training-quiz/training-quiz-icon";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
+// Cooldown (seconds) applied before "Retry" is re-enabled, indexed by the
+// question's total attempt count. Discourages clicking through options at
+// random rather than thinking about the hint/explanation shown after a miss.
+const RETRY_COOLDOWN_SECONDS = [0, 0, 3, 6, 9, 12];
+
+function retryCooldownFor(attemptsCount: number): number {
+  const index = Math.min(attemptsCount, RETRY_COOLDOWN_SECONDS.length - 1);
+  return RETRY_COOLDOWN_SECONDS[index];
+}
+
+function shuffle<T>(items: T[], seed: number): T[] {
+  const result = [...items];
+  let s = seed || 1;
+  const random = () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+const DIFFICULTY_STYLES: Record<QuizDifficulty, string> = {
+  EASY: "bg-teal-surface text-accent-teal-dark border-teal-border",
+  MEDIUM: "bg-warm-surface text-warm-accent-dark border-warm-border",
+  HARD: "bg-[#FBEAE8] text-mark-red border-mark-red/40",
+};
+
 type GlobalMe = { schoolSlug?: string | null };
+type ParentMe = { linkedStudents?: Array<{ id: string }> };
 
 function MissionTrail({
   questions,
@@ -64,6 +97,7 @@ export default function TrainingQuizChapterPage() {
 
   const [ready, setReady] = useState(false);
   const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
+  const [linkedChildId, setLinkedChildId] = useState<string | null>(null);
   const [chapter, setChapter] = useState<QuizChapterDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +106,10 @@ export default function TrainingQuizChapterPage() {
   const [result, setResult] = useState<QuizAnswerResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+  const [attemptRound, setAttemptRound] = useState(0);
+  const [cooldownSecondsLeft, setCooldownSecondsLeft] = useState(0);
+  const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const boot = useCallback(async () => {
     try {
@@ -83,7 +121,21 @@ export default function TrainingQuizChapterPage() {
       const me = (await meRes.json()) as GlobalMe;
       setSchoolSlug(me.schoolSlug ?? null);
 
-      const data = await getChapter(chapterId);
+      const [data] = await Promise.all([
+        getChapter(chapterId),
+        me.schoolSlug
+          ? fetch(`${API_URL}/schools/${me.schoolSlug}/me`, {
+              credentials: "include",
+            })
+              .then((res) =>
+                res.ok ? (res.json() as Promise<ParentMe>) : null,
+              )
+              .then((parentMe) =>
+                setLinkedChildId(parentMe?.linkedStudents?.[0]?.id ?? null),
+              )
+              .catch(() => undefined)
+          : Promise.resolve(undefined),
+      ]);
       setChapter(data);
       const firstUnsolved = data.questions.findIndex((q) => !q.solved);
       setCurrentIndex(firstUnsolved === -1 ? 0 : firstUnsolved);
@@ -98,12 +150,54 @@ export default function TrainingQuizChapterPage() {
     void boot();
   }, [boot]);
 
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    };
+  }, []);
+
   const question = chapter?.questions[currentIndex] ?? null;
   const isLast = chapter
     ? currentIndex === chapter.questions.length - 1
     : false;
 
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "";
+
+  const displayedOptions: QuizAnswerOption[] = useMemo(() => {
+    if (!question) return [];
+    return shuffle(
+      question.options,
+      question.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) +
+        attemptRound * 97,
+    );
+  }, [question, attemptRound]);
+
+  const resolvedDeepLink = useMemo(() => {
+    if (!question?.deepLinkRoute) return null;
+    if (question.deepLinkRoute.includes("{childId}")) {
+      if (!linkedChildId) return null;
+      return question.deepLinkRoute.replace("{childId}", linkedChildId);
+    }
+    return question.deepLinkRoute;
+  }, [question, linkedChildId]);
+
+  function startCooldown(seconds: number) {
+    if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    if (seconds <= 0) {
+      setCooldownSecondsLeft(0);
+      return;
+    }
+    setCooldownSecondsLeft(seconds);
+    cooldownTimer.current = setInterval(() => {
+      setCooldownSecondsLeft((prev) => {
+        if (prev <= 1) {
+          if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   function toggleOption(optionId: string) {
     if (result || !question) return;
@@ -138,16 +232,36 @@ export default function TrainingQuizChapterPage() {
               }
             : prev,
         );
+      } else {
+        if (res.attemptsCount >= 2) {
+          setHintOpen(true);
+        }
+        startCooldown(retryCooldownFor(res.attemptsCount));
       }
     } finally {
       setSubmitting(false);
     }
   }
 
-  function goToIndex(index: number) {
-    setCurrentIndex(index);
+  function resetQuestionState() {
     setSelected([]);
     setResult(null);
+    setHintOpen(false);
+    setAttemptRound(0);
+    setCooldownSecondsLeft(0);
+    if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+  }
+
+  function goToIndex(index: number) {
+    setCurrentIndex(index);
+    resetQuestionState();
+  }
+
+  function handleRetry() {
+    if (cooldownSecondsLeft > 0) return;
+    setResult(null);
+    setSelected([]);
+    setAttemptRound((prev) => prev + 1);
   }
 
   function handleNext() {
@@ -223,6 +337,11 @@ export default function TrainingQuizChapterPage() {
     return null;
   }
 
+  const difficultyKey = question.difficulty.toLowerCase() as
+    | "easy"
+    | "medium"
+    | "hard";
+
   return (
     <AppShell schoolSlug={schoolSlug} schoolName={t("trainingQuiz.shellName")}>
       <div className="mx-auto max-w-4xl px-4 py-3 lg:py-4">
@@ -278,9 +397,16 @@ export default function TrainingQuizChapterPage() {
           ) : null}
 
           <div className="lg:flex-1">
-            <h2 className="font-heading text-base font-semibold text-text-primary">
-              {question.text}
-            </h2>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h2 className="font-heading text-base font-semibold text-text-primary">
+                {question.text}
+              </h2>
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${DIFFICULTY_STYLES[question.difficulty]}`}
+              >
+                {t(`trainingQuiz.chapter.difficulty.${difficultyKey}`)}
+              </span>
+            </div>
             {question.type === "MCQ_MULTI" ? (
               <p className="mt-1 text-xs font-medium text-text-secondary">
                 {t("trainingQuiz.chapter.multiHint")}
@@ -288,7 +414,7 @@ export default function TrainingQuizChapterPage() {
             ) : null}
 
             <div className="mt-3 flex flex-col gap-2">
-              {question.options.map((option) => {
+              {displayedOptions.map((option) => {
                 const isSelected = selected.includes(option.id);
                 const isCorrectOption = result?.correctOptionIds.includes(
                   option.id,
@@ -332,6 +458,26 @@ export default function TrainingQuizChapterPage() {
               })}
             </div>
 
+            <div className="mt-3">
+              {!result ? (
+                <button
+                  type="button"
+                  onClick={() => setHintOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-accent-dark hover:underline"
+                >
+                  <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
+                  {hintOpen
+                    ? t("trainingQuiz.chapter.hintHideCta")
+                    : t("trainingQuiz.chapter.hintShowCta")}
+                </button>
+              ) : null}
+              {hintOpen ? (
+                <p className="mt-1.5 rounded-card border border-warm-border bg-warm-surface px-3 py-2 text-xs text-text-secondary">
+                  {question.hint}
+                </p>
+              ) : null}
+            </div>
+
             {result ? (
               <div
                 className={`mt-3 rounded-card border p-3 ${
@@ -350,13 +496,15 @@ export default function TrainingQuizChapterPage() {
                 </p>
                 {!result.correct ? (
                   <p className="mt-1 text-xs text-text-secondary">
-                    {t("trainingQuiz.chapter.retryHint")}
+                    {result.attemptsCount >= 2
+                      ? t("trainingQuiz.chapter.hintAutoSuggest")
+                      : t("trainingQuiz.chapter.retryHint")}
                   </p>
                 ) : null}
 
-                <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                   {result.correct ? (
-                    <Button onClick={handleNext}>
+                    <Button onClick={handleNext} className="w-full sm:w-auto">
                       {isLast
                         ? t("trainingQuiz.chapter.finish")
                         : t("trainingQuiz.chapter.next")}
@@ -364,24 +512,28 @@ export default function TrainingQuizChapterPage() {
                   ) : (
                     <Button
                       variant="secondary"
-                      onClick={() => {
-                        setResult(null);
-                        setSelected([]);
-                      }}
+                      onClick={handleRetry}
+                      disabled={cooldownSecondsLeft > 0}
+                      className="w-full sm:w-auto"
                     >
-                      {t("trainingQuiz.chapter.retry")}
+                      {cooldownSecondsLeft > 0
+                        ? t("trainingQuiz.chapter.retryCooldown").replace(
+                            "{seconds}",
+                            String(cooldownSecondsLeft),
+                          )
+                        : t("trainingQuiz.chapter.retry")}
                     </Button>
                   )}
-                  {question.deepLinkRoute ? (
-                    <button
-                      type="button"
+                  {resolvedDeepLink ? (
+                    <Button
+                      variant="ghost"
                       onClick={() =>
-                        router.push(`${schoolBase}${question.deepLinkRoute}`)
+                        router.push(`${schoolBase}${resolvedDeepLink}`)
                       }
-                      className="text-sm font-semibold text-primary hover:underline"
+                      className="w-full sm:w-auto"
                     >
                       {t("trainingQuiz.chapter.deepLinkCta")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </div>
@@ -390,6 +542,7 @@ export default function TrainingQuizChapterPage() {
                 <Button
                   onClick={handleValidate}
                   disabled={selected.length === 0 || submitting}
+                  className="w-full sm:w-auto"
                 >
                   {t("trainingQuiz.chapter.validate")}
                 </Button>

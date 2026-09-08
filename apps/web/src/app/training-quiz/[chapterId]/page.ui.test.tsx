@@ -41,10 +41,13 @@ const CHAPTER_DETAIL = {
       id: "q1",
       order: 1,
       type: "MCQ_SINGLE",
+      difficulty: "EASY",
       text: "Où consultez-vous le comportement disciplinaire ?",
+      hint: "Ouvrez la fiche de votre enfant.",
       imageUrl: null,
-      deepLinkRoute: "/children",
+      deepLinkRoute: "/children/{childId}/discipline",
       solved: false,
+      attemptsCount: 0,
       options: [
         { id: "opt-correct", order: 1, text: "Onglet Discipline" },
         { id: "opt-wrong", order: 2, text: "Messagerie" },
@@ -54,10 +57,13 @@ const CHAPTER_DETAIL = {
       id: "q2",
       order: 2,
       type: "MCQ_SINGLE",
+      difficulty: "HARD",
       text: "Deuxième mission ?",
+      hint: "Un indice pour la deuxième mission.",
       imageUrl: null,
       deepLinkRoute: null,
       solved: false,
+      attemptsCount: 0,
       options: [
         { id: "q2-correct", order: 1, text: "Bonne réponse" },
         { id: "q2-wrong", order: 2, text: "Mauvaise réponse" },
@@ -69,9 +75,17 @@ const CHAPTER_DETAIL = {
 function mockFetch({
   chapter = CHAPTER_DETAIL,
   answerResult,
-}: { chapter?: unknown; answerResult?: unknown } = {}) {
+  linkedStudents = [{ id: "child-1" }],
+}: {
+  chapter?: unknown;
+  answerResult?: unknown;
+  linkedStudents?: Array<{ id: string }>;
+} = {}) {
   global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith("/schools/ecole-test/me")) {
+      return jsonResponse({ linkedStudents });
+    }
     if (url.endsWith("/me")) return jsonResponse({ schoolSlug: "ecole-test" });
     if (url.endsWith("/training-quiz/chapters/chapter-1")) {
       return jsonResponse(chapter);
@@ -83,6 +97,7 @@ function mockFetch({
           alreadySolved: false,
           explanation: "Bien joué !",
           correctOptionIds: ["opt-correct"],
+          attemptsCount: 1,
         },
       );
     }
@@ -126,6 +141,7 @@ describe("TrainingQuizChapterPage", () => {
         alreadySolved: false,
         explanation: "Pas exactement.",
         correctOptionIds: ["opt-correct"],
+        attemptsCount: 1,
       },
     });
     render(<TrainingQuizChapterPage />);
@@ -151,7 +167,47 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Voir dans l'application");
     fireEvent.click(screen.getByText("Voir dans l'application"));
 
-    expect(pushMock).toHaveBeenCalledWith("/schools/ecole-test/children");
+    expect(pushMock).toHaveBeenCalledWith(
+      "/schools/ecole-test/children/child-1/discipline",
+    );
+  });
+
+  it("hides the deep-link CTA when the parent has no linked child yet", async () => {
+    mockFetch({ linkedStudents: [] });
+    render(<TrainingQuizChapterPage />);
+
+    await screen.findByText("Onglet Discipline");
+    fireEvent.click(screen.getByText("Onglet Discipline"));
+    fireEvent.click(screen.getByText("Valider"));
+
+    await screen.findByText("Bonne réponse !");
+    expect(
+      screen.queryByText("Voir dans l'application"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a hint and reveals it automatically after a second wrong attempt", async () => {
+    mockFetch({
+      answerResult: {
+        correct: false,
+        alreadySolved: false,
+        explanation: "Pas exactement.",
+        correctOptionIds: ["opt-correct"],
+        attemptsCount: 2,
+      },
+    });
+    render(<TrainingQuizChapterPage />);
+
+    await screen.findByText("Onglet Discipline");
+    expect(screen.getByText("Afficher un indice")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Messagerie"));
+    fireEvent.click(screen.getByText("Valider"));
+
+    await screen.findByText("Pas tout à fait");
+    expect(
+      screen.getByText("Ouvrez la fiche de votre enfant."),
+    ).toBeInTheDocument();
   });
 
   it("shows the completion screen after the last mission", async () => {

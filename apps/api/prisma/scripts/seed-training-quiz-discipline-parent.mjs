@@ -31,10 +31,15 @@ const QUESTIONS = [
   {
     order: 1,
     type: "MCQ_SINGLE",
+    difficulty: "EASY",
     image: IMG("q1-fiche-enfant"),
-    deepLinkRoute: "/children",
+    deepLinkRoute: "/children/{childId}/discipline",
     textFr: "Où consultez-vous le comportement disciplinaire de votre enfant ?",
     textEn: "Where do you check your child's disciplinary record?",
+    hintFr:
+      "Ouvrez la fiche de votre enfant, puis regardez les onglets disponibles en haut de page.",
+    hintEn:
+      "Open your child's profile, then look at the tabs available at the top of the page.",
     explanationFr:
       'Ouvrez la fiche de votre enfant puis l\'onglet "Discipline" : vous y retrouvez sanctions, avertissements et mentions positives.',
     explanationEn:
@@ -65,12 +70,17 @@ const QUESTIONS = [
   {
     order: 2,
     type: "TRUE_FALSE",
+    difficulty: "EASY",
     image: IMG("q2-notification"),
-    deepLinkRoute: "/children",
+    deepLinkRoute: "/children/{childId}/discipline",
     textFr:
       "Un nouvel évènement disciplinaire déclenche une pastille de notification dans le menu.",
     textEn:
       "A new disciplinary event triggers a notification badge in the menu.",
+    hintFr:
+      "Repensez à ce qui se passe pour vos autres modules (notes, messages) quand il y a du nouveau.",
+    hintEn:
+      "Think about what happens on your other modules (grades, messages) when there's something new.",
     explanationFr:
       "Comme pour les notes ou les messages, un évènement disciplinaire non lu affiche une pastille rouge sur l'entrée \"Discipline\" jusqu'à consultation.",
     explanationEn:
@@ -83,10 +93,13 @@ const QUESTIONS = [
   {
     order: 3,
     type: "MCQ_SINGLE",
+    difficulty: "MEDIUM",
     image: IMG("q3-mention-positive"),
-    deepLinkRoute: "/children",
+    deepLinkRoute: "/children/{childId}/discipline",
     textFr: 'Que signifie une "mention positive" dans le module Discipline ?',
     textEn: 'What does a "positive mention" mean in the Discipline module?',
+    hintFr: "Le module Discipline ne sert pas qu'à signaler des sanctions.",
+    hintEn: "The Discipline module isn't only there to report sanctions.",
     explanationFr:
       "Le module ne sert pas qu'à signaler des sanctions : il valorise aussi les comportements exemplaires grâce aux mentions positives.",
     explanationEn:
@@ -117,10 +130,14 @@ const QUESTIONS = [
   {
     order: 4,
     type: "MCQ_SINGLE",
+    difficulty: "MEDIUM",
     image: IMG("q4-historique"),
-    deepLinkRoute: "/children",
+    deepLinkRoute: "/children/{childId}/discipline",
     textFr: "Comment retrouver l'historique disciplinaire complet de l'année ?",
     textEn: "How do you find the full disciplinary history for the year?",
+    hintFr:
+      "Le tableau du module Discipline n'affiche pas qu'un seul évènement.",
+    hintEn: "The Discipline module table doesn't show just one event.",
     explanationFr:
       "Le tableau du module Discipline liste chronologiquement tous les évènements de l'année scolaire, pas seulement le dernier.",
     explanationEn:
@@ -152,12 +169,17 @@ const QUESTIONS = [
   {
     order: 5,
     type: "MCQ_MULTI",
+    difficulty: "HARD",
     image: IMG("q5-fiche-evenement"),
-    deepLinkRoute: "/children",
+    deepLinkRoute: "/children/{childId}/discipline",
     textFr:
       "Quelles informations retrouve-t-on sur la fiche d'un évènement disciplinaire ? (plusieurs réponses)",
     textEn:
       "Which details appear on a disciplinary event card? (select all that apply)",
+    hintFr:
+      "Pensez aux informations utiles à un parent, jamais à des données confidentielles d'un enseignant.",
+    hintEn:
+      "Think about what's useful to a parent, never a teacher's confidential data.",
     explanationFr:
       "Chaque évènement affiche sa date, son type (sanction/avertissement/mention) et le motif renseigné par l'établissement — jamais d'informations sensibles comme un mot de passe.",
     explanationEn:
@@ -188,12 +210,16 @@ const QUESTIONS = [
   {
     order: 6,
     type: "MCQ_SINGLE",
+    difficulty: "HARD",
     image: IMG("q6-messagerie"),
     deepLinkRoute: "/messagerie",
     textFr:
       "Vous avez une question sur un évènement disciplinaire : quelle est la meilleure action ?",
     textEn:
       "You have a question about a disciplinary event: what's the best action?",
+    hintFr:
+      "Il existe un canal direct pour écrire à l'école depuis l'application.",
+    hintEn: "There's a direct channel to message the school from the app.",
     explanationFr:
       "La messagerie interne relie directement les familles à l'établissement : c'est le canal prévu pour échanger sur un évènement disciplinaire.",
     explanationEn:
@@ -241,8 +267,11 @@ async function main() {
         chapterId: chapter.id,
         order: question.order,
         type: question.type,
+        difficulty: question.difficulty,
         textFr: question.textFr,
         textEn: question.textEn,
+        hintFr: question.hintFr,
+        hintEn: question.hintEn,
         explanationFr: question.explanationFr,
         explanationEn: question.explanationEn,
         imageUrl: question.image,
@@ -250,8 +279,11 @@ async function main() {
       },
       update: {
         type: question.type,
+        difficulty: question.difficulty,
         textFr: question.textFr,
         textEn: question.textEn,
+        hintFr: question.hintFr,
+        hintEn: question.hintEn,
         explanationFr: question.explanationFr,
         explanationEn: question.explanationEn,
         imageUrl: question.image,

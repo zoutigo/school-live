@@ -21,10 +21,13 @@ export type QuizQuestionPublic = {
   id: string;
   order: number;
   type: "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE";
+  difficulty: "EASY" | "MEDIUM" | "HARD";
   text: string;
+  hint: string;
   imageUrl: string | null;
   deepLinkRoute: string | null;
   solved: boolean;
+  attemptsCount: number;
   options: QuizAnswerOptionPublic[];
 };
 
@@ -37,6 +40,7 @@ export type QuizAnswerResult = {
   alreadySolved: boolean;
   explanation: string;
   correctOptionIds: string[];
+  attemptsCount: number;
 };
 
 export type QuizScoreSummary = {

@@ -23,6 +23,7 @@ export type QuizChapterSummary = {
 };
 
 export type QuizQuestionType = "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE";
+export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD";
 
 export type QuizAnswerOption = { id: string; order: number; text: string };
 
@@ -30,10 +31,13 @@ export type QuizQuestion = {
   id: string;
   order: number;
   type: QuizQuestionType;
+  difficulty: QuizDifficulty;
   text: string;
+  hint: string;
   imageUrl: string | null;
   deepLinkRoute: string | null;
   solved: boolean;
+  attemptsCount: number;
   options: QuizAnswerOption[];
 };
 
@@ -46,6 +50,7 @@ export type QuizAnswerResult = {
   alreadySolved: boolean;
   explanation: string;
   correctOptionIds: string[];
+  attemptsCount: number;
 };
 
 export type QuizScoreSummary = {
