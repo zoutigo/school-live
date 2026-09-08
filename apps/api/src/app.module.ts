@@ -29,6 +29,7 @@ import { StudentManagementModule } from "./student-management/student-management
 import { TimetableModule } from "./timetable/timetable.module.js";
 import { TicketsModule } from "./tickets/tickets.module.js";
 import { TestsModule } from "./tests/tests.module.js";
+import { TrainingQuizModule } from "./training-quiz/training-quiz.module.js";
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { TestsModule } from "./tests/tests.module.js";
     TimetableModule,
     TicketsModule,
     TestsModule,
+    TrainingQuizModule,
   ],
   controllers: [AppController],
 })

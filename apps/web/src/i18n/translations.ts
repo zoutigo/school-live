@@ -5410,6 +5410,45 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Aucune condition de santé enregistrée.",
     "health.admin.profile.errors.load": "Impossible de charger la fiche santé.",
     "health.admin.profile.byPrefix": "par",
+
+    "sidebar.nav.trainingQuiz": "Quiz de formation",
+    "trainingQuiz.shellName": "Quiz de formation",
+    "trainingQuiz.list.title": "Quiz de formation",
+    "trainingQuiz.list.subtitle":
+      "Apprenez à utiliser Scolive en jouant : chaque chapitre correspond à un module de l'application.",
+    "trainingQuiz.list.empty":
+      "Aucun chapitre de formation n'est disponible pour votre rôle pour le moment.",
+    "trainingQuiz.list.missionsCount": "{count} missions",
+    "trainingQuiz.list.startCta": "Commencer",
+    "trainingQuiz.list.continueCta": "Continuer",
+    "trainingQuiz.list.completeCta": "Revoir",
+    "trainingQuiz.score.title": "Votre score",
+    "trainingQuiz.score.globalLabel": "Score global",
+    "trainingQuiz.score.encouragementEmpty":
+      "Lancez votre premier chapitre pour démarrer votre progression.",
+    "trainingQuiz.score.encouragementProgress":
+      "Continuez, vous progressez bien !",
+    "trainingQuiz.score.encouragementDone":
+      "Bravo, vous maîtrisez ce chapitre !",
+    "trainingQuiz.chapter.missionLabel": "Mission {current} sur {total}",
+    "trainingQuiz.chapter.back": "Retour aux chapitres",
+    "trainingQuiz.chapter.solvedBadge": "Réussie",
+    "trainingQuiz.chapter.multiHint": "Plusieurs réponses possibles",
+    "trainingQuiz.chapter.validate": "Valider",
+    "trainingQuiz.chapter.retry": "Réessayer",
+    "trainingQuiz.chapter.next": "Mission suivante",
+    "trainingQuiz.chapter.finish": "Terminer",
+    "trainingQuiz.chapter.correctTitle": "Bonne réponse !",
+    "trainingQuiz.chapter.incorrectTitle": "Pas tout à fait",
+    "trainingQuiz.chapter.retryHint":
+      "Vous pouvez réessayer autant que vous voulez.",
+    "trainingQuiz.chapter.deepLinkCta": "Voir dans l'application",
+    "trainingQuiz.chapter.completeTitle": "Chapitre terminé !",
+    "trainingQuiz.chapter.completeSubtitle":
+      "Vous avez répondu à toutes les missions de ce chapitre.",
+    "trainingQuiz.chapter.completeBackCta": "Retour aux chapitres",
+    "trainingQuiz.errors.load":
+      "Impossible de charger le quiz de formation pour le moment.",
   },
   en: {
     "common.save": "Save",
@@ -10576,5 +10615,43 @@ export const translations: Record<Locale, Record<string, string>> = {
     "health.admin.profile.empty.conditions": "No health condition recorded.",
     "health.admin.profile.errors.load": "Unable to load the health profile.",
     "health.admin.profile.byPrefix": "by",
+
+    "sidebar.nav.trainingQuiz": "Training quiz",
+    "trainingQuiz.shellName": "Training quiz",
+    "trainingQuiz.list.title": "Training quiz",
+    "trainingQuiz.list.subtitle":
+      "Learn to use Scolive by playing: each chapter matches an application module.",
+    "trainingQuiz.list.empty":
+      "No training chapter is available for your role yet.",
+    "trainingQuiz.list.missionsCount": "{count} missions",
+    "trainingQuiz.list.startCta": "Start",
+    "trainingQuiz.list.continueCta": "Continue",
+    "trainingQuiz.list.completeCta": "Review",
+    "trainingQuiz.score.title": "Your score",
+    "trainingQuiz.score.globalLabel": "Global score",
+    "trainingQuiz.score.encouragementEmpty":
+      "Start your first chapter to begin your progress.",
+    "trainingQuiz.score.encouragementProgress":
+      "Keep going, you're doing great!",
+    "trainingQuiz.score.encouragementDone":
+      "Well done, you've mastered this chapter!",
+    "trainingQuiz.chapter.missionLabel": "Mission {current} of {total}",
+    "trainingQuiz.chapter.back": "Back to chapters",
+    "trainingQuiz.chapter.solvedBadge": "Solved",
+    "trainingQuiz.chapter.multiHint": "Multiple answers possible",
+    "trainingQuiz.chapter.validate": "Check answer",
+    "trainingQuiz.chapter.retry": "Try again",
+    "trainingQuiz.chapter.next": "Next mission",
+    "trainingQuiz.chapter.finish": "Finish",
+    "trainingQuiz.chapter.correctTitle": "Correct!",
+    "trainingQuiz.chapter.incorrectTitle": "Not quite",
+    "trainingQuiz.chapter.retryHint":
+      "You can try again as many times as you like.",
+    "trainingQuiz.chapter.deepLinkCta": "See it in the app",
+    "trainingQuiz.chapter.completeTitle": "Chapter complete!",
+    "trainingQuiz.chapter.completeSubtitle":
+      "You've answered every mission in this chapter.",
+    "trainingQuiz.chapter.completeBackCta": "Back to chapters",
+    "trainingQuiz.errors.load": "Couldn't load the training quiz right now.",
   },
 };
