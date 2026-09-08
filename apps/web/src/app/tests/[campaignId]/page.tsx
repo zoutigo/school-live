@@ -17,6 +17,8 @@ import {
   statusLabel,
 } from "../../../components/tests/tests-format";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
 export default function TestCampaignDetailPage() {
   const { t } = useTranslation();
   const params = useParams<{ campaignId: string }>();
@@ -24,6 +26,20 @@ export default function TestCampaignDetailPage() {
   const [campaign, setCampaign] = useState<TestCampaignDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const meRes = await fetch(`${API_URL}/me`, { credentials: "include" });
+        if (!meRes.ok) return;
+        const me = (await meRes.json()) as { schoolSlug?: string | null };
+        setSchoolSlug(me.schoolSlug ?? null);
+      } catch {
+        // Keep the shell available even if the school context can't be resolved.
+      }
+    })();
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,7 +63,7 @@ export default function TestCampaignDetailPage() {
   }, [load]);
 
   return (
-    <AppShell schoolName="Scolive Platform">
+    <AppShell schoolSlug={schoolSlug} schoolName="Scolive Platform">
       <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
         <BackLinkButton href="/tests">{t("common.back")}</BackLinkButton>
 

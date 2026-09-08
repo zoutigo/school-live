@@ -65,6 +65,7 @@ export default function TestExecutionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
+  const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export default function TestExecutionDetailPage() {
         const me = (await meRes.json()) as {
           isTester?: boolean;
           platformRoles?: string[];
+          schoolSlug?: string | null;
         };
         setCanEdit(
           Boolean(me.isTester) ||
@@ -106,6 +108,7 @@ export default function TestExecutionDetailPage() {
               ["ADMIN", "SUPER_ADMIN"].includes(role),
             ),
         );
+        setSchoolSlug(me.schoolSlug ?? null);
       } catch {
         // Keep the page read-only if /me is unreachable.
       }
@@ -160,7 +163,7 @@ export default function TestExecutionDetailPage() {
   });
 
   return (
-    <AppShell schoolName="Scolive Platform">
+    <AppShell schoolSlug={schoolSlug} schoolName="Scolive Platform">
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
         <BackLinkButton href="/tests">{t("common.back")}</BackLinkButton>
 

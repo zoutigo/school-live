@@ -35,12 +35,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 type Tab = "summary" | "campaigns" | "executions" | "toRedo";
 
-type Me = { isTester?: boolean };
+type Me = { isTester?: boolean; schoolSlug?: string | null };
 
 export default function TestsPage() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const [isTester, setIsTester] = useState(false);
+  const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("summary");
   const [campaigns, setCampaigns] = useState<TestCampaignSummary[]>([]);
   const [toRedo, setToRedo] = useState<TestCaseToRedo[]>([]);
@@ -72,6 +73,7 @@ export default function TestsPage() {
         onboardingHelpEnabled?: boolean;
       };
       setIsTester(Boolean(me.isTester));
+      setSchoolSlug(me.schoolSlug ?? null);
       if (me.isTester) {
         const tourStore = useOnboardingTourStore.getState();
         if (
@@ -120,7 +122,7 @@ export default function TestsPage() {
 
   if (!ready) {
     return (
-      <AppShell schoolName="Scolive Platform">
+      <AppShell schoolSlug={schoolSlug} schoolName="Scolive Platform">
         <div className="flex h-48 items-center justify-center text-sm text-text-secondary">
           {t("common.loading")}
         </div>
@@ -129,7 +131,7 @@ export default function TestsPage() {
   }
 
   return (
-    <AppShell schoolName="Scolive Platform">
+    <AppShell schoolSlug={schoolSlug} schoolName="Scolive Platform">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <div>
           <h1 className="text-2xl font-bold" data-testid="tests-title">

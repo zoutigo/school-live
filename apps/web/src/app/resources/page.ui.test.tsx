@@ -11,10 +11,20 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
 }));
 
+const appShellPropsSpy = vi.fn();
+
 vi.mock("../../components/layout/app-shell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  AppShell: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    schoolSlug?: string | null;
+    schoolName?: string;
+  }) => {
+    appShellPropsSpy(props);
+    return <div>{children}</div>;
+  },
 }));
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -89,6 +99,31 @@ describe("ResourcesBrowsePage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
+    appShellPropsSpy.mockReset();
+  });
+
+  it("forwards the current schoolSlug to AppShell so the sidebar keeps school-scoped links (regression: teacher/parent/student losing navigation after visiting Ressources)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        me: {
+          activeRole: "TEACHER",
+          platformRoles: [],
+          schoolSlug: "college-vogt",
+        },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("resources-tab-ASSESSMENT"),
+      ).toBeInTheDocument(),
+    );
+
+    expect(appShellPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ schoolSlug: "college-vogt" }),
+    );
   });
 
   it("redirects home when /me fails", async () => {
