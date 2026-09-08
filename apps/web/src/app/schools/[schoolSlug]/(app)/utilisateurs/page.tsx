@@ -149,6 +149,24 @@ type StaffFunctionOption = {
   description: string | null;
 };
 
+type StaffFunctionRow = StaffFunctionOption & {
+  _count?: { assignments: number };
+};
+
+type StaffAssignmentRow = {
+  id: string;
+  function: { id: string; name: string };
+  user: { id: string; firstName: string; lastName: string; email: string };
+};
+
+type StaffCandidateRow = {
+  userId: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
 type CreatableRole =
   | "TEACHER"
   | "STUDENT"
@@ -1707,6 +1725,370 @@ function CreateUserModal({
   );
 }
 
+// ── StaffFunctionsModal ─────────────────────────────────────────────────────
+
+function StaffFunctionsModal({
+  schoolSlug,
+  onClose,
+  t,
+}: {
+  schoolSlug: string;
+  onClose: () => void;
+  t: (k: string) => string;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [canWrite, setCanWrite] = useState(false);
+  const [functions, setFunctions] = useState<StaffFunctionRow[]>([]);
+  const [assignments, setAssignments] = useState<StaffAssignmentRow[]>([]);
+  const [candidates, setCandidates] = useState<StaffCandidateRow[]>([]);
+  const [functionName, setFunctionName] = useState("");
+  const [functionDescription, setFunctionDescription] = useState("");
+  const [assignFunctionId, setAssignFunctionId] = useState("");
+  const [assignUserId, setAssignUserId] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [me, fns, asg, cand] = await Promise.all([
+        apiFetch<{ role: string | null }>("/me"),
+        apiFetch<StaffFunctionRow[]>(
+          `/schools/${schoolSlug}/admin/staff-functions`,
+        ),
+        apiFetch<StaffAssignmentRow[]>(
+          `/schools/${schoolSlug}/admin/staff-assignments`,
+        ),
+        apiFetch<StaffCandidateRow[]>(
+          `/schools/${schoolSlug}/admin/staff-candidates`,
+        ),
+      ]);
+      setCanWrite(
+        me.role === "SCHOOL_ADMIN" ||
+          me.role === "ADMIN" ||
+          me.role === "SUPER_ADMIN",
+      );
+      setFunctions(fns);
+      setAssignments(asg);
+      setCandidates(cand);
+      setAssignFunctionId((prev) =>
+        fns.some((f) => f.id === prev) ? prev : (fns[0]?.id ?? ""),
+      );
+      setAssignUserId((prev) =>
+        cand.some((c) => c.userId === prev) ? prev : (cand[0]?.userId ?? ""),
+      );
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [schoolSlug]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function createFunction() {
+    if (!canWrite || !functionName.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await apiFetch(`/schools/${schoolSlug}/admin/staff-functions`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": getCsrfTokenCookie() ?? "" },
+        body: JSON.stringify({
+          name: functionName.trim(),
+          description: functionDescription.trim() || undefined,
+        }),
+      });
+      setFunctionName("");
+      setFunctionDescription("");
+      setSuccess(t("users.staff.functions.created"));
+      await load();
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function createAssignment() {
+    if (!canWrite || !assignFunctionId || !assignUserId) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await apiFetch(`/schools/${schoolSlug}/admin/staff-assignments`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": getCsrfTokenCookie() ?? "" },
+        body: JSON.stringify({
+          functionId: assignFunctionId,
+          userId: assignUserId,
+        }),
+      });
+      setSuccess(t("users.staff.assignments.created"));
+      await load();
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function removeAssignment(assignmentId: string) {
+    if (!canWrite) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await apiFetch(
+        `/schools/${schoolSlug}/admin/staff-assignments/${assignmentId}`,
+        {
+          method: "DELETE",
+          headers: { "X-CSRF-Token": getCsrfTokenCookie() ?? "" },
+        },
+      );
+      setSuccess(t("users.staff.assignments.removed"));
+      await load();
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClose={onClose} testId="staff-functions-modal">
+      <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto">
+        <ModalHeader
+          eyebrow={t("users.staff.eyebrow")}
+          title={t("users.staff.title")}
+          subtitle={t("users.staff.subtitle")}
+          onClose={onClose}
+        />
+
+        {loading ? (
+          <p className="text-sm text-text-secondary">{t("users.loading")}</p>
+        ) : (
+          <div className="grid gap-4">
+            {error ? (
+              <p
+                className="text-sm text-red-600"
+                data-testid="staff-functions-error"
+              >
+                {error}
+              </p>
+            ) : null}
+            {success ? (
+              <p
+                className="text-sm text-primary"
+                data-testid="staff-functions-success"
+              >
+                {success}
+              </p>
+            ) : null}
+
+            <div className="grid gap-3 rounded-xl border border-warm-border bg-white p-3">
+              <h3 className="text-sm font-semibold text-text-primary">
+                {t("users.staff.functions.title")}
+              </h3>
+              {canWrite ? (
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,160px)_minmax(0,1fr)_auto]">
+                  <input
+                    data-testid="staff-function-name-input"
+                    value={functionName}
+                    onChange={(e) => setFunctionName(e.target.value)}
+                    placeholder={t("users.staff.functions.namePlaceholder")}
+                    className="h-10 rounded-xl border border-warm-border bg-white px-3 text-sm"
+                  />
+                  <input
+                    data-testid="staff-function-description-input"
+                    value={functionDescription}
+                    onChange={(e) => setFunctionDescription(e.target.value)}
+                    placeholder={t(
+                      "users.staff.functions.descriptionPlaceholder",
+                    )}
+                    className="h-10 rounded-xl border border-warm-border bg-white px-3 text-sm"
+                  />
+                  <button
+                    type="button"
+                    data-testid="staff-function-create"
+                    onClick={() => void createFunction()}
+                    disabled={submitting || !functionName.trim()}
+                    className="h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-40"
+                  >
+                    {t("users.staff.functions.add")}
+                  </button>
+                </div>
+              ) : null}
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-left text-text-secondary">
+                    <tr>
+                      <th className="px-2 py-2">
+                        {t("users.staff.functions.colFunction")}
+                      </th>
+                      <th className="px-2 py-2">
+                        {t("users.staff.functions.colDescription")}
+                      </th>
+                      <th className="px-2 py-2">
+                        {t("users.staff.functions.colAssignments")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {functions.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        data-testid={`staff-function-row-${entry.id}`}
+                      >
+                        <td className="px-2 py-2 font-medium text-text-primary">
+                          {entry.name}
+                        </td>
+                        <td className="px-2 py-2 text-text-secondary">
+                          {entry.description || "—"}
+                        </td>
+                        <td className="px-2 py-2 text-text-secondary">
+                          {entry._count?.assignments ?? 0}
+                        </td>
+                      </tr>
+                    ))}
+                    {functions.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-2 py-3 text-text-secondary"
+                          colSpan={3}
+                        >
+                          {t("users.staff.functions.empty")}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="grid gap-3 rounded-xl border border-warm-border bg-white p-3">
+              <h3 className="text-sm font-semibold text-text-primary">
+                {t("users.staff.assignments.title")}
+              </h3>
+              {canWrite ? (
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                  <select
+                    data-testid="staff-assignment-function-select"
+                    value={assignFunctionId}
+                    onChange={(e) => setAssignFunctionId(e.target.value)}
+                    className="h-10 rounded-xl border border-warm-border bg-white px-3 text-sm"
+                  >
+                    <option value="">
+                      {t("users.staff.assignments.chooseFunction")}
+                    </option>
+                    {functions.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    data-testid="staff-assignment-user-select"
+                    value={assignUserId}
+                    onChange={(e) => setAssignUserId(e.target.value)}
+                    className="h-10 rounded-xl border border-warm-border bg-white px-3 text-sm"
+                  >
+                    <option value="">
+                      {t("users.staff.assignments.chooseUser")}
+                    </option>
+                    {candidates.map((entry) => (
+                      <option key={entry.userId} value={entry.userId}>
+                        {entry.lastName} {entry.firstName} ({entry.role})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    data-testid="staff-assignment-create"
+                    onClick={() => void createAssignment()}
+                    disabled={submitting || !assignFunctionId || !assignUserId}
+                    className="h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-40"
+                  >
+                    {t("users.staff.assignments.assign")}
+                  </button>
+                </div>
+              ) : null}
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-left text-text-secondary">
+                    <tr>
+                      <th className="px-2 py-2">
+                        {t("users.staff.assignments.colUser")}
+                      </th>
+                      <th className="px-2 py-2">
+                        {t("users.staff.assignments.colFunction")}
+                      </th>
+                      <th className="px-2 py-2">
+                        {t("users.staff.assignments.colEmail")}
+                      </th>
+                      {canWrite ? (
+                        <th className="px-2 py-2">
+                          {t("users.staff.assignments.colAction")}
+                        </th>
+                      ) : null}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignments.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        data-testid={`staff-assignment-row-${entry.id}`}
+                      >
+                        <td className="px-2 py-2 text-text-primary">
+                          {entry.user.lastName} {entry.user.firstName}
+                        </td>
+                        <td className="px-2 py-2 text-text-secondary">
+                          {entry.function.name}
+                        </td>
+                        <td className="px-2 py-2 text-text-secondary">
+                          {entry.user.email}
+                        </td>
+                        {canWrite ? (
+                          <td className="px-2 py-2">
+                            <button
+                              type="button"
+                              data-testid={`staff-assignment-row-${entry.id}-remove`}
+                              onClick={() => void removeAssignment(entry.id)}
+                              disabled={submitting}
+                              className="rounded-xl border border-red-200 px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40"
+                            >
+                              {t("users.staff.assignments.remove")}
+                            </button>
+                          </td>
+                        ) : null}
+                      </tr>
+                    ))}
+                    {assignments.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-2 py-3 text-text-secondary"
+                          colSpan={canWrite ? 4 : 3}
+                        >
+                          {t("users.staff.assignments.empty")}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </ModalOverlay>
+  );
+}
+
 // ── EditRolesModal ────────────────────────────────────────────────────────────
 
 function EditRolesModal({
@@ -2584,6 +2966,7 @@ export default function UtilisateursPage() {
   const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [selected, setSelected] = useState<SchoolMember | null>(null);
   const [creating, setCreating] = useState(false);
+  const [managingStaff, setManagingStaff] = useState(false);
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
@@ -2701,6 +3084,15 @@ export default function UtilisateursPage() {
                 {total > 1 ? t("users.count.many") : t("users.count.one")}
               </span>
             ) : null}
+            <button
+              type="button"
+              data-testid="manage-staff-functions-button"
+              onClick={() => setManagingStaff(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-warm-border bg-warm-surface px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:border-primary/60 hover:text-primary"
+            >
+              <Briefcase size={14} />
+              {t("users.staff.button")}
+            </button>
             <button
               type="button"
               data-testid="create-user-button"
@@ -2939,6 +3331,14 @@ export default function UtilisateursPage() {
             setSelected(member);
             void loadUsers({ reset: true });
           }}
+          t={t}
+        />
+      ) : null}
+
+      {managingStaff && schoolSlug ? (
+        <StaffFunctionsModal
+          schoolSlug={schoolSlug}
+          onClose={() => setManagingStaff(false)}
           t={t}
         />
       ) : null}

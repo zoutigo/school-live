@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelpStore } from "../../store/page-help";
 import { SCHOOL_SETTINGS_TOUR_ID } from "./school-settings-tour.config";
 import SettingsPage from "./page";
 
@@ -291,5 +292,53 @@ describe("Settings page — onglet Niveaux", () => {
     await waitFor(() => {
       expect(screen.getByText("Modification enregistree.")).toBeInTheDocument();
     });
+  });
+
+  it("enregistre l'aide de la page dans le menu lateral pour un admin ecole", async () => {
+    usePageHelpStore.setState({ entry: null, open: false });
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return jsonResponse(SCHOOL_ADMIN_ME);
+      }
+      if (url.endsWith("/api/schools/college-vogt/admin/academic-levels")) {
+        return jsonResponse(LEVELS);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Niveaux academiques",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Activer un niveau national",
+      "Ordonner les niveaux propres",
+    ]);
+  });
+
+  it("n'enregistre pas d'aide de page quand le role ne gere pas les niveaux", async () => {
+    usePageHelpStore.setState({ entry: null, open: false });
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "TEACHER",
+          schoolSlug: "college-vogt",
+        });
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<SettingsPage />);
+
+    await screen.findByText(
+      "Gestion des niveaux indisponible pour ce role.",
+    );
+    expect(usePageHelpStore.getState().entry).toBeNull();
   });
 });
