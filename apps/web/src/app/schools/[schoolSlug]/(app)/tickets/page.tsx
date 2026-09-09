@@ -22,10 +22,16 @@ import type {
   TicketListItem,
   TicketStatus,
 } from "../../../../../components/tickets/types";
-import { getTicketFolders } from "../../../../../components/tickets/types";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
+const FOLDER_STATUSES: Record<TicketFolderKey, TicketStatus[]> = {
+  open: ["OPEN", "IN_PROGRESS"],
+  answered: ["ANSWERED"],
+  resolved: ["RESOLVED", "CLOSED"],
+  all: [],
+};
 
 type MePayload = {
   role?: string;
@@ -60,11 +66,8 @@ export default function SchoolTicketsPage() {
   const [composing, setComposing] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const folders = getTicketFolders(t);
   const folderStatuses: TicketStatus[] | undefined =
-    activeFolder === "all"
-      ? undefined
-      : folders.find((f) => f.key === activeFolder)?.statuses;
+    activeFolder === "all" ? undefined : FOLDER_STATUSES[activeFolder];
 
   const loadProfile = useCallback(async () => {
     if (!schoolSlug) return;
