@@ -690,11 +690,7 @@ export default function TrainingQuizChapterPage() {
                       }
                       onClick={() => {
                         setHasVisitedDeepLink(true);
-                        window.open(
-                          `${schoolBase}${resolvedDeepLink}`,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
+                        router.push(`${schoolBase}${resolvedDeepLink}`);
                       }}
                       className="w-full sm:w-auto"
                     >

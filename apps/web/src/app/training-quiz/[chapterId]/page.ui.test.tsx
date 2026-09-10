@@ -304,8 +304,6 @@ describe("TrainingQuizChapterPage", () => {
           attemptsCount: 1,
         },
       });
-      const openMock = vi.fn();
-      vi.stubGlobal("open", openMock);
       render(<TrainingQuizChapterPage />);
 
       await screen.findByText("Onglet Discipline");
@@ -327,7 +325,7 @@ describe("TrainingQuizChapterPage", () => {
       expect(screen.getByText("Pas tout à fait")).toBeInTheDocument();
 
       fireEvent.click(screen.getByText("Voir dans l'application"));
-      expect(openMock).toHaveBeenCalled();
+      expect(pushMock).toHaveBeenCalled();
 
       const retryButtonAfterVisit = screen
         .getByText("Réessayer")
@@ -365,7 +363,7 @@ describe("TrainingQuizChapterPage", () => {
     });
   });
 
-  it("opens the deep link in a new tab, keeping the quiz in place", async () => {
+  it("navigates to the deep link in the same tab", async () => {
     mockFetch({
       answerResult: {
         correct: false,
@@ -375,8 +373,6 @@ describe("TrainingQuizChapterPage", () => {
         attemptsCount: 1,
       },
     });
-    const openMock = vi.fn();
-    vi.stubGlobal("open", openMock);
     render(<TrainingQuizChapterPage />);
 
     await screen.findByText("Onglet Discipline");
@@ -386,12 +382,9 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Voir dans l'application");
     fireEvent.click(screen.getByText("Voir dans l'application"));
 
-    expect(openMock).toHaveBeenCalledWith(
+    expect(pushMock).toHaveBeenCalledWith(
       "/schools/ecole-test/children/child-1/discipline",
-      "_blank",
-      "noopener,noreferrer",
     );
-    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("hides the deep-link CTA when the parent has no linked child yet", async () => {
