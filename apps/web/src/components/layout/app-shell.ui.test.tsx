@@ -10,6 +10,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
 import { usePageHelpStore } from "../../store/page-help";
+import { useLocaleStore } from "../../i18n/locale-store";
 
 const pushMock = vi.fn();
 
@@ -172,6 +173,81 @@ describe("AppShell header scroll behavior", () => {
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith("/");
     });
+  });
+});
+
+describe("AppShell — synchro locale compte -> appareil", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useLocaleStore.getState().setLocale("fr");
+  });
+
+  it("aligne la locale de l'appareil sur celle du compte à chaque chargement de /me", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return new Response(
+          JSON.stringify({
+            firstName: "Robert",
+            lastName: "Ntamack",
+            role: "PARENT",
+            activeRole: "PARENT",
+            platformRoles: [],
+            memberships: [],
+            preferredLocale: "EN",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    await waitFor(() => {
+      expect(useLocaleStore.getState().locale).toBe("en");
+    });
+  });
+
+  it("laisse la locale de l'appareil inchangée quand le compte n'a pas de préférence", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return new Response(
+          JSON.stringify({
+            firstName: "Robert",
+            lastName: "Ntamack",
+            role: "PARENT",
+            activeRole: "PARENT",
+            platformRoles: [],
+            memberships: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Content")).toBeInTheDocument();
+    });
+    expect(useLocaleStore.getState().locale).toBe("fr");
   });
 });
 

@@ -10,14 +10,43 @@ import type {
   QuizAnswerResult,
   QuizChapterDetail,
   QuizChapterSummary,
+  QuizLevelSummary,
   QuizScoreSummary,
 } from "./training-quiz.types.js";
 
 type Locale = "FR" | "EN";
+type Difficulty = "EASY" | "MEDIUM" | "HARD";
+
+const DIFFICULTY_ORDER: Difficulty[] = ["EASY", "MEDIUM", "HARD"];
 
 @Injectable()
 export class TrainingQuizService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // A level is unlocked when every question of the previous level is solved
+  // (EASY is always unlocked). Assumes `questions` all belong to one chapter.
+  private computeLevels(
+    questions: Array<{ difficulty: Difficulty; solved: boolean }>,
+  ): QuizLevelSummary[] {
+    const levels: QuizLevelSummary[] = [];
+    let previousLevelCleared = true;
+    for (const difficulty of DIFFICULTY_ORDER) {
+      const levelQuestions = questions.filter(
+        (q) => q.difficulty === difficulty,
+      );
+      const totalQuestions = levelQuestions.length;
+      const solvedQuestions = levelQuestions.filter((q) => q.solved).length;
+      levels.push({
+        difficulty,
+        totalQuestions,
+        solvedQuestions,
+        unlocked: previousLevelCleared,
+      });
+      previousLevelCleared =
+        totalQuestions > 0 && solvedQuestions === totalQuestions;
+    }
+    return levels;
+  }
 
   private resolveRole(user: AuthenticatedUser): AppRole | null {
     if (user.activeRole) {
@@ -101,6 +130,16 @@ export class TrainingQuizService {
       throw new NotFoundException("Chapter not found");
     }
 
+    const levels = this.computeLevels(
+      chapter.questions.map((question) => ({
+        difficulty: question.difficulty,
+        solved: question.progress[0]?.solved ?? false,
+      })),
+    );
+    const unlockedDifficulties = new Set(
+      levels.filter((level) => level.unlocked).map((level) => level.difficulty),
+    );
+
     return {
       id: chapter.id,
       moduleKey: chapter.moduleKey,
@@ -114,22 +153,30 @@ export class TrainingQuizService {
       totalQuestions: chapter.questions.length,
       solvedQuestions: chapter.questions.filter((q) => q.progress[0]?.solved)
         .length,
+      levels,
       questions: chapter.questions.map((question) => ({
         id: question.id,
         order: question.order,
         type: question.type,
         difficulty: question.difficulty,
         text: locale === "EN" ? question.textEn : question.textFr,
-        hint: locale === "EN" ? question.hintEn : question.hintFr,
+        hint:
+          question.difficulty === "HARD"
+            ? locale === "EN"
+              ? question.hintEn
+              : question.hintFr
+            : null,
         imageUrl: question.imageUrl,
         deepLinkRoute: question.deepLinkRoute,
         solved: question.progress[0]?.solved ?? false,
         attemptsCount: question.progress[0]?.attemptsCount ?? 0,
-        options: question.options.map((option) => ({
-          id: option.id,
-          order: option.order,
-          text: locale === "EN" ? option.textEn : option.textFr,
-        })),
+        options: unlockedDifficulties.has(question.difficulty)
+          ? question.options.map((option) => ({
+              id: option.id,
+              order: option.order,
+              text: locale === "EN" ? option.textEn : option.textFr,
+            }))
+          : [],
       })),
     };
   }
@@ -143,11 +190,40 @@ export class TrainingQuizService {
 
     const question = await this.prisma.quizQuestion.findUnique({
       where: { id: questionId },
-      include: { options: true },
+      include: {
+        options: true,
+        chapter: {
+          include: {
+            questions: {
+              where: { isActive: true },
+              select: {
+                difficulty: true,
+                progress: {
+                  where: { userId: user.id, solved: true },
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!question || !question.isActive) {
       throw new NotFoundException("Question not found");
+    }
+
+    const levels = this.computeLevels(
+      question.chapter.questions.map((q) => ({
+        difficulty: q.difficulty,
+        solved: q.progress.length > 0,
+      })),
+    );
+    const levelUnlocked =
+      levels.find((level) => level.difficulty === question.difficulty)
+        ?.unlocked ?? false;
+    if (!levelUnlocked) {
+      throw new BadRequestException("This level is locked");
     }
 
     const validIds = new Set(question.options.map((o) => o.id));
@@ -197,7 +273,10 @@ export class TrainingQuizService {
       alreadySolved: wasAlreadySolved,
       explanation:
         locale === "EN" ? question.explanationEn : question.explanationFr,
-      correctOptionIds,
+      // Easy/medium never reveal which option was correct on a miss — the
+      // learner is redirected to the app instead of being handed the answer.
+      correctOptionIds:
+        correct || question.difficulty === "HARD" ? correctOptionIds : [],
       attemptsCount,
     };
   }

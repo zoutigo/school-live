@@ -3078,6 +3078,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.composer.addOption": "Ajouter une option",
     "feed.composer.attachmentsAriaAdd":
       "Ajouter des pieces jointes a la publication",
+    "feed.composer.attachmentUploading": "Envoi en cours...",
+    "feed.composer.attachmentUploadFailed": "Envoi echoue",
     "feed.composer.featuredDaysLabel": "Mise en avant (jours)",
     "feed.composer.featuredNone": "Aucune",
     "feed.composer.featured1Day": "1 jour",
@@ -5456,6 +5458,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.chapter.difficulty.easy": "Facile",
     "trainingQuiz.chapter.difficulty.medium": "Moyen",
     "trainingQuiz.chapter.difficulty.hard": "Difficile",
+    "trainingQuiz.chapter.levelProgress": "{solved}/{total}",
+    "trainingQuiz.chapter.levelLocked":
+      "Terminez le niveau précédent pour débloquer celui-ci.",
+    "trainingQuiz.chapter.findAnswerInApp":
+      "Repérez la réponse dans l'application, puis revenez retenter une fois le compte à rebours terminé.",
+    "trainingQuiz.chapter.deepLinkVisited": "Application consultée",
+    "trainingQuiz.chapter.retryNeedsDeepLinkHint":
+      "Consultez d'abord l'application pour débloquer Réessayer.",
     "trainingQuiz.chapter.completeTitle": "Chapitre terminé !",
     "trainingQuiz.chapter.completeSubtitle":
       "Vous avez répondu à toutes les missions de ce chapitre.",
@@ -8404,6 +8414,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.composer.pollOptionPlaceholder": "Option {number}",
     "feed.composer.addOption": "Add an option",
     "feed.composer.attachmentsAriaAdd": "Add attachments to the post",
+    "feed.composer.attachmentUploading": "Uploading...",
+    "feed.composer.attachmentUploadFailed": "Upload failed",
     "feed.composer.featuredDaysLabel": "Highlight (days)",
     "feed.composer.featuredNone": "None",
     "feed.composer.featured1Day": "1 day",
@@ -10673,6 +10685,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.chapter.difficulty.easy": "Easy",
     "trainingQuiz.chapter.difficulty.medium": "Medium",
     "trainingQuiz.chapter.difficulty.hard": "Hard",
+    "trainingQuiz.chapter.levelProgress": "{solved}/{total}",
+    "trainingQuiz.chapter.levelLocked":
+      "Finish the previous level to unlock this one.",
+    "trainingQuiz.chapter.findAnswerInApp":
+      "Find the answer in the app, then come back to try again once the countdown ends.",
+    "trainingQuiz.chapter.deepLinkVisited": "App visited",
+    "trainingQuiz.chapter.retryNeedsDeepLinkHint":
+      "Check the app first to unlock Try again.",
     "trainingQuiz.chapter.completeTitle": "Chapter complete!",
     "trainingQuiz.chapter.completeSubtitle":
       "You've answered every mission in this chapter.",
