@@ -33,7 +33,8 @@ export type QuizQuestion = {
   type: QuizQuestionType;
   difficulty: QuizDifficulty;
   text: string;
-  hint: string;
+  // Only populated for HARD questions.
+  hint: string | null;
   imageUrl: string | null;
   deepLinkRoute: string | null;
   solved: boolean;
@@ -41,7 +42,15 @@ export type QuizQuestion = {
   options: QuizAnswerOption[];
 };
 
+export type QuizLevel = {
+  difficulty: QuizDifficulty;
+  totalQuestions: number;
+  solvedQuestions: number;
+  unlocked: boolean;
+};
+
 export type QuizChapterDetail = QuizChapterSummary & {
+  levels: QuizLevel[];
   questions: QuizQuestion[];
 };
 

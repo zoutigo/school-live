@@ -23,7 +23,8 @@ export type QuizQuestionPublic = {
   type: "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE";
   difficulty: "EASY" | "MEDIUM" | "HARD";
   text: string;
-  hint: string;
+  // Only populated for HARD questions — easy/medium levels don't offer a hint.
+  hint: string | null;
   imageUrl: string | null;
   deepLinkRoute: string | null;
   solved: boolean;
@@ -31,7 +32,15 @@ export type QuizQuestionPublic = {
   options: QuizAnswerOptionPublic[];
 };
 
+export type QuizLevelSummary = {
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  totalQuestions: number;
+  solvedQuestions: number;
+  unlocked: boolean;
+};
+
 export type QuizChapterDetail = QuizChapterSummary & {
+  levels: QuizLevelSummary[];
   questions: QuizQuestionPublic[];
 };
 
@@ -39,6 +48,8 @@ export type QuizAnswerResult = {
   correct: boolean;
   alreadySolved: boolean;
   explanation: string;
+  // Only populated on a HARD question — easy/medium never reveal which
+  // option was correct on a wrong attempt.
   correctOptionIds: string[];
   attemptsCount: number;
 };

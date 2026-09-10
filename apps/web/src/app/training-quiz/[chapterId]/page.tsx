@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, Lightbulb, PartyPopper, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Lightbulb,
+  Lock,
+  PartyPopper,
+  X,
+} from "lucide-react";
 import { AppShell } from "../../../components/layout/app-shell";
 import { Button } from "../../../components/ui/button";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -16,6 +23,8 @@ import {
   type QuizQuestion,
 } from "../../../components/training-quiz/training-quiz-api";
 import { TrainingQuizIcon } from "../../../components/training-quiz/training-quiz-icon";
+
+const DIFFICULTY_ORDER: QuizDifficulty[] = ["EASY", "MEDIUM", "HARD"];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -101,6 +110,67 @@ function MissionTrail({
   );
 }
 
+function LevelTabs({
+  levels,
+  currentLevel,
+  onSelect,
+  t,
+}: {
+  levels: QuizChapterDetail["levels"];
+  currentLevel: QuizDifficulty;
+  onSelect: (difficulty: QuizDifficulty) => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 overflow-x-auto"
+      role="tablist"
+      aria-label={t("trainingQuiz.chapter.difficulty.easy")}
+    >
+      {levels.map((level) => {
+        if (level.totalQuestions === 0) return null;
+        const isCurrent = level.difficulty === currentLevel;
+        const difficultyKey = level.difficulty.toLowerCase();
+        return (
+          <button
+            key={level.difficulty}
+            type="button"
+            role="tab"
+            aria-selected={isCurrent}
+            disabled={!level.unlocked}
+            title={
+              level.unlocked ? undefined : t("trainingQuiz.chapter.levelLocked")
+            }
+            onClick={() => level.unlocked && onSelect(level.difficulty)}
+            className={[
+              "flex shrink-0 items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors duration-200 motion-reduce:transition-none",
+              !level.unlocked
+                ? "cursor-not-allowed border-border bg-background text-text-secondary/50"
+                : isCurrent
+                  ? "border-primary bg-primary text-white"
+                  : "border-border bg-surface text-text-secondary hover:border-primary/60",
+            ].join(" ")}
+          >
+            {level.unlocked ? (
+              level.solvedQuestions === level.totalQuestions ? (
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : null
+            ) : (
+              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {t(`trainingQuiz.chapter.difficulty.${difficultyKey}`)}
+            <span className="font-normal opacity-80">
+              {t("trainingQuiz.chapter.levelProgress")
+                .replace("{solved}", String(level.solvedQuestions))
+                .replace("{total}", String(level.totalQuestions))}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TrainingQuizChapterPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -113,6 +183,7 @@ export default function TrainingQuizChapterPage() {
   const [chapter, setChapter] = useState<QuizChapterDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [currentLevel, setCurrentLevel] = useState<QuizDifficulty>("EASY");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<QuizAnswerResult | null>(null);
@@ -121,6 +192,7 @@ export default function TrainingQuizChapterPage() {
   const [hintOpen, setHintOpen] = useState(false);
   const [attemptRound, setAttemptRound] = useState(0);
   const [cooldownSecondsLeft, setCooldownSecondsLeft] = useState(0);
+  const [hasVisitedDeepLink, setHasVisitedDeepLink] = useState(false);
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const boot = useCallback(async () => {
@@ -149,7 +221,20 @@ export default function TrainingQuizChapterPage() {
           : Promise.resolve(undefined),
       ]);
       setChapter(data);
-      const firstUnsolved = data.questions.findIndex((q) => !q.solved);
+
+      const firstUnfinishedLevel =
+        data.levels.find(
+          (level) =>
+            level.unlocked &&
+            level.totalQuestions > 0 &&
+            level.solvedQuestions < level.totalQuestions,
+        ) ?? data.levels.find((level) => level.totalQuestions > 0);
+      const level = firstUnfinishedLevel?.difficulty ?? "EASY";
+      setCurrentLevel(level);
+      const levelQuestions = data.questions.filter(
+        (q) => q.difficulty === level,
+      );
+      const firstUnsolved = levelQuestions.findIndex((q) => !q.solved);
       setCurrentIndex(firstUnsolved === -1 ? 0 : firstUnsolved);
     } catch {
       setError(t("trainingQuiz.errors.load"));
@@ -168,9 +253,20 @@ export default function TrainingQuizChapterPage() {
     };
   }, []);
 
-  const question = chapter?.questions[currentIndex] ?? null;
-  const isLast = chapter
-    ? currentIndex === chapter.questions.length - 1
+  const levelQuestions = useMemo(
+    () => chapter?.questions.filter((q) => q.difficulty === currentLevel) ?? [],
+    [chapter, currentLevel],
+  );
+  const question = levelQuestions[currentIndex] ?? null;
+  const isLastInLevel = currentIndex === levelQuestions.length - 1;
+  const isLastLevelWithQuestions = chapter
+    ? DIFFICULTY_ORDER.filter(
+        (d) => chapter.levels.find((l) => l.difficulty === d)?.totalQuestions,
+      ).at(-1) === currentLevel
+    : true;
+  const isLast = isLastInLevel && isLastLevelWithQuestions;
+  const isEasyOrMedium = question
+    ? question.difficulty === "EASY" || question.difficulty === "MEDIUM"
     : false;
 
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "";
@@ -231,19 +327,37 @@ export default function TrainingQuizChapterPage() {
       const res = await submitAnswer(question.id, selected);
       setResult(res);
       if (res.correct) {
-        setChapter((prev) =>
-          prev
-            ? {
-                ...prev,
-                solvedQuestions: question.solved
-                  ? prev.solvedQuestions
-                  : prev.solvedQuestions + 1,
-                questions: prev.questions.map((q) =>
-                  q.id === question.id ? { ...q, solved: true } : q,
-                ),
-              }
-            : prev,
-        );
+        setChapter((prev) => {
+          if (!prev) return prev;
+          const questions = prev.questions.map((q) =>
+            q.id === question.id ? { ...q, solved: true } : q,
+          );
+          const levels: QuizChapterDetail["levels"] = [];
+          let previousLevelCleared = true;
+          for (const difficulty of DIFFICULTY_ORDER) {
+            const levelQs = questions.filter(
+              (q) => q.difficulty === difficulty,
+            );
+            const totalQuestions = levelQs.length;
+            const solvedQuestions = levelQs.filter((q) => q.solved).length;
+            levels.push({
+              difficulty,
+              totalQuestions,
+              solvedQuestions,
+              unlocked: previousLevelCleared,
+            });
+            previousLevelCleared =
+              totalQuestions > 0 && solvedQuestions === totalQuestions;
+          }
+          return {
+            ...prev,
+            solvedQuestions: question.solved
+              ? prev.solvedQuestions
+              : prev.solvedQuestions + 1,
+            questions,
+            levels,
+          };
+        });
       } else {
         if (res.attemptsCount >= 2) {
           setHintOpen(true);
@@ -261,6 +375,7 @@ export default function TrainingQuizChapterPage() {
     setHintOpen(false);
     setAttemptRound(0);
     setCooldownSecondsLeft(0);
+    setHasVisitedDeepLink(false);
     if (cooldownTimer.current) clearInterval(cooldownTimer.current);
   }
 
@@ -269,8 +384,15 @@ export default function TrainingQuizChapterPage() {
     resetQuestionState();
   }
 
+  function goToLevel(difficulty: QuizDifficulty) {
+    setCurrentLevel(difficulty);
+    setCurrentIndex(0);
+    resetQuestionState();
+  }
+
   function handleRetry() {
     if (cooldownSecondsLeft > 0) return;
+    if (isEasyOrMedium && !hasVisitedDeepLink) return;
     setResult(null);
     setSelected([]);
     setAttemptRound((prev) => prev + 1);
@@ -278,7 +400,16 @@ export default function TrainingQuizChapterPage() {
 
   function handleNext() {
     if (!chapter) return;
-    if (isLast) {
+    if (isLastInLevel) {
+      const nextLevel = DIFFICULTY_ORDER.slice(
+        DIFFICULTY_ORDER.indexOf(currentLevel) + 1,
+      ).find(
+        (d) => chapter.levels.find((l) => l.difficulty === d)?.totalQuestions,
+      );
+      if (nextLevel) {
+        goToLevel(nextLevel);
+        return;
+      }
       setFinished(true);
       return;
     }
@@ -383,15 +514,24 @@ export default function TrainingQuizChapterPage() {
               <p className="text-xs font-semibold text-text-secondary">
                 {t("trainingQuiz.chapter.missionLabel")
                   .replace("{current}", String(currentIndex + 1))
-                  .replace("{total}", String(chapter.questions.length))}
+                  .replace("{total}", String(levelQuestions.length))}
               </p>
             </div>
           </div>
         </div>
 
+        <div className="mt-3">
+          <LevelTabs
+            levels={chapter.levels}
+            currentLevel={currentLevel}
+            onSelect={goToLevel}
+            t={t}
+          />
+        </div>
+
         <div className="mt-2">
           <MissionTrail
-            questions={chapter.questions}
+            questions={levelQuestions}
             currentIndex={currentIndex}
             onSelect={(index) => goToIndex(index)}
           />
@@ -470,25 +610,27 @@ export default function TrainingQuizChapterPage() {
               })}
             </div>
 
-            <div className="mt-3">
-              {!result ? (
-                <button
-                  type="button"
-                  onClick={() => setHintOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-accent-dark hover:underline"
-                >
-                  <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
-                  {hintOpen
-                    ? t("trainingQuiz.chapter.hintHideCta")
-                    : t("trainingQuiz.chapter.hintShowCta")}
-                </button>
-              ) : null}
-              {hintOpen ? (
-                <p className="mt-1.5 rounded-card border border-warm-border bg-warm-surface px-3 py-2 text-xs text-text-secondary">
-                  {question.hint}
-                </p>
-              ) : null}
-            </div>
+            {question.difficulty === "HARD" && question.hint ? (
+              <div className="mt-3">
+                {!result ? (
+                  <button
+                    type="button"
+                    onClick={() => setHintOpen((prev) => !prev)}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-accent-dark hover:underline"
+                  >
+                    <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
+                    {hintOpen
+                      ? t("trainingQuiz.chapter.hintHideCta")
+                      : t("trainingQuiz.chapter.hintShowCta")}
+                  </button>
+                ) : null}
+                {hintOpen ? (
+                  <p className="mt-1.5 rounded-card border border-warm-border bg-warm-surface px-3 py-2 text-xs text-text-secondary">
+                    {question.hint}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {result ? (
               <div
@@ -508,9 +650,11 @@ export default function TrainingQuizChapterPage() {
                 </p>
                 {!result.correct ? (
                   <p className="mt-1 text-xs text-text-secondary">
-                    {result.attemptsCount >= 2
-                      ? t("trainingQuiz.chapter.hintAutoSuggest")
-                      : t("trainingQuiz.chapter.retryHint")}
+                    {isEasyOrMedium
+                      ? t("trainingQuiz.chapter.findAnswerInApp")
+                      : result.attemptsCount >= 2
+                        ? t("trainingQuiz.chapter.hintAutoSuggest")
+                        : t("trainingQuiz.chapter.retryHint")}
                   </p>
                 ) : null}
 
@@ -525,7 +669,10 @@ export default function TrainingQuizChapterPage() {
                     <Button
                       variant="secondary"
                       onClick={handleRetry}
-                      disabled={cooldownSecondsLeft > 0}
+                      disabled={
+                        cooldownSecondsLeft > 0 ||
+                        (isEasyOrMedium && !hasVisitedDeepLink)
+                      }
                       className="w-full sm:w-auto"
                     >
                       {cooldownSecondsLeft > 0
@@ -538,20 +685,39 @@ export default function TrainingQuizChapterPage() {
                   )}
                   {resolvedDeepLink ? (
                     <Button
-                      variant="ghost"
-                      onClick={() =>
+                      variant={
+                        !result.correct && isEasyOrMedium ? "primary" : "ghost"
+                      }
+                      onClick={() => {
+                        setHasVisitedDeepLink(true);
                         window.open(
                           `${schoolBase}${resolvedDeepLink}`,
                           "_blank",
                           "noopener,noreferrer",
-                        )
-                      }
+                        );
+                      }}
                       className="w-full sm:w-auto"
                     >
-                      {t("trainingQuiz.chapter.deepLinkCta")}
+                      {hasVisitedDeepLink ? (
+                        <Check
+                          className="mr-1.5 h-4 w-4 shrink-0"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      {hasVisitedDeepLink
+                        ? t("trainingQuiz.chapter.deepLinkVisited")
+                        : t("trainingQuiz.chapter.deepLinkCta")}
                     </Button>
                   ) : null}
                 </div>
+                {!result.correct &&
+                isEasyOrMedium &&
+                cooldownSecondsLeft === 0 &&
+                !hasVisitedDeepLink ? (
+                  <p className="mt-2 text-xs text-text-secondary">
+                    {t("trainingQuiz.chapter.retryNeedsDeepLinkHint")}
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div className="mt-3">

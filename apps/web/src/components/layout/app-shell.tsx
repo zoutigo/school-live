@@ -17,8 +17,17 @@ import {
 } from "../../lib/role-view";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useLocaleStore } from "../../i18n/locale-store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
+// Account preference wins over the device locale, mirrors
+// scolive-mobile's src/store/auth.store.ts#applyAccountLocale — kept in
+// sync on every /me load, not just from the account settings screen.
+function applyAccountLocale(preferredLocale?: "FR" | "EN" | null): void {
+  if (!preferredLocale) return;
+  useLocaleStore.getState().setLocale(preferredLocale === "EN" ? "en" : "fr");
+}
 
 type MeResponse = {
   firstName: string;
@@ -27,6 +36,7 @@ type MeResponse = {
   activeRole?: Role | null;
   activeSchoolId?: string | null;
   isTester?: boolean;
+  preferredLocale?: "FR" | "EN" | null;
   platformRoles: Array<"SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT">;
   memberships: Array<{
     schoolId: string;
@@ -91,7 +101,9 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
         return;
       }
 
-      setMe((await response.json()) as MeResponse);
+      const payload = (await response.json()) as MeResponse;
+      setMe(payload);
+      applyAccountLocale(payload.preferredLocale);
     } catch {
       // Keep shell usable even when API is temporarily unreachable.
     }

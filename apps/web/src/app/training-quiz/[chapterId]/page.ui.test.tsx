@@ -5,8 +5,10 @@ import TrainingQuizChapterPage from "./page";
 const pushMock = vi.fn();
 const replaceMock = vi.fn();
 
+const routerMock = { push: pushMock, replace: replaceMock };
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock, replace: replaceMock }),
+  useRouter: () => routerMock,
   useParams: () => ({ chapterId: "chapter-1" }),
 }));
 
@@ -25,7 +27,43 @@ function jsonResponse(payload: unknown, status = 200) {
   );
 }
 
-const CHAPTER_DETAIL = {
+type Level = {
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  totalQuestions: number;
+  solvedQuestions: number;
+  unlocked: boolean;
+};
+
+function makeLevels(overrides: Partial<Record<Level["difficulty"], Level>>) {
+  const base: Record<Level["difficulty"], Level> = {
+    EASY: {
+      difficulty: "EASY",
+      totalQuestions: 0,
+      solvedQuestions: 0,
+      unlocked: true,
+    },
+    MEDIUM: {
+      difficulty: "MEDIUM",
+      totalQuestions: 0,
+      solvedQuestions: 0,
+      unlocked: false,
+    },
+    HARD: {
+      difficulty: "HARD",
+      totalQuestions: 0,
+      solvedQuestions: 0,
+      unlocked: false,
+    },
+  };
+  return ["EASY", "MEDIUM", "HARD"].map((d) => ({
+    ...base[d as Level["difficulty"]],
+    ...overrides[d as Level["difficulty"]],
+  }));
+}
+
+// Chapter made only of an EASY level (2 questions) — used to exercise the
+// easy/medium flow: no hint, no answer reveal, dual-condition retry gate.
+const EASY_CHAPTER = {
   id: "chapter-1",
   moduleKey: "discipline",
   order: 1,
@@ -36,6 +74,14 @@ const CHAPTER_DETAIL = {
   description: "desc",
   totalQuestions: 2,
   solvedQuestions: 0,
+  levels: makeLevels({
+    EASY: {
+      difficulty: "EASY",
+      totalQuestions: 2,
+      solvedQuestions: 0,
+      unlocked: true,
+    },
+  }),
   questions: [
     {
       id: "q1",
@@ -43,7 +89,7 @@ const CHAPTER_DETAIL = {
       type: "MCQ_SINGLE",
       difficulty: "EASY",
       text: "Où consultez-vous le comportement disciplinaire ?",
-      hint: "Ouvrez la fiche de votre enfant.",
+      hint: null,
       imageUrl: null,
       deepLinkRoute: "/children/{childId}/discipline",
       solved: false,
@@ -56,6 +102,86 @@ const CHAPTER_DETAIL = {
     {
       id: "q2",
       order: 2,
+      type: "MCQ_SINGLE",
+      difficulty: "EASY",
+      text: "Deuxième mission facile ?",
+      hint: null,
+      imageUrl: null,
+      deepLinkRoute: null,
+      solved: false,
+      attemptsCount: 0,
+      options: [
+        { id: "q2-correct", order: 1, text: "Bonne réponse" },
+        { id: "q2-wrong", order: 2, text: "Mauvaise réponse" },
+      ],
+    },
+  ],
+};
+
+// Chapter with EASY already cleared and one HARD question — used to
+// exercise the "advanced" flow: hint available, answer reveal, retry gated
+// only by the cooldown.
+const HARD_CHAPTER = {
+  id: "chapter-1",
+  moduleKey: "discipline",
+  order: 1,
+  icon: "ShieldCheck",
+  colorFrom: "#3DA5F5",
+  colorTo: "#207FD5",
+  title: "Discipline",
+  description: "desc",
+  totalQuestions: 1,
+  solvedQuestions: 0,
+  levels: makeLevels({
+    EASY: {
+      difficulty: "EASY",
+      totalQuestions: 1,
+      solvedQuestions: 1,
+      unlocked: true,
+    },
+    MEDIUM: {
+      difficulty: "MEDIUM",
+      totalQuestions: 1,
+      solvedQuestions: 1,
+      unlocked: true,
+    },
+    HARD: {
+      difficulty: "HARD",
+      totalQuestions: 1,
+      solvedQuestions: 0,
+      unlocked: true,
+    },
+  }),
+  questions: [
+    {
+      id: "qe",
+      order: 1,
+      type: "MCQ_SINGLE",
+      difficulty: "EASY",
+      text: "Question facile déjà résolue",
+      hint: null,
+      imageUrl: null,
+      deepLinkRoute: null,
+      solved: true,
+      attemptsCount: 1,
+      options: [{ id: "qe-correct", order: 1, text: "Réponse" }],
+    },
+    {
+      id: "qm",
+      order: 2,
+      type: "MCQ_SINGLE",
+      difficulty: "MEDIUM",
+      text: "Question moyenne déjà résolue",
+      hint: null,
+      imageUrl: null,
+      deepLinkRoute: null,
+      solved: true,
+      attemptsCount: 1,
+      options: [{ id: "qm-correct", order: 1, text: "Réponse" }],
+    },
+    {
+      id: "q2",
+      order: 3,
       type: "MCQ_SINGLE",
       difficulty: "HARD",
       text: "Deuxième mission ?",
@@ -73,7 +199,7 @@ const CHAPTER_DETAIL = {
 };
 
 function mockFetch({
-  chapter = CHAPTER_DETAIL,
+  chapter = EASY_CHAPTER,
   answerResult,
   linkedStudents = [{ id: "child-1" }],
 }: {
@@ -134,36 +260,127 @@ describe("TrainingQuizChapterPage", () => {
     expect(screen.getByText("Bien joué !")).toBeInTheDocument();
   });
 
-  it("shows incorrect feedback and allows retrying", async () => {
+  describe("easy/medium level", () => {
+    it("shows the explanation but never reveals which option was correct on a miss", async () => {
+      mockFetch({
+        answerResult: {
+          correct: false,
+          alreadySolved: false,
+          explanation: "Pas exactement.",
+          correctOptionIds: [],
+          attemptsCount: 1,
+        },
+      });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Onglet Discipline");
+      fireEvent.click(screen.getByText("Messagerie"));
+      fireEvent.click(screen.getByText("Valider"));
+
+      await screen.findByText("Pas tout à fait");
+      expect(screen.getByText("Pas exactement.")).toBeInTheDocument();
+      // The correct option never gets the "correct" green styling class.
+      const correctOptionButton = screen
+        .getByText("Onglet Discipline")
+        .closest("button");
+      expect(correctOptionButton?.className).not.toContain("bg-teal-surface");
+    });
+
+    it("never shows a hint button", async () => {
+      mockFetch();
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Onglet Discipline");
+      expect(screen.queryByText("Afficher un indice")).not.toBeInTheDocument();
+    });
+
+    it("keeps retry locked until both the deep link is visited and the cooldown ends", async () => {
+      mockFetch({
+        answerResult: {
+          correct: false,
+          alreadySolved: false,
+          explanation: "Pas exactement.",
+          correctOptionIds: [],
+          attemptsCount: 1,
+        },
+      });
+      const openMock = vi.fn();
+      vi.stubGlobal("open", openMock);
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Onglet Discipline");
+      fireEvent.click(screen.getByText("Messagerie"));
+      fireEvent.click(screen.getByText("Valider"));
+
+      await screen.findByText("Pas tout à fait");
+      expect(
+        screen.getByText(
+          "Repérez la réponse dans l'application, puis revenez retenter une fois le compte à rebours terminé.",
+        ),
+      ).toBeInTheDocument();
+
+      const retryButton = screen.getByText("Réessayer").closest("button");
+      expect(retryButton).toBeDisabled();
+
+      // Retrying while locked must not clear the result panel.
+      fireEvent.click(screen.getByText("Réessayer"));
+      expect(screen.getByText("Pas tout à fait")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Voir dans l'application"));
+      expect(openMock).toHaveBeenCalled();
+
+      const retryButtonAfterVisit = screen
+        .getByText("Réessayer")
+        .closest("button");
+      expect(retryButtonAfterVisit).not.toBeDisabled();
+
+      fireEvent.click(screen.getByText("Réessayer"));
+      expect(screen.queryByText("Pas tout à fait")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("hard level", () => {
+    it("shows a hint and reveals the correct option, with retry gated only by the cooldown", async () => {
+      mockFetch({
+        chapter: HARD_CHAPTER,
+        answerResult: {
+          correct: false,
+          alreadySolved: false,
+          explanation: "Pas exactement.",
+          correctOptionIds: ["q2-correct"],
+          attemptsCount: 1,
+        },
+      });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Deuxième mission ?");
+      expect(screen.getByText("Afficher un indice")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Mauvaise réponse"));
+      fireEvent.click(screen.getByText("Valider"));
+
+      await screen.findByText("Pas tout à fait");
+      const retryButton = screen.getByText("Réessayer").closest("button");
+      expect(retryButton).not.toBeDisabled();
+    });
+  });
+
+  it("opens the deep link in a new tab, keeping the quiz in place", async () => {
     mockFetch({
       answerResult: {
         correct: false,
         alreadySolved: false,
         explanation: "Pas exactement.",
-        correctOptionIds: ["opt-correct"],
+        correctOptionIds: [],
         attemptsCount: 1,
       },
     });
-    render(<TrainingQuizChapterPage />);
-
-    await screen.findByText("Onglet Discipline");
-    fireEvent.click(screen.getByText("Messagerie"));
-    fireEvent.click(screen.getByText("Valider"));
-
-    await screen.findByText("Pas tout à fait");
-    fireEvent.click(screen.getByText("Réessayer"));
-
-    expect(screen.queryByText("Pas tout à fait")).not.toBeInTheDocument();
-  });
-
-  it("opens the deep link in a new tab, keeping the quiz in place", async () => {
-    mockFetch();
     const openMock = vi.fn();
     vi.stubGlobal("open", openMock);
     render(<TrainingQuizChapterPage />);
 
     await screen.findByText("Onglet Discipline");
-    fireEvent.click(screen.getByText("Onglet Discipline"));
+    fireEvent.click(screen.getByText("Messagerie"));
     fireEvent.click(screen.getByText("Valider"));
 
     await screen.findByText("Voir dans l'application");
@@ -175,52 +392,101 @@ describe("TrainingQuizChapterPage", () => {
       "noopener,noreferrer",
     );
     expect(pushMock).not.toHaveBeenCalled();
-    expect(screen.getByText("Onglet Discipline")).toBeInTheDocument();
   });
 
   it("hides the deep-link CTA when the parent has no linked child yet", async () => {
-    mockFetch({ linkedStudents: [] });
-    render(<TrainingQuizChapterPage />);
-
-    await screen.findByText("Onglet Discipline");
-    fireEvent.click(screen.getByText("Onglet Discipline"));
-    fireEvent.click(screen.getByText("Valider"));
-
-    await screen.findByText("Bonne réponse !");
-    expect(
-      screen.queryByText("Voir dans l'application"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows a hint and reveals it automatically after a second wrong attempt", async () => {
     mockFetch({
+      linkedStudents: [],
       answerResult: {
         correct: false,
         alreadySolved: false,
         explanation: "Pas exactement.",
-        correctOptionIds: ["opt-correct"],
-        attemptsCount: 2,
+        correctOptionIds: [],
+        attemptsCount: 1,
       },
     });
     render(<TrainingQuizChapterPage />);
 
     await screen.findByText("Onglet Discipline");
-    expect(screen.getByText("Afficher un indice")).toBeInTheDocument();
-
     fireEvent.click(screen.getByText("Messagerie"));
     fireEvent.click(screen.getByText("Valider"));
 
     await screen.findByText("Pas tout à fait");
     expect(
-      screen.getByText("Ouvrez la fiche de votre enfant."),
-    ).toBeInTheDocument();
+      screen.queryByText("Voir dans l'application"),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the completion screen after the last mission", async () => {
+  it("unlocks and switches to the next level once the current one is cleared", async () => {
+    const chapter = {
+      ...EASY_CHAPTER,
+      totalQuestions: 2,
+      levels: makeLevels({
+        EASY: {
+          difficulty: "EASY",
+          totalQuestions: 1,
+          solvedQuestions: 0,
+          unlocked: true,
+        },
+        MEDIUM: {
+          difficulty: "MEDIUM",
+          totalQuestions: 1,
+          solvedQuestions: 0,
+          unlocked: false,
+        },
+      }),
+      questions: [
+        EASY_CHAPTER.questions[0],
+        {
+          id: "qm",
+          order: 2,
+          type: "MCQ_SINGLE",
+          difficulty: "MEDIUM",
+          text: "Question de niveau moyen",
+          hint: null,
+          imageUrl: null,
+          deepLinkRoute: null,
+          solved: false,
+          attemptsCount: 0,
+          options: [{ id: "qm-correct", order: 1, text: "Réponse moyenne" }],
+        },
+      ],
+    };
+    mockFetch({ chapter });
+    render(<TrainingQuizChapterPage />);
+
+    await screen.findByText(
+      "Où consultez-vous le comportement disciplinaire ?",
+    );
+    // MEDIUM tab is locked before EASY is cleared.
+    expect(screen.getByRole("tab", { name: /Moyen/ })).toBeDisabled();
+
+    fireEvent.click(screen.getByText("Onglet Discipline"));
+    fireEvent.click(screen.getByText("Valider"));
+
+    await screen.findByText("Bonne réponse !");
+    fireEvent.click(screen.getByText("Mission suivante"));
+
+    await screen.findByText("Question de niveau moyen");
+    expect(
+      screen.queryByText("Où consultez-vous le comportement disciplinaire ?"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the completion screen after the last mission of a single-level chapter", async () => {
     mockFetch({
       chapter: {
-        ...CHAPTER_DETAIL,
-        questions: [CHAPTER_DETAIL.questions[0]],
+        ...EASY_CHAPTER,
+        totalQuestions: 1,
+        levels: makeLevels({
+          EASY: {
+            difficulty: "EASY",
+            totalQuestions: 1,
+            solvedQuestions: 0,
+            unlocked: true,
+          },
+        }),
+        questions: [EASY_CHAPTER.questions[0]],
       },
     });
     render(<TrainingQuizChapterPage />);

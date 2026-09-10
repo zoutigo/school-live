@@ -345,6 +345,602 @@ const QUESTIONS = [
       },
     ],
   },
+  {
+    order: 11,
+    type: "TRUE_FALSE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Vous pouvez consulter les notes de votre enfant à tout moment depuis l'application.",
+    textEn: "You can check your child's grades at any time from the app.",
+    hintFr: "Il suffit d'ouvrir la fiche de l'enfant.",
+    hintEn: "Just open the child's profile.",
+    explanationFr:
+      "Les notes sont consultables à tout moment depuis la fiche de l'enfant, dès qu'elles sont saisies par l'enseignant.",
+    explanationEn:
+      "Grades are viewable at any time from the child's profile, as soon as the teacher enters them.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 12,
+    type: "MCQ_SINGLE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr: 'Que retrouve-t-on dans l\'onglet "Evaluations" ?',
+    textEn: 'What do you find in the "Evaluations" tab?',
+    hintFr: "C'est le premier onglet du module Notes.",
+    hintEn: "It's the first tab of the Grades module.",
+    explanationFr:
+      "La liste de toutes les évaluations de l'enfant, avec la note obtenue à chacune.",
+    explanationEn:
+      "The list of every evaluation the child took, with the grade obtained on each.",
+    options: [
+      {
+        textFr: "La liste de toutes les évaluations de l'enfant",
+        textEn: "The list of every evaluation the child took",
+        isCorrect: true,
+      },
+      {
+        textFr: "Uniquement l'emploi du temps",
+        textEn: "Only the timetable",
+        isCorrect: false,
+      },
+      {
+        textFr: "La liste des absences",
+        textEn: "The list of absences",
+        isCorrect: false,
+      },
+      {
+        textFr: "Les messages de l'enseignant",
+        textEn: "The teacher's messages",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 13,
+    type: "TRUE_FALSE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr: "Chaque évaluation affiche la note obtenue par votre enfant.",
+    textEn: "Every evaluation shows the grade your child obtained.",
+    hintFr: "C'est l'information principale de chaque ligne.",
+    hintEn: "It's the main piece of information on each row.",
+    explanationFr:
+      "La note obtenue est l'information centrale affichée pour chaque évaluation.",
+    explanationEn:
+      "The grade obtained is the central piece of information shown for each evaluation.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 14,
+    type: "MCQ_SINGLE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr: "Où voir en un coup d'œil la moyenne générale de votre enfant ?",
+    textEn: "Where do you see your child's overall average at a glance?",
+    hintFr: "Un onglet porte exactement ce nom.",
+    hintEn: "A tab is named exactly that.",
+    explanationFr:
+      'Dans l\'onglet "Moyennes", qui centralise toutes les moyennes par matière.',
+    explanationEn:
+      'In the "Averages" tab, which centralises every subject\'s average.',
+    options: [
+      {
+        textFr: "Dans l'onglet Moyennes",
+        textEn: "In the Averages tab",
+        isCorrect: true,
+      },
+      {
+        textFr: "Dans l'onglet Evaluations",
+        textEn: "In the Evaluations tab",
+        isCorrect: false,
+      },
+      {
+        textFr: "Dans la messagerie",
+        textEn: "In messaging",
+        isCorrect: false,
+      },
+      {
+        textFr: "Ce n'est pas disponible",
+        textEn: "It isn't available",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 15,
+    type: "TRUE_FALSE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "L'onglet Graphiques affiche l'évolution des notes matière par matière.",
+    textEn: "The Charts tab shows grade trends subject by subject.",
+    hintFr:
+      "C'est une vue visuelle, complémentaire au tableau des évaluations.",
+    hintEn: "It's a visual view, complementary to the evaluations table.",
+    explanationFr:
+      "L'onglet Graphiques trace l'évolution des notes de l'élève, matière par matière.",
+    explanationEn:
+      "The Charts tab plots the student's grade trends, subject by subject.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 16,
+    type: "MCQ_SINGLE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "À qui appartient la responsabilité de saisir les notes dans l'application ?",
+    textEn: "Whose responsibility is it to enter grades in the app?",
+    hintFr: "Ce sont les mêmes personnes qui font passer les évaluations.",
+    hintEn: "It's the same people who give the evaluations.",
+    explanationFr:
+      "Aux enseignants, qui saisissent les notes de leurs évaluations.",
+    explanationEn: "To teachers, who enter the grades for their evaluations.",
+    options: [
+      { textFr: "Aux enseignants", textEn: "To teachers", isCorrect: true },
+      { textFr: "Aux parents", textEn: "To parents", isCorrect: false },
+      {
+        textFr: "À l'élève lui-même",
+        textEn: "To the student themselves",
+        isCorrect: false,
+      },
+      {
+        textFr: "À un algorithme automatique",
+        textEn: "To an automatic algorithm",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 17,
+    type: "TRUE_FALSE",
+    difficulty: "EASY",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Vous pouvez modifier une note affichée si vous pensez qu'elle est fausse.",
+    textEn: "You can edit a displayed grade if you think it's wrong.",
+    hintFr: "Le parent consulte, il ne modifie pas les notes.",
+    hintEn: "Parents view grades, they don't edit them.",
+    explanationFr:
+      "Non, seul l'enseignant peut corriger une note. Le parent doit le contacter via la messagerie.",
+    explanationEn:
+      "No, only the teacher can correct a grade. The parent should contact them through messaging.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: false },
+      { textFr: "Faux", textEn: "False", isCorrect: true },
+    ],
+  },
+  {
+    order: 18,
+    type: "MCQ_SINGLE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/messagerie",
+    textFr: "Que faire si vous pensez qu'une note affichée est incorrecte ?",
+    textEn: "What should you do if you think a displayed grade is incorrect?",
+    hintFr:
+      "Le canal direct avec l'enseignant est ailleurs dans l'application.",
+    hintEn: "The direct channel to the teacher is elsewhere in the app.",
+    explanationFr:
+      "Contacter l'enseignant via la messagerie pour vérifier : le parent ne peut pas corriger une note lui-même.",
+    explanationEn:
+      "Contact the teacher through messaging to check: a parent can't correct a grade themselves.",
+    options: [
+      {
+        textFr: "Contacter l'enseignant via la messagerie pour vérifier",
+        textEn: "Contact the teacher through messaging to check",
+        isCorrect: true,
+      },
+      {
+        textFr: "La corriger vous-même dans l'application",
+        textEn: "Correct it yourself in the app",
+        isCorrect: false,
+      },
+      {
+        textFr: "Ignorer, ce n'est pas grave",
+        textEn: "Ignore it, it's not a big deal",
+        isCorrect: false,
+      },
+      {
+        textFr: "Attendre le prochain conseil de classe",
+        textEn: "Wait for the next class council",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 19,
+    type: "TRUE_FALSE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "La moyenne de classe affichée sur une évaluation permet de situer le niveau de votre enfant sans connaître les notes individuelles des autres élèves.",
+    textEn:
+      "The class average shown on an evaluation lets you place your child's level without seeing other students' individual grades.",
+    hintFr:
+      "L'application ne révèle jamais le détail des notes des autres élèves.",
+    hintEn: "The app never reveals other students' individual grades.",
+    explanationFr:
+      "Vrai : seuls des chiffres agrégés (moyenne, min, max) sont montrés, jamais les notes individuelles des autres élèves.",
+    explanationEn:
+      "True: only aggregate figures (average, min, max) are shown, never other students' individual grades.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 20,
+    type: "MCQ_SINGLE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Pourquoi une note formative n'apparaît-elle pas dans le calcul de la moyenne de séquence ?",
+    textEn:
+      "Why doesn't a formative grade appear in the sequence average calculation?",
+    hintFr: "Repensez à son rôle : informer, pas évaluer officiellement.",
+    hintEn: "Think about its role: to inform, not to officially grade.",
+    explanationFr:
+      "Parce qu'elle sert uniquement d'indicateur de progression, pas d'évaluation notée qui compte officiellement.",
+    explanationEn:
+      "Because it's only a progress indicator, not an officially graded evaluation.",
+    options: [
+      {
+        textFr: "Parce qu'elle sert uniquement d'indicateur de progression",
+        textEn: "Because it's only a progress indicator",
+        isCorrect: true,
+      },
+      {
+        textFr: "Parce que c'est une erreur de l'application",
+        textEn: "Because it's an app bug",
+        isCorrect: false,
+      },
+      {
+        textFr: "Parce qu'elle est toujours supérieure à la moyenne",
+        textEn: "Because it's always above average",
+        isCorrect: false,
+      },
+      {
+        textFr: "Parce que seuls les parents la voient",
+        textEn: "Because only parents can see it",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 21,
+    type: "MCQ_SINGLE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Quel onglet permet de comparer les moyennes de plusieurs matières entre elles ?",
+    textEn:
+      "Which tab lets you compare the averages of several subjects with each other?",
+    hintFr: "Il liste toutes les matières côte à côte.",
+    hintEn: "It lists every subject side by side.",
+    explanationFr:
+      "L'onglet Moyennes liste toutes les matières avec leur moyenne, ce qui permet de les comparer directement.",
+    explanationEn:
+      "The Averages tab lists every subject with its average, letting you compare them directly.",
+    options: [
+      { textFr: "Moyennes", textEn: "Averages", isCorrect: true },
+      { textFr: "Evaluations", textEn: "Evaluations", isCorrect: false },
+      {
+        textFr: "Graphiques uniquement",
+        textEn: "Charts only",
+        isCorrect: false,
+      },
+      {
+        textFr: "Aucun, il faut les additionner soi-même",
+        textEn: "None, you have to add them up yourself",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 22,
+    type: "TRUE_FALSE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Les notes formatives restent visibles dans l'onglet Evaluations même si elles ne comptent pas dans la moyenne.",
+    textEn:
+      "Formative grades stay visible in the Evaluations tab even though they don't count toward the average.",
+    hintFr: "Elles sont marquées d'un badge distinct, pas masquées.",
+    hintEn: "They're marked with a distinct badge, not hidden.",
+    explanationFr:
+      'Vrai : elles restent affichées avec un badge "formative", elles sont juste exclues du calcul.',
+    explanationEn:
+      'True: they stay displayed with a "formative" badge, they\'re just excluded from the calculation.',
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 23,
+    type: "MCQ_SINGLE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Sur quelle période porte la moyenne affichée dans l'onglet Moyennes ?",
+    textEn: "What period does the average shown in the Averages tab cover?",
+    hintFr: "Elle se recalcule à chaque nouvelle période.",
+    hintEn: "It's recalculated at each new period.",
+    explanationFr:
+      "La séquence ou période en cours, pas l'ensemble de la scolarité.",
+    explanationEn:
+      "The current sequence or period, not the child's whole schooling.",
+    options: [
+      {
+        textFr: "La séquence ou période en cours",
+        textEn: "The current sequence or period",
+        isCorrect: true,
+      },
+      {
+        textFr: "Toute la scolarité de l'enfant",
+        textEn: "The child's whole schooling",
+        isCorrect: false,
+      },
+      {
+        textFr: "La semaine en cours",
+        textEn: "The current week",
+        isCorrect: false,
+      },
+      {
+        textFr: "Elle n'est jamais précisée",
+        textEn: "It's never specified",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 24,
+    type: "TRUE_FALSE",
+    difficulty: "MEDIUM",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Un enseignant peut ajouter un commentaire à une évaluation, visible par le parent.",
+    textEn:
+      "A teacher can add a comment to an evaluation, visible to the parent.",
+    hintFr:
+      "La fiche détaillée d'une évaluation ne contient pas que des chiffres.",
+    hintEn: "An evaluation's detail card isn't only numbers.",
+    explanationFr:
+      "Vrai : un commentaire de l'enseignant peut accompagner l'évaluation, visible sur sa fiche détaillée.",
+    explanationEn:
+      "True: a teacher's comment can accompany the evaluation, visible on its detail card.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 25,
+    type: "MCQ_SINGLE",
+    difficulty: "HARD",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Comment interpréter un écart négatif affiché à côté de la note de votre enfant ?",
+    textEn:
+      "How should you interpret a negative delta shown next to your child's grade?",
+    hintFr:
+      "L'écart se calcule toujours par rapport à la moyenne de la classe.",
+    hintEn: "The delta is always computed against the class average.",
+    explanationFr:
+      "Sa note est en dessous de la moyenne de la classe sur cette évaluation précise.",
+    explanationEn:
+      "Their grade is below the class average on that specific evaluation.",
+    options: [
+      {
+        textFr:
+          "Sa note est en dessous de la moyenne de la classe sur cette évaluation",
+        textEn: "Their grade is below the class average on this evaluation",
+        isCorrect: true,
+      },
+      {
+        textFr: "Il y a une erreur de saisie",
+        textEn: "There's a data entry mistake",
+        isCorrect: false,
+      },
+      {
+        textFr: "La note va être recalculée automatiquement",
+        textEn: "The grade will be recalculated automatically",
+        isCorrect: false,
+      },
+      {
+        textFr: "Cela concerne une autre matière",
+        textEn: "It relates to a different subject",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 26,
+    type: "MCQ_MULTI",
+    difficulty: "HARD",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Quels éléments influencent la moyenne d'une matière affichée dans l'onglet Moyennes ? (plusieurs réponses)",
+    textEn:
+      "Which elements influence a subject's average shown in the Averages tab? (select all that apply)",
+    hintFr:
+      "Repensez à ce qui compte réellement, et à ce qui n'est qu'indicatif.",
+    hintEn: "Think about what actually counts, and what's only indicative.",
+    explanationFr:
+      "Les notes non-formatives et leur coefficient influencent la moyenne — jamais les notes formatives ni vos échanges avec l'enseignant.",
+    explanationEn:
+      "Non-formative grades and their coefficient influence the average — never formative grades or your exchanges with the teacher.",
+    options: [
+      {
+        textFr: "Les notes non-formatives de la période",
+        textEn: "The period's non-formative grades",
+        isCorrect: true,
+      },
+      {
+        textFr: "Le coefficient de chaque évaluation",
+        textEn: "Each evaluation's coefficient",
+        isCorrect: true,
+      },
+      {
+        textFr: "Les notes formatives",
+        textEn: "Formative grades",
+        isCorrect: false,
+      },
+      {
+        textFr: "Le nombre de messages échangés avec l'enseignant",
+        textEn: "The number of messages exchanged with the teacher",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 27,
+    type: "TRUE_FALSE",
+    difficulty: "HARD",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "La carte \"Point de vigilance\" peut changer de matière d'une période à l'autre.",
+    textEn:
+      'The "Subject to watch" card can change subject from one period to the next.',
+    hintFr: "Elle se recalcule à partir des moyennes de la période en cours.",
+    hintEn: "It's recalculated from the current period's averages.",
+    explanationFr:
+      "Vrai : elle reflète la matière la plus faible de la période en cours, qui peut varier au fil de l'année.",
+    explanationEn:
+      "True: it reflects the weakest subject of the current period, which can vary through the year.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
+  {
+    order: 28,
+    type: "MCQ_SINGLE",
+    difficulty: "HARD",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Pourquoi le module propose-t-il à la fois des notes détaillées et des graphiques plutôt qu'une seule liste ?",
+    textEn:
+      "Why does the module offer both detailed grades and charts rather than a single list?",
+    hintFr: "Chaque vue répond à un besoin différent.",
+    hintEn: "Each view answers a different need.",
+    explanationFr:
+      "Pour repérer aussi bien le détail d'une évaluation précise que la tendance globale dans le temps.",
+    explanationEn:
+      "To spot both the detail of a specific evaluation and the overall trend over time.",
+    options: [
+      {
+        textFr:
+          "Pour repérer aussi bien le détail que la tendance globale dans le temps",
+        textEn: "To see both the detail and the overall trend over time",
+        isCorrect: true,
+      },
+      {
+        textFr: "C'est purement décoratif",
+        textEn: "It's purely decorative",
+        isCorrect: false,
+      },
+      {
+        textFr: "Les graphiques remplacent les notes détaillées",
+        textEn: "Charts replace detailed grades",
+        isCorrect: false,
+      },
+      {
+        textFr: "Pour ralentir le chargement de la page",
+        textEn: "To slow down the page loading",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 29,
+    type: "MCQ_SINGLE",
+    difficulty: "HARD",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      "Si votre enfant n'a aucune évaluation notée sur une matière, que se passe-t-il dans l'onglet Moyennes ?",
+    textEn:
+      "If your child has no graded evaluation in a subject, what happens in the Averages tab?",
+    hintFr: "Sans note, il n'y a rien à calculer.",
+    hintEn: "With no grade, there's nothing to compute.",
+    explanationFr:
+      "Aucune moyenne n'est calculée pour cette matière tant qu'il n'y a pas de note.",
+    explanationEn:
+      "No average is computed for that subject until there is a grade.",
+    options: [
+      {
+        textFr: "Aucune moyenne n'est calculée tant qu'il n'y a pas de note",
+        textEn: "No average is computed until there is a grade",
+        isCorrect: true,
+      },
+      {
+        textFr: "Une moyenne de 10/20 par défaut s'affiche",
+        textEn: "A default 10/20 average is shown",
+        isCorrect: false,
+      },
+      {
+        textFr: "La matière disparaît complètement de l'application",
+        textEn: "The subject disappears from the app entirely",
+        isCorrect: false,
+      },
+      {
+        textFr: "Une erreur bloque l'application",
+        textEn: "An error blocks the app",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    order: 30,
+    type: "TRUE_FALSE",
+    difficulty: "HARD",
+    image: null,
+    deepLinkRoute: "/children/{childId}/notes",
+    textFr:
+      'Comparer la carte "Matière forte" et la carte "Point de vigilance" aide à cibler où concentrer le soutien scolaire.',
+    textEn:
+      'Comparing the "Strong subject" and "Subject to watch" cards helps target where to focus academic support.',
+    hintFr: "Ce sont deux repères complémentaires, pas juste décoratifs.",
+    hintEn: "They are two complementary landmarks, not just decorative.",
+    explanationFr:
+      "Vrai : ces deux cartes donnent en un coup d'œil les points forts et les points à travailler.",
+    explanationEn:
+      "True: these two cards give an at-a-glance view of strengths and areas to work on.",
+    options: [
+      { textFr: "Vrai", textEn: "True", isCorrect: true },
+      { textFr: "Faux", textEn: "False", isCorrect: false },
+    ],
+  },
 ];
 
 async function main() {

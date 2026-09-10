@@ -6,7 +6,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUrl,
   Max,
   MaxLength,
   Min,
@@ -23,7 +22,7 @@ class CreateFeedPostAttachmentDto {
   fileName!: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   fileUrl?: string;
 
   @IsOptional()
