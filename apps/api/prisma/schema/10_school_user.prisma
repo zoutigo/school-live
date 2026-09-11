@@ -129,6 +129,7 @@ model User {
   studentTermReportEntriesAuthored StudentTermReportEntry[] @relation("StudentTermReportEntryUpdatedBy")
   teachingAssignments TeacherClassSubject[]
   quizProgress        QuizUserQuestionProgress[]
+  quizUserLevelIntroSeens QuizUserLevelIntroSeen[]
   refreshTokens      RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   recoveryAnswers    UserRecoveryAnswer[]

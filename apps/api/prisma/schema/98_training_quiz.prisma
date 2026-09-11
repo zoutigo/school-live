@@ -19,16 +19,16 @@ enum QuizStage {
 // rôle donné. Les questions/réponses sont identiques pour tous les users
 // d'un même rôle et maintenues manuellement (seeds), pas via back-office.
 model QuizChapter {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   moduleKey   String
   role        AppRole
   order       Int
-  isActive    Boolean  @default(true)
-  needsReview Boolean  @default(false)
+  isActive    Boolean @default(true)
+  needsReview Boolean @default(false)
 
-  icon        String
-  colorFrom   String
-  colorTo     String
+  icon      String
+  colorFrom String
+  colorTo   String
 
   titleFr       String
   titleEn       String
@@ -36,22 +36,58 @@ model QuizChapter {
   descriptionEn String
 
   questions QuizQuestion[]
+  levels    QuizChapterLevel[]
+
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  quizUserLevelIntroSeens QuizUserLevelIntroSeen[]
+
+  @@unique([role, moduleKey])
+  @@index([role, isActive])
+}
+
+// Contenu éditorial de la page d'introduction affichée avant de démarrer un
+// niveau (objectif pédagogique). Saisi manuellement (comme le reste du
+// contenu training-quiz), une ligne par (chapitre, stage) ; absente tant que
+// personne n'a rédigé de texte personnalisé pour ce couple — le service
+// retombe alors sur un texte générique basé sur la description du chapitre.
+model QuizChapterLevel {
+  id        String      @id @default(cuid())
+  chapterId String
+  chapter   QuizChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  stage     QuizStage
+
+  objectiveFr String?
+  objectiveEn String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([role, moduleKey])
-  @@index([role, isActive])
+  @@unique([chapterId, stage])
+}
+
+// Un utilisateur ne revoit plus la page d'intro d'un niveau une fois qu'il
+// l'a validée — persisté côté serveur pour survivre à une reconnexion.
+model QuizUserLevelIntroSeen {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapterId String
+  chapter   QuizChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  stage     QuizStage
+  seenAt    DateTime    @default(now())
+
+  @@unique([userId, chapterId, stage])
 }
 
 model QuizQuestion {
   id        String           @id @default(cuid())
   chapterId String
   chapter   QuizChapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  order    Int
-  type     QuizQuestionType @default(MCQ_SINGLE)
-  stage    QuizStage        @default(DISCOVERY)
-  isActive Boolean          @default(true)
+  order     Int
+  type      QuizQuestionType @default(MCQ_SINGLE)
+  stage     QuizStage        @default(DISCOVERY)
+  isActive  Boolean          @default(true)
 
   textFr        String
   textEn        String
