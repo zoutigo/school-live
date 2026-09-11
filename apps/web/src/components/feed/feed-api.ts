@@ -293,6 +293,39 @@ export async function uploadFeedInlineImage(schoolSlug: string, file: File) {
   return payload.url;
 }
 
+export async function uploadFeedAttachment(schoolSlug: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_URL}/schools/${schoolSlug}/feed/uploads/attachment`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        ...csrfHeaders(),
+      },
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const message: string =
+      payload?.message && Array.isArray(payload.message)
+        ? payload.message.join(", ")
+        : typeof payload?.message === "string"
+          ? payload.message
+          : "FEED_ATTACHMENT_UPLOAD_FAILED";
+    throw new Error(message);
+  }
+
+  const payload = (await response.json()) as { url: string };
+  return payload.url;
+}
+
 export async function updateFeedPost(
   schoolSlug: string,
   postId: string,

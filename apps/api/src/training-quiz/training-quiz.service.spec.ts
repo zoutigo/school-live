@@ -20,11 +20,19 @@ function makeUser(
 }
 
 const makePrismaMock = () => ({
-  quizChapter: { findMany: jest.fn(), findFirst: jest.fn() },
+  quizChapter: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+  },
   quizQuestion: { findUnique: jest.fn() },
   quizUserQuestionProgress: {
     upsert: jest.fn(),
     findUnique: jest.fn(),
+  },
+  quizUserLevelIntroSeen: {
+    findMany: jest.fn().mockResolvedValue([]),
+    upsert: jest.fn(),
   },
 });
 
@@ -39,12 +47,13 @@ const CHAPTER_WITH_QUESTION = {
   titleEn: "Discipline (EN)",
   descriptionFr: "desc fr",
   descriptionEn: "desc en",
+  levels: [],
   questions: [
     {
       id: "q1",
       order: 1,
       type: "MCQ_SINGLE",
-      difficulty: "HARD",
+      stage: "MASTERY",
       textFr: "Question fr",
       textEn: "Question en",
       hintFr: "Indice fr",
@@ -149,14 +158,14 @@ describe("TrainingQuizService", () => {
   });
 
   describe("getChapter", () => {
-    it("maps difficulty, hint and attempt count per locale", async () => {
+    it("maps stage, hint and attempt count per locale", async () => {
       prisma.quizChapter.findFirst.mockResolvedValue(CHAPTER_WITH_QUESTION);
 
       const result = await service.getChapter(makeUser(), "chapter-1");
 
       expect(result.questions[0]).toEqual(
         expect.objectContaining({
-          difficulty: "HARD",
+          stage: "MASTERY",
           text: "Question fr",
           hint: "Indice fr",
           deepLinkRoute: "/children/{childId}/discipline",
@@ -178,11 +187,11 @@ describe("TrainingQuizService", () => {
       expect(result.questions[0].hint).toBe("Hint en");
     });
 
-    it("never returns a hint for easy/medium questions", async () => {
+    it("never returns a hint for a discovery question", async () => {
       prisma.quizChapter.findFirst.mockResolvedValue({
         ...CHAPTER_WITH_QUESTION,
         questions: [
-          { ...CHAPTER_WITH_QUESTION.questions[0], difficulty: "EASY" },
+          { ...CHAPTER_WITH_QUESTION.questions[0], stage: "DISCOVERY" },
         ],
       });
 
@@ -191,12 +200,25 @@ describe("TrainingQuizService", () => {
       expect(result.questions[0].hint).toBeNull();
     });
 
-    it("computes per-level unlock state, HARD locked until MEDIUM is cleared", async () => {
-      const easySolved = {
-        id: "q-easy",
+    it("returns a hint for a practice question (unlike discovery)", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue({
+        ...CHAPTER_WITH_QUESTION,
+        questions: [
+          { ...CHAPTER_WITH_QUESTION.questions[0], stage: "PRACTICE" },
+        ],
+      });
+
+      const result = await service.getChapter(makeUser(), "chapter-1");
+
+      expect(result.questions[0].hint).toBe("Indice fr");
+    });
+
+    it("computes per-stage unlock state, MASTERY locked until PRACTICE is cleared", async () => {
+      const discoverySolved = {
+        id: "q-discovery",
         order: 1,
         type: "MCQ_SINGLE",
-        difficulty: "EASY",
+        stage: "DISCOVERY",
         textFr: "e",
         textEn: "e",
         hintFr: "h",
@@ -206,74 +228,174 @@ describe("TrainingQuizService", () => {
         options: [],
         progress: [{ solved: true, attemptsCount: 1 }],
       };
-      const mediumUnsolved = {
-        ...easySolved,
-        id: "q-medium",
+      const practiceUnsolved = {
+        ...discoverySolved,
+        id: "q-practice",
         order: 2,
-        difficulty: "MEDIUM",
+        stage: "PRACTICE",
         progress: [{ solved: false, attemptsCount: 1 }],
       };
-      const hardQuestion = {
-        ...easySolved,
-        id: "q-hard",
+      const masteryQuestion = {
+        ...discoverySolved,
+        id: "q-mastery",
         order: 3,
-        difficulty: "HARD",
+        stage: "MASTERY",
         progress: [],
       };
       prisma.quizChapter.findFirst.mockResolvedValue({
         ...CHAPTER_WITH_QUESTION,
-        questions: [easySolved, mediumUnsolved, hardQuestion],
+        questions: [discoverySolved, practiceUnsolved, masteryQuestion],
       });
 
       const result = await service.getChapter(makeUser(), "chapter-1");
 
       expect(result.levels).toEqual([
-        {
-          difficulty: "EASY",
+        expect.objectContaining({
+          stage: "DISCOVERY",
           totalQuestions: 1,
           solvedQuestions: 1,
           unlocked: true,
-        },
-        {
-          difficulty: "MEDIUM",
+        }),
+        expect.objectContaining({
+          stage: "PRACTICE",
           totalQuestions: 1,
           solvedQuestions: 0,
           unlocked: true,
-        },
-        {
-          difficulty: "HARD",
+        }),
+        expect.objectContaining({
+          stage: "MASTERY",
           totalQuestions: 1,
           solvedQuestions: 0,
           unlocked: false,
-        },
+        }),
       ]);
-      // Locked level's options are withheld even though the question is listed.
-      const hardEntry = result.questions.find((q) => q.id === "q-hard");
-      expect(hardEntry?.options).toEqual([]);
+      // Locked stage's options are withheld even though the question is listed.
+      const masteryEntry = result.questions.find((q) => q.id === "q-mastery");
+      expect(masteryEntry?.options).toEqual([]);
+    });
+
+    it("falls back to a generic objective built from the chapter description when nothing was authored for that level", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue(CHAPTER_WITH_QUESTION);
+
+      const result = await service.getChapter(makeUser(), "chapter-1");
+
+      const discovery = result.levels.find((l) => l.stage === "DISCOVERY");
+      expect(discovery?.objective).toContain("Discipline");
+      expect(discovery?.objective).toContain("desc fr");
+    });
+
+    it("uses the localized fallback objective in English", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue(CHAPTER_WITH_QUESTION);
+
+      const result = await service.getChapter(
+        makeUser({ preferredLocale: "EN" }),
+        "chapter-1",
+      );
+
+      const discovery = result.levels.find((l) => l.stage === "DISCOVERY");
+      expect(discovery?.objective).toContain("Discipline (EN)");
+      expect(discovery?.objective).toContain("desc en");
+    });
+
+    it("prefers a personalized objective over the generic fallback when one was authored", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue({
+        ...CHAPTER_WITH_QUESTION,
+        levels: [
+          {
+            stage: "MASTERY",
+            objectiveFr: "Objectif personnalisé FR",
+            objectiveEn: "Personalized objective EN",
+          },
+        ],
+      });
+
+      const result = await service.getChapter(makeUser(), "chapter-1");
+
+      const mastery = result.levels.find((l) => l.stage === "MASTERY");
+      expect(mastery?.objective).toBe("Objectif personnalisé FR");
+    });
+
+    it("reports introSeen per stage from the persisted seen-intro rows", async () => {
+      prisma.quizChapter.findFirst.mockResolvedValue(CHAPTER_WITH_QUESTION);
+      prisma.quizUserLevelIntroSeen.findMany.mockResolvedValue([
+        { stage: "MASTERY" },
+      ]);
+
+      const result = await service.getChapter(makeUser(), "chapter-1");
+
+      expect(result.levels.find((l) => l.stage === "MASTERY")?.introSeen).toBe(
+        true,
+      );
+      expect(
+        result.levels.find((l) => l.stage === "DISCOVERY")?.introSeen,
+      ).toBe(false);
+    });
+  });
+
+  describe("markLevelIntroSeen", () => {
+    it("rejects an invalid stage", async () => {
+      await expect(
+        service.markLevelIntroSeen(makeUser(), "chapter-1", "NOT_A_STAGE"),
+      ).rejects.toThrow("Invalid stage");
+      expect(prisma.quizUserLevelIntroSeen.upsert).not.toHaveBeenCalled();
+    });
+
+    it("throws when the chapter does not exist", async () => {
+      prisma.quizChapter.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.markLevelIntroSeen(makeUser(), "missing", "DISCOVERY"),
+      ).rejects.toThrow("Chapter not found");
+    });
+
+    it("upserts a seen-intro row for the user/chapter/stage", async () => {
+      prisma.quizChapter.findUnique.mockResolvedValue({ id: "chapter-1" });
+      prisma.quizUserLevelIntroSeen.upsert.mockResolvedValue({});
+
+      const result = await service.markLevelIntroSeen(
+        makeUser(),
+        "chapter-1",
+        "DISCOVERY",
+      );
+
+      expect(result).toEqual({ ok: true });
+      expect(prisma.quizUserLevelIntroSeen.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId_chapterId_stage: {
+              userId: "user-1",
+              chapterId: "chapter-1",
+              stage: "DISCOVERY",
+            },
+          },
+        }),
+      );
     });
   });
 
   describe("submitAnswer", () => {
-    function defaultChapterQuestions(difficulty: "EASY" | "MEDIUM" | "HARD") {
-      const order = ["EASY", "MEDIUM", "HARD"] as const;
-      const currentIndex = order.indexOf(difficulty);
+    function defaultChapterQuestions(
+      stage: "DISCOVERY" | "PRACTICE" | "MASTERY",
+    ) {
+      const order = ["DISCOVERY", "PRACTICE", "MASTERY"] as const;
+      const currentIndex = order.indexOf(stage);
       return order
         .filter((_, index) => index <= currentIndex)
-        .map((d) =>
-          d === difficulty
-            ? { difficulty: d, progress: [] }
-            : { difficulty: d, progress: [{ id: "solved" }] },
+        .map((s) =>
+          s === stage
+            ? { stage: s, progress: [] }
+            : { stage: s, progress: [{ id: "solved" }] },
         );
     }
 
     function makeQuestion(
-      difficulty: "EASY" | "MEDIUM" | "HARD",
+      stage: "DISCOVERY" | "PRACTICE" | "MASTERY",
       overrides: { chapterQuestions?: unknown[] } = {},
     ) {
       return {
         id: "q1",
         isActive: true,
-        difficulty,
+        stage,
         explanationFr: "explication",
         explanationEn: "explanation",
         options: [
@@ -282,11 +404,11 @@ describe("TrainingQuizService", () => {
         ],
         chapter: {
           questions:
-            overrides.chapterQuestions ?? defaultChapterQuestions(difficulty),
+            overrides.chapterQuestions ?? defaultChapterQuestions(stage),
         },
       };
     }
-    const question = makeQuestion("HARD");
+    const question = makeQuestion("MASTERY");
 
     it("rejects unknown option ids", async () => {
       prisma.quizQuestion.findUnique.mockResolvedValue(question);
@@ -353,8 +475,8 @@ describe("TrainingQuizService", () => {
       expect(result.attemptsCount).toBe(1);
     });
 
-    it("still returns explanation and correctOptionIds on a HARD wrong answer", async () => {
-      prisma.quizQuestion.findUnique.mockResolvedValue(makeQuestion("HARD"));
+    it("still returns explanation and correctOptionIds on a MASTERY wrong answer", async () => {
+      prisma.quizQuestion.findUnique.mockResolvedValue(makeQuestion("MASTERY"));
       prisma.quizUserQuestionProgress.findUnique.mockResolvedValue(null);
       prisma.quizUserQuestionProgress.upsert.mockResolvedValue({
         solved: false,
@@ -369,8 +491,10 @@ describe("TrainingQuizService", () => {
       expect(result.correctOptionIds).toEqual(["opt-correct"]);
     });
 
-    it("returns explanation but withholds correctOptionIds on an EASY wrong answer", async () => {
-      prisma.quizQuestion.findUnique.mockResolvedValue(makeQuestion("EASY"));
+    it("returns explanation but withholds correctOptionIds on a DISCOVERY wrong answer", async () => {
+      prisma.quizQuestion.findUnique.mockResolvedValue(
+        makeQuestion("DISCOVERY"),
+      );
       prisma.quizUserQuestionProgress.findUnique.mockResolvedValue(null);
       prisma.quizUserQuestionProgress.upsert.mockResolvedValue({
         solved: false,
@@ -385,8 +509,28 @@ describe("TrainingQuizService", () => {
       expect(result.correctOptionIds).toEqual([]);
     });
 
-    it("returns correctOptionIds on a correct EASY answer (nothing left to hide)", async () => {
-      prisma.quizQuestion.findUnique.mockResolvedValue(makeQuestion("EASY"));
+    it("returns explanation but withholds correctOptionIds on a PRACTICE wrong answer", async () => {
+      prisma.quizQuestion.findUnique.mockResolvedValue(
+        makeQuestion("PRACTICE"),
+      );
+      prisma.quizUserQuestionProgress.findUnique.mockResolvedValue(null);
+      prisma.quizUserQuestionProgress.upsert.mockResolvedValue({
+        solved: false,
+        attemptsCount: 1,
+      });
+
+      const result = await service.submitAnswer(makeUser(), "q1", [
+        "opt-wrong",
+      ]);
+
+      expect(result.explanation).toBe("explication");
+      expect(result.correctOptionIds).toEqual([]);
+    });
+
+    it("returns correctOptionIds on a correct DISCOVERY answer (nothing left to hide)", async () => {
+      prisma.quizQuestion.findUnique.mockResolvedValue(
+        makeQuestion("DISCOVERY"),
+      );
       prisma.quizUserQuestionProgress.findUnique.mockResolvedValue(null);
       prisma.quizUserQuestionProgress.upsert.mockResolvedValue({
         solved: true,
@@ -400,12 +544,12 @@ describe("TrainingQuizService", () => {
       expect(result.correctOptionIds).toEqual(["opt-correct"]);
     });
 
-    it("rejects an answer submitted for a locked level", async () => {
+    it("rejects an answer submitted for a locked stage", async () => {
       prisma.quizQuestion.findUnique.mockResolvedValue(
-        makeQuestion("MEDIUM", {
+        makeQuestion("PRACTICE", {
           chapterQuestions: [
-            { difficulty: "EASY", progress: [] },
-            { difficulty: "MEDIUM", progress: [] },
+            { stage: "DISCOVERY", progress: [] },
+            { stage: "PRACTICE", progress: [] },
           ],
         }),
       );

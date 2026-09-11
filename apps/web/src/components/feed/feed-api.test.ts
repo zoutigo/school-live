@@ -3,6 +3,7 @@ import {
   addFeedComment,
   listFeedPosts,
   toggleFeedLike,
+  uploadFeedAttachment,
   uploadFeedInlineImage,
   voteFeedPoll,
 } from "./feed-api";
@@ -202,6 +203,38 @@ describe("feed-api", () => {
 
     await expect(uploadFeedInlineImage("college-vogt", file)).rejects.toThrow(
       "Format non supporte",
+    );
+  });
+
+  it("uploads a feed attachment as multipart form-data to the attachment endpoint", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ url: "https://cdn.example.test/programme.pdf" }),
+    });
+
+    const file = new File(["pdf"], "programme.pdf", {
+      type: "application/pdf",
+    });
+    const result = await uploadFeedAttachment("college-vogt", file);
+
+    expect(result).toBe("https://cdn.example.test/programme.pdf");
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/schools/college-vogt/feed/uploads/attachment");
+    expect(options.body).toBeInstanceOf(FormData);
+  });
+
+  it("surfaces backend attachment upload failure messages", async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: "Fichier trop volumineux" }),
+    });
+
+    const file = new File(["pdf"], "programme.pdf", {
+      type: "application/pdf",
+    });
+
+    await expect(uploadFeedAttachment("college-vogt", file)).rejects.toThrow(
+      "Fichier trop volumineux",
     );
   });
 });

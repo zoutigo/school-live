@@ -46,6 +46,7 @@ import {
   listFeedPosts,
   toggleFeedLike,
   updateFeedPost,
+  uploadFeedAttachment,
   uploadFeedInlineImage,
   voteFeedPoll,
 } from "./feed-api";
@@ -78,6 +79,9 @@ type ComposerMode = "POST" | "POLL";
 type DraftAttachment = {
   id: string;
   file: File;
+  fileUrl?: string;
+  uploading: boolean;
+  uploadFailed?: boolean;
 };
 
 type EditableAttachment = {
@@ -85,6 +89,8 @@ type EditableAttachment = {
   fileName: string;
   sizeLabel: string;
   fileUrl?: string;
+  uploading?: boolean;
+  uploadFailed?: boolean;
 };
 
 const COMMENT_EMOJIS = ["😀", "👍", "❤️", "🎉", "👏"];
@@ -538,6 +544,9 @@ export function FamilyFeedPage({
     if (!openComposerMode) {
       return false;
     }
+    if (draftAttachments.some((entry) => entry.uploading)) {
+      return false;
+    }
     return isFeedFormValid({
       type: openComposerMode,
       title,
@@ -561,10 +570,13 @@ export function FamilyFeedPage({
         : null;
 
     const audience = getSelectedAudience();
-    const attachments = draftAttachments.map((entry) => ({
-      fileName: entry.file.name,
-      sizeLabel: `${Math.max(1, Math.round(entry.file.size / 1024))} Ko`,
-    }));
+    const attachments = draftAttachments
+      .filter((entry) => !entry.uploadFailed)
+      .map((entry) => ({
+        fileName: entry.file.name,
+        sizeLabel: `${Math.max(1, Math.round(entry.file.size / 1024))} Ko`,
+        fileUrl: entry.fileUrl,
+      }));
     try {
       const created = await createFeedPost(schoolSlug, {
         type: openComposerMode,
@@ -609,11 +621,14 @@ export function FamilyFeedPage({
         createdAt: nowIso,
         featuredUntil,
         audience,
-        attachments: draftAttachments.map((entry) => ({
-          id: entry.id,
-          fileName: entry.file.name,
-          sizeLabel: `${Math.max(1, Math.round(entry.file.size / 1024))} Ko`,
-        })),
+        attachments: draftAttachments
+          .filter((entry) => !entry.uploadFailed)
+          .map((entry) => ({
+            id: entry.id,
+            fileName: entry.file.name,
+            sizeLabel: `${Math.max(1, Math.round(entry.file.size / 1024))} Ko`,
+            fileUrl: entry.fileUrl,
+          })),
         likedByViewer: false,
         likesCount: 0,
         authoredByViewer: true,
@@ -681,19 +696,51 @@ export function FamilyFeedPage({
       return;
     }
     const rows = Array.from(files);
-    setEditAttachments((prev) => {
-      const next = [...prev];
-      for (const file of rows) {
-        if (!next.some((entry) => entry.fileName === file.name)) {
-          next.push({
-            id: `edit-${crypto.randomUUID()}`,
-            fileName: file.name,
-            sizeLabel: `${Math.max(1, Math.round(file.size / 1024))} Ko`,
-          });
-        }
+    const existingNames = new Set(
+      editAttachments.map((entry) => entry.fileName),
+    );
+    const newEntries: Array<{ id: string; file: File }> = [];
+    const newAttachments: EditableAttachment[] = [];
+    for (const file of rows) {
+      if (!existingNames.has(file.name)) {
+        existingNames.add(file.name);
+        const id = `edit-${crypto.randomUUID()}`;
+        newAttachments.push({
+          id,
+          fileName: file.name,
+          sizeLabel: `${Math.max(1, Math.round(file.size / 1024))} Ko`,
+          uploading: true,
+        });
+        newEntries.push({ id, file });
       }
-      return next;
-    });
+    }
+    if (newEntries.length === 0) {
+      return;
+    }
+
+    setEditAttachments((prev) => [...prev, ...newAttachments]);
+
+    for (const entry of newEntries) {
+      uploadFeedAttachment(schoolSlug, entry.file)
+        .then((fileUrl) => {
+          setEditAttachments((prev) =>
+            prev.map((item) =>
+              item.id === entry.id
+                ? { ...item, uploading: false, fileUrl }
+                : item,
+            ),
+          );
+        })
+        .catch(() => {
+          setEditAttachments((prev) =>
+            prev.map((item) =>
+              item.id === entry.id
+                ? { ...item, uploading: false, uploadFailed: true }
+                : item,
+            ),
+          );
+        });
+    }
   }
 
   function removeEditAttachment(attachmentId: string) {
@@ -703,6 +750,9 @@ export function FamilyFeedPage({
   }
 
   function canSaveEdit(post: FeedPost) {
+    if (editAttachments.some((entry) => entry.uploading)) {
+      return false;
+    }
     return isFeedFormValid({
       type: post.type,
       title: editTitle,
@@ -745,11 +795,13 @@ export function FamilyFeedPage({
     };
     const payload = {
       ...payloadBase,
-      attachments: editAttachments.map((attachment) => ({
-        fileName: attachment.fileName,
-        fileUrl: attachment.fileUrl,
-        sizeLabel: attachment.sizeLabel,
-      })),
+      attachments: editAttachments
+        .filter((attachment) => !attachment.uploadFailed)
+        .map((attachment) => ({
+          fileName: attachment.fileName,
+          fileUrl: attachment.fileUrl,
+          sizeLabel: attachment.sizeLabel,
+        })),
     };
 
     setSavingEdit(true);
@@ -999,15 +1051,43 @@ export function FamilyFeedPage({
     }
 
     const rows = Array.from(files);
-    setDraftAttachments((prev) => {
-      const next = [...prev];
-      for (const file of rows) {
-        if (!next.some((entry) => entry.file.name === file.name)) {
-          next.push({ id: crypto.randomUUID(), file });
-        }
+    const existingNames = new Set(
+      draftAttachments.map((entry) => entry.file.name),
+    );
+    const newEntries: DraftAttachment[] = [];
+    for (const file of rows) {
+      if (!existingNames.has(file.name)) {
+        existingNames.add(file.name);
+        newEntries.push({ id: crypto.randomUUID(), file, uploading: true });
       }
-      return next;
-    });
+    }
+    if (newEntries.length === 0) {
+      return;
+    }
+
+    setDraftAttachments((prev) => [...prev, ...newEntries]);
+
+    for (const entry of newEntries) {
+      uploadFeedAttachment(schoolSlug, entry.file)
+        .then((fileUrl) => {
+          setDraftAttachments((prev) =>
+            prev.map((item) =>
+              item.id === entry.id
+                ? { ...item, uploading: false, fileUrl }
+                : item,
+            ),
+          );
+        })
+        .catch(() => {
+          setDraftAttachments((prev) =>
+            prev.map((item) =>
+              item.id === entry.id
+                ? { ...item, uploading: false, uploadFailed: true }
+                : item,
+            ),
+          );
+        });
+    }
   }
 
   return (
@@ -1395,6 +1475,15 @@ export function FamilyFeedPage({
                     >
                       <Paperclip className="h-3.5 w-3.5" />
                       {entry.file.name}
+                      {entry.uploading ? (
+                        <span className="text-xs text-text-secondary">
+                          {t("feed.composer.attachmentUploading")}
+                        </span>
+                      ) : entry.uploadFailed ? (
+                        <span className="text-xs text-notification">
+                          {t("feed.composer.attachmentUploadFailed")}
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -1655,6 +1744,15 @@ export function FamilyFeedPage({
                           <span className="inline-flex items-center gap-1">
                             <Paperclip className="h-3.5 w-3.5 text-primary" />
                             {attachment.fileName}
+                            {attachment.uploading ? (
+                              <span className="text-xs text-text-secondary">
+                                {t("feed.composer.attachmentUploading")}
+                              </span>
+                            ) : attachment.uploadFailed ? (
+                              <span className="text-xs text-notification">
+                                {t("feed.composer.attachmentUploadFailed")}
+                              </span>
+                            ) : null}
                           </span>
                           <div className="inline-flex items-center gap-2">
                             <span className="text-xs">

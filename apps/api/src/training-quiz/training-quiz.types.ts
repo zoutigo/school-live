@@ -21,9 +21,9 @@ export type QuizQuestionPublic = {
   id: string;
   order: number;
   type: "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE";
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  stage: "DISCOVERY" | "PRACTICE" | "MASTERY";
   text: string;
-  // Only populated for HARD questions — easy/medium levels don't offer a hint.
+  // Not populated for DISCOVERY — pure recall, no help offered there.
   hint: string | null;
   imageUrl: string | null;
   deepLinkRoute: string | null;
@@ -33,10 +33,17 @@ export type QuizQuestionPublic = {
 };
 
 export type QuizLevelSummary = {
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  stage: "DISCOVERY" | "PRACTICE" | "MASTERY";
   totalQuestions: number;
   solvedQuestions: number;
   unlocked: boolean;
+  // Objective shown on the level's intro page — a personalized editorial
+  // text when authored for this (chapter, stage), otherwise a generic
+  // fallback built from the chapter description.
+  objective: string;
+  // Whether this user has already dismissed this level's intro page —
+  // persisted server-side so it does not reappear on reconnection.
+  introSeen: boolean;
 };
 
 export type QuizChapterDetail = QuizChapterSummary & {
@@ -48,8 +55,8 @@ export type QuizAnswerResult = {
   correct: boolean;
   alreadySolved: boolean;
   explanation: string;
-  // Only populated on a HARD question — easy/medium never reveal which
-  // option was correct on a wrong attempt.
+  // Only populated on a MASTERY question — discovery/practice never reveal
+  // which option was correct on a wrong attempt.
   correctOptionIds: string[];
   attemptsCount: number;
 };

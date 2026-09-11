@@ -168,6 +168,68 @@ describe("HelpGuidesService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("résout l'audience du profil actif (enseignant) même si l'utilisateur a aussi un profil parent", async () => {
+    prisma.helpGuide.findMany.mockResolvedValue([
+      {
+        id: "guide-teacher",
+        schoolId: null,
+        school: null,
+        audience: "TEACHER",
+        title: "Guide Enseignant Scolive",
+        slug: "guide-enseignant-scolive",
+        description: null,
+        status: "PUBLISHED",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { chapters: 3 },
+      },
+    ]);
+
+    const user = makeUser({
+      activeRole: "TEACHER",
+      memberships: [
+        { schoolId: "school-1", role: "PARENT" },
+        { schoolId: "school-1", role: "TEACHER" },
+      ],
+    });
+
+    const result = await service.getCurrentGuide(user, {});
+
+    expect(result.resolvedAudience).toBe("TEACHER");
+    expect(prisma.helpGuide.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ audience: "TEACHER" }),
+      }),
+    );
+  });
+
+  it("retombe sur le scan par priorité des memberships si aucun profil actif n'est défini", async () => {
+    prisma.helpGuide.findMany.mockResolvedValue([
+      {
+        id: "guide-teacher",
+        schoolId: null,
+        school: null,
+        audience: "TEACHER",
+        title: "Guide Enseignant Scolive",
+        slug: "guide-enseignant-scolive",
+        description: null,
+        status: "PUBLISHED",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { chapters: 3 },
+      },
+    ]);
+
+    const user = makeUser({
+      activeRole: null,
+      memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+    });
+
+    const result = await service.getCurrentGuide(user, {});
+
+    expect(result.resolvedAudience).toBe("TEACHER");
+  });
+
   it("refuse la liste admin aux non platform admins", async () => {
     await expect(
       service.listGlobalGuidesAdmin(makeUser(), {}),

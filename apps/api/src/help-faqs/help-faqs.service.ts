@@ -784,26 +784,43 @@ export class HelpFaqsService {
   }
 
   private resolveAudience(user: AuthenticatedUser): HelpGuideAudience {
+    if (user.activeRole) {
+      const audience = this.mapRoleToAudience(user.activeRole);
+      if (audience) return audience;
+    }
+
     const roles = new Set(
       user.memberships.map((membership) => membership.role),
     );
 
     for (const role of ROLE_PRIORITY) {
       if (!roles.has(role)) continue;
-      if (role === "PARENT") return "PARENT";
-      if (role === "TEACHER") return "TEACHER";
-      if (role === "STUDENT") return "STUDENT";
-      if (
-        role === "SCHOOL_ADMIN" ||
-        role === "SCHOOL_MANAGER" ||
-        role === "SUPERVISOR"
-      ) {
-        return "SCHOOL_ADMIN";
-      }
-      return "STAFF";
+      const audience = this.mapRoleToAudience(role);
+      if (audience) return audience;
     }
 
     return "STAFF";
+  }
+
+  private mapRoleToAudience(role: string): HelpGuideAudience | null {
+    if (role === "PARENT") return "PARENT";
+    if (role === "TEACHER") return "TEACHER";
+    if (role === "STUDENT") return "STUDENT";
+    if (
+      role === "SCHOOL_ADMIN" ||
+      role === "SCHOOL_MANAGER" ||
+      role === "SUPERVISOR"
+    ) {
+      return "SCHOOL_ADMIN";
+    }
+    if (
+      role === "SCHOOL_STAFF" ||
+      role === "SCHOOL_ACCOUNTANT" ||
+      role === "SCHOOL_HEALTH_OFFICER"
+    ) {
+      return "STAFF";
+    }
+    return null;
   }
 
   private serializeFaq(faq: FaqWithOptionalSchool): SerializedFaq {

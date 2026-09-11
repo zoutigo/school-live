@@ -23,6 +23,15 @@ export class TrainingQuizController {
     return this.trainingQuizService.getChapter(user, chapterId);
   }
 
+  @Post("chapters/:chapterId/levels/:stage/intro-seen")
+  markLevelIntroSeen(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("chapterId") chapterId: string,
+    @Param("stage") stage: string,
+  ) {
+    return this.trainingQuizService.markLevelIntroSeen(user, chapterId, stage);
+  }
+
   @Post("questions/:questionId/answer")
   submitAnswer(
     @CurrentUser() user: AuthenticatedUser,
