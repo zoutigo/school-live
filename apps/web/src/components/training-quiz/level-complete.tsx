@@ -22,6 +22,7 @@ export function LevelComplete({
   level,
   nextStage,
   onContinue,
+  onBackToHome,
   t,
 }: {
   chapter: QuizChapterDetail;
@@ -30,6 +31,7 @@ export function LevelComplete({
   // chapter's last stage (a separate chapter-complete screen follows).
   nextStage: QuizStage | null;
   onContinue: () => void;
+  onBackToHome: () => void;
   t: (key: string) => string;
 }) {
   const stageKey = level.stage.toLowerCase();
@@ -82,19 +84,27 @@ export function LevelComplete({
             : t("trainingQuiz.levelComplete.chapterAlmostDoneHint")}
         </p>
 
-        <Button
-          onClick={onContinue}
-          className="celebration-rise-in mt-5 w-full sm:w-auto"
+        <div
+          className="celebration-rise-in mt-5 flex flex-col-reverse items-center justify-center gap-2 sm:flex-row"
           style={{ animationDelay: "0.35s" }}
         >
-          {nextStage
-            ? t("trainingQuiz.levelComplete.continueCta").replace(
-                "{stage}",
-                t(`trainingQuiz.chapter.stage.${nextStage.toLowerCase()}`),
-              )
-            : t("trainingQuiz.levelComplete.finishChapterCta")}
-          <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
-        </Button>
+          <Button
+            variant="secondary"
+            onClick={onBackToHome}
+            className="w-full sm:w-auto"
+          >
+            {t("trainingQuiz.chapter.back")}
+          </Button>
+          <Button onClick={onContinue} className="w-full sm:w-auto">
+            {nextStage
+              ? t("trainingQuiz.levelComplete.continueCta").replace(
+                  "{stage}",
+                  t(`trainingQuiz.chapter.stage.${nextStage.toLowerCase()}`),
+                )
+              : t("trainingQuiz.levelComplete.finishChapterCta")}
+            <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
     </div>
   );

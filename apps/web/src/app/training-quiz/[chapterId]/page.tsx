@@ -603,6 +603,7 @@ export default function TrainingQuizChapterPage() {
           level={levelJustCompleted}
           nextStage={nextStage}
           onContinue={handleLevelCompleteContinue}
+          onBackToHome={() => router.push("/training-quiz")}
           t={t}
         />
       </AppShell>
@@ -621,6 +622,7 @@ export default function TrainingQuizChapterPage() {
             chapter={chapter}
             level={levelInfo}
             onStart={handleStartLevel}
+            onBack={() => router.push("/training-quiz")}
             starting={startingLevel}
             t={t}
           />

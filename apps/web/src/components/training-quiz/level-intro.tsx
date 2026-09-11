@@ -33,12 +33,14 @@ export function LevelIntro({
   chapter,
   level,
   onStart,
+  onBack,
   starting,
   t,
 }: {
   chapter: QuizChapterDetail;
   level: QuizChapterDetail["levels"][number];
   onStart: () => void;
+  onBack: () => void;
   starting: boolean;
   t: (key: string) => string;
 }) {
@@ -97,15 +99,20 @@ export function LevelIntro({
           </p>
         </div>
 
-        <Button
-          onClick={onStart}
-          disabled={starting}
-          className="mt-6 w-full sm:w-auto"
-        >
-          {level.solvedQuestions > 0
-            ? t("trainingQuiz.levelIntro.continueCta")
-            : t("trainingQuiz.levelIntro.startCta")}
-        </Button>
+        <div className="mt-6 flex flex-col-reverse items-center justify-center gap-2 sm:flex-row">
+          <Button variant="secondary" onClick={onBack} className="w-full sm:w-auto">
+            {t("trainingQuiz.chapter.back")}
+          </Button>
+          <Button
+            onClick={onStart}
+            disabled={starting}
+            className="w-full sm:w-auto"
+          >
+            {level.solvedQuestions > 0
+              ? t("trainingQuiz.levelIntro.continueCta")
+              : t("trainingQuiz.levelIntro.startCta")}
+          </Button>
+        </div>
       </div>
     </div>
   );

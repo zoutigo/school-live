@@ -752,6 +752,32 @@ describe("TrainingQuizChapterPage", () => {
       );
       expect(introSeenCalled).toBe(true);
     });
+
+    it("offers a way back to the quiz home from the intro page", async () => {
+      const chapter = {
+        ...DISCOVERY_CHAPTER,
+        levels: makeLevels({
+          DISCOVERY: {
+            stage: "DISCOVERY",
+            totalQuestions: 2,
+            solvedQuestions: 0,
+            unlocked: true,
+            introSeen: false,
+          },
+        }),
+      };
+      mockFetch({ chapter });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Objectif de ce niveau");
+      fireEvent.click(screen.getByText("Retour aux chapitres"));
+
+      expect(pushMock).toHaveBeenCalledWith("/training-quiz");
+      // Clicking back must not have marked the intro as seen.
+      expect(
+        screen.queryByText("Où consultez-vous le comportement disciplinaire ?"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("level completion celebration", () => {
@@ -837,6 +863,96 @@ describe("TrainingQuizChapterPage", () => {
         screen.getByText("Prochaine étape : le niveau Pratique."),
       ).toBeInTheDocument();
       expect(screen.getByText("Passer au niveau Pratique")).toBeInTheDocument();
+    });
+
+    it("offers a way back to the quiz home from the level completion screen", async () => {
+      const chapter = {
+        ...DISCOVERY_CHAPTER,
+        totalQuestions: 1,
+        levels: makeLevels({
+          DISCOVERY: {
+            stage: "DISCOVERY",
+            totalQuestions: 1,
+            solvedQuestions: 0,
+            unlocked: true,
+          },
+        }),
+        questions: [DISCOVERY_CHAPTER.questions[0]],
+      };
+      mockFetch({ chapter });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Onglet Discipline");
+      fireEvent.click(screen.getByText("Onglet Discipline"));
+      fireEvent.click(screen.getByText("Valider"));
+
+      await screen.findByText("Terminer");
+      fireEvent.click(screen.getByText("Terminer"));
+
+      await screen.findByText("Terminer le chapitre");
+      fireEvent.click(screen.getByText("Retour aux chapitres"));
+
+      expect(pushMock).toHaveBeenCalledWith("/training-quiz");
+    });
+  });
+
+  describe("resuming a chapter in progress", () => {
+    it("lands back on the exact question left off, in the right level, skipping completed levels and the intro", async () => {
+      const chapter = {
+        ...MASTERY_CHAPTER,
+        totalQuestions: 3,
+        levels: makeLevels({
+          DISCOVERY: {
+            stage: "DISCOVERY",
+            totalQuestions: 1,
+            solvedQuestions: 1,
+            unlocked: true,
+          },
+          PRACTICE: {
+            stage: "PRACTICE",
+            totalQuestions: 1,
+            solvedQuestions: 1,
+            unlocked: true,
+          },
+          MASTERY: {
+            stage: "MASTERY",
+            totalQuestions: 2,
+            solvedQuestions: 1,
+            unlocked: true,
+          },
+        }),
+        questions: [
+          MASTERY_CHAPTER.questions[0],
+          MASTERY_CHAPTER.questions[1],
+          { ...MASTERY_CHAPTER.questions[2], solved: true },
+          {
+            id: "q3",
+            order: 4,
+            type: "MCQ_SINGLE",
+            stage: "MASTERY",
+            text: "Troisième mission de maîtrise, non résolue",
+            hint: null,
+            imageUrl: null,
+            deepLinkRoute: null,
+            solved: false,
+            attemptsCount: 0,
+            options: [
+              { id: "q3-correct", order: 1, text: "Bonne réponse" },
+              { id: "q3-wrong", order: 2, text: "Mauvaise réponse" },
+            ],
+          },
+        ],
+      };
+      mockFetch({ chapter });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Troisième mission de maîtrise, non résolue");
+      expect(screen.getByText("Mission 2 sur 2")).toBeInTheDocument();
+      expect(screen.queryByText("Objectif de ce niveau")).not.toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Maîtrise/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     });
   });
 });
