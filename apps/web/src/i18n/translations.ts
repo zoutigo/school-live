@@ -5471,7 +5471,50 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.chapter.completeTitle": "Chapitre terminé !",
     "trainingQuiz.chapter.completeSubtitle":
       "Vous avez répondu à toutes les missions de ce chapitre.",
+    "trainingQuiz.chapter.completeScore": "{total} missions réussies 🎉",
+    "trainingQuiz.chapter.nextModuleLabel": "Prochaine étape suggérée",
+    "trainingQuiz.chapter.nextModuleCta": "Démarrer ce module",
     "trainingQuiz.chapter.completeBackCta": "Retour aux chapitres",
+    "trainingQuiz.levelIntro.objectiveLabel": "Objectif de ce niveau",
+    "trainingQuiz.levelIntro.rulesLabel": "Règles du niveau",
+    "trainingQuiz.levelIntro.questionsCount": "{count} missions à réussir",
+    "trainingQuiz.levelIntro.startCta": "Commencer ce niveau",
+    "trainingQuiz.levelIntro.continueCta": "Continuer ce niveau",
+    "trainingQuiz.levelIntro.rules.discovery.retry":
+      "Vous pouvez réessayer immédiatement, sans attente.",
+    "trainingQuiz.levelIntro.rules.discovery.noHint":
+      "Aucun indice n'est proposé : c'est un pur rappel de ce que vous connaissez déjà.",
+    "trainingQuiz.levelIntro.rules.discovery.noReveal":
+      "En cas d'erreur, la bonne réponse n'est jamais révélée.",
+    "trainingQuiz.levelIntro.rules.practice.hint":
+      "Un indice apparaît automatiquement après 2 essais infructueux.",
+    "trainingQuiz.levelIntro.rules.practice.appVisit":
+      "Après une erreur, vous devez consulter l'écran correspondant dans l'application avant de pouvoir réessayer.",
+    "trainingQuiz.levelIntro.rules.practice.cooldown":
+      "Un compte à rebours s'ajoute à chaque nouvel essai infructueux, jusqu'à 8 minutes.",
+    "trainingQuiz.levelIntro.rules.mastery.hint":
+      "Un indice reste disponible si vous en avez besoin.",
+    "trainingQuiz.levelIntro.rules.mastery.reveal":
+      "En cas d'erreur, la bonne réponse vous est indiquée.",
+    "trainingQuiz.levelIntro.rules.mastery.cooldown":
+      "Un compte à rebours s'ajoute à chaque nouvel essai infructueux, jusqu'à 8 minutes.",
+    "trainingQuiz.levelComplete.title": "Niveau {stage} terminé !",
+    "trainingQuiz.levelComplete.scoreLabel":
+      "{solved}/{total} missions réussies",
+    "trainingQuiz.levelComplete.encouragement.one":
+      "Belle performance, votre régularité paie !",
+    "trainingQuiz.levelComplete.encouragement.two":
+      "Bravo, vous progressez à un excellent rythme !",
+    "trainingQuiz.levelComplete.encouragement.three":
+      "Superbe travail, continuez comme ça !",
+    "trainingQuiz.levelComplete.encouragement.four":
+      "Impressionnant, chaque mission vous rapproche du but !",
+    "trainingQuiz.levelComplete.nextLevelHint":
+      "Prochaine étape : le niveau {stage}.",
+    "trainingQuiz.levelComplete.chapterAlmostDoneHint":
+      "C'était le dernier niveau de ce chapitre !",
+    "trainingQuiz.levelComplete.continueCta": "Passer au niveau {stage}",
+    "trainingQuiz.levelComplete.finishChapterCta": "Terminer le chapitre",
     "trainingQuiz.errors.load":
       "Impossible de charger le quiz de formation pour le moment.",
   },
@@ -10700,7 +10743,48 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.chapter.completeTitle": "Chapter complete!",
     "trainingQuiz.chapter.completeSubtitle":
       "You've answered every mission in this chapter.",
+    "trainingQuiz.chapter.completeScore": "{total} missions passed 🎉",
+    "trainingQuiz.chapter.nextModuleLabel": "Suggested next step",
+    "trainingQuiz.chapter.nextModuleCta": "Start this module",
     "trainingQuiz.chapter.completeBackCta": "Back to chapters",
+    "trainingQuiz.levelIntro.objectiveLabel": "Objective of this level",
+    "trainingQuiz.levelIntro.rulesLabel": "Level rules",
+    "trainingQuiz.levelIntro.questionsCount": "{count} missions to complete",
+    "trainingQuiz.levelIntro.startCta": "Start this level",
+    "trainingQuiz.levelIntro.continueCta": "Continue this level",
+    "trainingQuiz.levelIntro.rules.discovery.retry":
+      "You can retry immediately, no waiting.",
+    "trainingQuiz.levelIntro.rules.discovery.noHint":
+      "No hint is offered: this is pure recall of what you already know.",
+    "trainingQuiz.levelIntro.rules.discovery.noReveal":
+      "On a wrong answer, the correct option is never revealed.",
+    "trainingQuiz.levelIntro.rules.practice.hint":
+      "A hint appears automatically after 2 failed attempts.",
+    "trainingQuiz.levelIntro.rules.practice.appVisit":
+      "After a wrong answer, you must check the matching screen in the app before you can retry.",
+    "trainingQuiz.levelIntro.rules.practice.cooldown":
+      "A countdown is added on every new failed attempt, up to 8 minutes.",
+    "trainingQuiz.levelIntro.rules.mastery.hint":
+      "A hint stays available if you need one.",
+    "trainingQuiz.levelIntro.rules.mastery.reveal":
+      "On a wrong answer, the correct option is shown to you.",
+    "trainingQuiz.levelIntro.rules.mastery.cooldown":
+      "A countdown is added on every new failed attempt, up to 8 minutes.",
+    "trainingQuiz.levelComplete.title": "{stage} level complete!",
+    "trainingQuiz.levelComplete.scoreLabel": "{solved}/{total} missions passed",
+    "trainingQuiz.levelComplete.encouragement.one":
+      "Great performance, your consistency is paying off!",
+    "trainingQuiz.levelComplete.encouragement.two":
+      "Well done, you're progressing at a great pace!",
+    "trainingQuiz.levelComplete.encouragement.three":
+      "Superb work, keep it up!",
+    "trainingQuiz.levelComplete.encouragement.four":
+      "Impressive, every mission brings you closer to the goal!",
+    "trainingQuiz.levelComplete.nextLevelHint": "Next up: the {stage} level.",
+    "trainingQuiz.levelComplete.chapterAlmostDoneHint":
+      "That was the last level of this chapter!",
+    "trainingQuiz.levelComplete.continueCta": "Move on to {stage}",
+    "trainingQuiz.levelComplete.finishChapterCta": "Finish the chapter",
     "trainingQuiz.errors.load": "Couldn't load the training quiz right now.",
   },
 };

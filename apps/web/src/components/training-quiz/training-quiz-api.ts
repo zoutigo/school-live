@@ -47,6 +47,8 @@ export type QuizStageProgress = {
   totalQuestions: number;
   solvedQuestions: number;
   unlocked: boolean;
+  objective: string;
+  introSeen: boolean;
 };
 
 export type QuizChapterDetail = QuizChapterSummary & {
@@ -113,6 +115,20 @@ export async function submitAnswer(
     },
   );
   return handle(res);
+}
+
+export async function markLevelIntroSeen(
+  chapterId: string,
+  stage: QuizStage,
+): Promise<void> {
+  await fetch(
+    `${API_URL}/training-quiz/chapters/${chapterId}/levels/${stage}/intro-seen`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: csrfHeaders(),
+    },
+  );
 }
 
 export async function getScore(): Promise<QuizScoreSummary> {

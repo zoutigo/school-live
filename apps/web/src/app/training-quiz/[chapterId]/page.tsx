@@ -15,14 +15,20 @@ import { Button } from "../../../components/ui/button";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
   getChapter,
+  listChapters,
+  markLevelIntroSeen,
   submitAnswer,
   type QuizAnswerOption,
   type QuizAnswerResult,
   type QuizChapterDetail,
+  type QuizChapterSummary,
   type QuizStage,
   type QuizQuestion,
 } from "../../../components/training-quiz/training-quiz-api";
 import { TrainingQuizIcon } from "../../../components/training-quiz/training-quiz-icon";
+import { LevelIntro } from "../../../components/training-quiz/level-intro";
+import { LevelComplete } from "../../../components/training-quiz/level-complete";
+import { ConfettiBurst } from "../../../components/training-quiz/confetti-burst";
 
 const STAGE_ORDER: QuizStage[] = ["DISCOVERY", "PRACTICE", "MASTERY"];
 
@@ -193,6 +199,13 @@ export default function TrainingQuizChapterPage() {
   const [attemptRound, setAttemptRound] = useState(0);
   const [cooldownSecondsLeft, setCooldownSecondsLeft] = useState(0);
   const [hasVisitedDeepLink, setHasVisitedDeepLink] = useState(false);
+  const [showLevelIntro, setShowLevelIntro] = useState(false);
+  const [startingLevel, setStartingLevel] = useState(false);
+  const [levelJustCompleted, setLevelJustCompleted] = useState<
+    QuizChapterDetail["levels"][number] | null
+  >(null);
+  const [nextModuleSuggestion, setNextModuleSuggestion] =
+    useState<QuizChapterSummary | null>(null);
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const boot = useCallback(async () => {
@@ -234,6 +247,9 @@ export default function TrainingQuizChapterPage() {
       const levelQuestions = data.questions.filter((q) => q.stage === stage);
       const firstUnsolved = levelQuestions.findIndex((q) => !q.solved);
       setCurrentIndex(firstUnsolved === -1 ? 0 : firstUnsolved);
+      setShowLevelIntro(
+        data.levels.find((level) => level.stage === stage)?.introSeen === false,
+      );
     } catch {
       setError(t("trainingQuiz.errors.load"));
     } finally {
@@ -345,11 +361,14 @@ export default function TrainingQuizChapterPage() {
               const levelQs = questions.filter((q) => q.stage === stage);
               const totalQuestions = levelQs.length;
               const solvedQuestions = levelQs.filter((q) => q.solved).length;
+              const prevLevel = prev.levels.find((l) => l.stage === stage);
               levels.push({
                 stage,
                 totalQuestions,
                 solvedQuestions,
                 unlocked: previousLevelCleared,
+                objective: prevLevel?.objective ?? "",
+                introSeen: prevLevel?.introSeen ?? false,
               });
               previousLevelCleared =
                 totalQuestions > 0 && solvedQuestions === totalQuestions;
@@ -394,6 +413,59 @@ export default function TrainingQuizChapterPage() {
     setCurrentLevel(stage);
     setCurrentIndex(0);
     resetQuestionState();
+    setShowLevelIntro(
+      chapter?.levels.find((level) => level.stage === stage)?.introSeen ===
+        false,
+    );
+  }
+
+  async function handleStartLevel() {
+    if (!chapter) return;
+    setStartingLevel(true);
+    try {
+      await markLevelIntroSeen(chapter.id, currentLevel);
+      setChapter((prev) =>
+        prev
+          ? {
+              ...prev,
+              levels: prev.levels.map((level) =>
+                level.stage === currentLevel
+                  ? { ...level, introSeen: true }
+                  : level,
+              ),
+            }
+          : prev,
+      );
+      setShowLevelIntro(false);
+    } finally {
+      setStartingLevel(false);
+    }
+  }
+
+  async function handleLevelCompleteContinue() {
+    const completedLevel = levelJustCompleted;
+    setLevelJustCompleted(null);
+    if (!completedLevel || !chapter) return;
+    const nextLevel = STAGE_ORDER.slice(
+      STAGE_ORDER.indexOf(completedLevel.stage) + 1,
+    ).find((s) => chapter.levels.find((l) => l.stage === s)?.totalQuestions);
+    if (nextLevel) {
+      goToLevel(nextLevel);
+      return;
+    }
+    try {
+      const chapters = await listChapters();
+      const suggestion = chapters.find(
+        (c) =>
+          c.id !== chapter.id &&
+          c.totalQuestions > 0 &&
+          c.solvedQuestions < c.totalQuestions,
+      );
+      setNextModuleSuggestion(suggestion ?? null);
+    } catch {
+      setNextModuleSuggestion(null);
+    }
+    setFinished(true);
   }
 
   function handleRetry() {
@@ -407,14 +479,12 @@ export default function TrainingQuizChapterPage() {
   function handleNext() {
     if (!chapter) return;
     if (isLastInLevel) {
-      const nextLevel = STAGE_ORDER.slice(
-        STAGE_ORDER.indexOf(currentLevel) + 1,
-      ).find((s) => chapter.levels.find((l) => l.stage === s)?.totalQuestions);
-      if (nextLevel) {
-        goToLevel(nextLevel);
-        return;
+      const completedLevel = chapter.levels.find(
+        (l) => l.stage === currentLevel,
+      );
+      if (completedLevel) {
+        setLevelJustCompleted(completedLevel);
       }
-      setFinished(true);
       return;
     }
     goToIndex(currentIndex + 1);
@@ -454,30 +524,109 @@ export default function TrainingQuizChapterPage() {
         schoolSlug={schoolSlug}
         schoolName={t("trainingQuiz.shellName")}
       >
-        <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-4 py-16 text-center">
+        <div className="relative mx-auto flex max-w-xl flex-col items-center gap-3 overflow-hidden px-4 py-16 text-center">
+          <ConfettiBurst />
           <span
-            className="inline-flex h-20 w-20 items-center justify-center rounded-full text-white"
+            className="celebration-badge celebration-ring-pulse relative inline-flex h-20 w-20 items-center justify-center rounded-full text-white"
             style={{
               background: `linear-gradient(135deg, ${chapter.colorFrom}, ${chapter.colorTo})`,
             }}
           >
             <PartyPopper className="h-10 w-10" aria-hidden="true" />
           </span>
-          <h1 className="font-heading text-2xl font-bold text-text-primary">
+          <h1 className="celebration-rise-in font-heading text-2xl font-bold text-text-primary">
             {t("trainingQuiz.chapter.completeTitle")}
           </h1>
-          <p className="text-sm text-text-secondary">
+          <p
+            className="celebration-rise-in text-sm text-text-secondary"
+            style={{ animationDelay: "0.1s" }}
+          >
             {t("trainingQuiz.chapter.completeSubtitle")}
           </p>
+          <div
+            className="celebration-rise-in inline-flex items-center gap-2 rounded-full border border-teal-border bg-teal-surface px-4 py-2 font-heading text-lg font-bold text-accent-teal-dark"
+            style={{ animationDelay: "0.15s" }}
+          >
+            {t("trainingQuiz.chapter.completeScore").replace(
+              "{total}",
+              String(chapter.totalQuestions),
+            )}
+          </div>
+
+          {nextModuleSuggestion ? (
+            <div
+              className="celebration-rise-in mt-3 w-full rounded-[20px] border border-primary/40 bg-teal-highlight/30 p-4 text-left"
+              style={{ animationDelay: "0.2s" }}
+            >
+              <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                {t("trainingQuiz.chapter.nextModuleLabel")}
+              </p>
+              <p className="mt-1 font-heading text-base font-semibold text-text-primary">
+                {nextModuleSuggestion.title}
+              </p>
+              <Button
+                onClick={() =>
+                  router.push(`/training-quiz/${nextModuleSuggestion.id}`)
+                }
+                className="mt-3 w-full sm:w-auto"
+              >
+                {t("trainingQuiz.chapter.nextModuleCta")}
+              </Button>
+            </div>
+          ) : null}
+
           <Button
+            variant={nextModuleSuggestion ? "secondary" : "primary"}
             onClick={() => router.push("/training-quiz")}
-            className="mt-4"
+            className="celebration-rise-in mt-2"
+            style={{ animationDelay: "0.25s" }}
           >
             {t("trainingQuiz.chapter.completeBackCta")}
           </Button>
         </div>
       </AppShell>
     );
+  }
+
+  if (levelJustCompleted) {
+    const nextStage =
+      STAGE_ORDER.slice(STAGE_ORDER.indexOf(levelJustCompleted.stage) + 1).find(
+        (s) => chapter.levels.find((l) => l.stage === s)?.totalQuestions,
+      ) ?? null;
+    return (
+      <AppShell
+        schoolSlug={schoolSlug}
+        schoolName={t("trainingQuiz.shellName")}
+      >
+        <LevelComplete
+          chapter={chapter}
+          level={levelJustCompleted}
+          nextStage={nextStage}
+          onContinue={handleLevelCompleteContinue}
+          t={t}
+        />
+      </AppShell>
+    );
+  }
+
+  if (showLevelIntro) {
+    const levelInfo = chapter.levels.find((l) => l.stage === currentLevel);
+    if (levelInfo) {
+      return (
+        <AppShell
+          schoolSlug={schoolSlug}
+          schoolName={t("trainingQuiz.shellName")}
+        >
+          <LevelIntro
+            chapter={chapter}
+            level={levelInfo}
+            onStart={handleStartLevel}
+            starting={startingLevel}
+            t={t}
+          />
+        </AppShell>
+      );
+    }
   }
 
   if (!question) {

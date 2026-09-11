@@ -32,27 +32,37 @@ type Level = {
   totalQuestions: number;
   solvedQuestions: number;
   unlocked: boolean;
+  objective: string;
+  introSeen: boolean;
 };
 
-function makeLevels(overrides: Partial<Record<Level["stage"], Level>>) {
+function makeLevels(
+  overrides: Partial<Record<Level["stage"], Partial<Level>>>,
+) {
   const base: Record<Level["stage"], Level> = {
     DISCOVERY: {
       stage: "DISCOVERY",
       totalQuestions: 0,
       solvedQuestions: 0,
       unlocked: true,
+      objective: "Objectif découverte",
+      introSeen: true,
     },
     PRACTICE: {
       stage: "PRACTICE",
       totalQuestions: 0,
       solvedQuestions: 0,
       unlocked: false,
+      objective: "Objectif pratique",
+      introSeen: true,
     },
     MASTERY: {
       stage: "MASTERY",
       totalQuestions: 0,
       solvedQuestions: 0,
       unlocked: false,
+      objective: "Objectif maîtrise",
+      introSeen: true,
     },
   };
   return ["DISCOVERY", "PRACTICE", "MASTERY"].map((s) => ({
@@ -562,6 +572,9 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Bonne réponse !");
     fireEvent.click(screen.getByText("Mission suivante"));
 
+    await screen.findByText("Passer au niveau Pratique");
+    fireEvent.click(screen.getByText("Passer au niveau Pratique"));
+
     await screen.findByText("Question de niveau pratique");
     expect(
       screen.queryByText("Où consultez-vous le comportement disciplinaire ?"),
@@ -645,6 +658,9 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Bonne réponse !");
     fireEvent.click(screen.getByText("Mission suivante"));
 
+    await screen.findByText("Passer au niveau Pratique");
+    fireEvent.click(screen.getByText("Passer au niveau Pratique"));
+
     await screen.findByText("Question de niveau pratique");
     expect(screen.getByText("Réponse moyenne")).toBeInTheDocument();
   });
@@ -674,8 +690,153 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Terminer");
     fireEvent.click(screen.getByText("Terminer"));
 
+    await screen.findByText("Terminer le chapitre");
+    fireEvent.click(screen.getByText("Terminer le chapitre"));
+
     await waitFor(() =>
       expect(screen.getByText("Chapitre terminé !")).toBeInTheDocument(),
     );
+  });
+
+  describe("level intro page", () => {
+    it("shows the intro page before the first question when the level's intro has not been seen yet, and marking it seen reveals the question", async () => {
+      const chapter = {
+        ...DISCOVERY_CHAPTER,
+        levels: makeLevels({
+          DISCOVERY: {
+            stage: "DISCOVERY",
+            totalQuestions: 2,
+            solvedQuestions: 0,
+            unlocked: true,
+            objective: "Découvrez où consulter le comportement disciplinaire.",
+            introSeen: false,
+          },
+        }),
+      };
+      let introSeenCalled = false;
+      global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/me")) {
+          return jsonResponse({ schoolSlug: "ecole-test" });
+        }
+        if (url.endsWith("/schools/ecole-test/me")) {
+          return jsonResponse({ linkedStudents: [] });
+        }
+        if (url.endsWith("/training-quiz/chapters/chapter-1")) {
+          return jsonResponse(chapter);
+        }
+        if (url.includes("/intro-seen") && init?.method === "POST") {
+          introSeenCalled = true;
+          return jsonResponse({ ok: true });
+        }
+        return jsonResponse({});
+      }) as unknown as typeof fetch;
+
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText("Objectif de ce niveau");
+      expect(
+        screen.getByText(
+          "Découvrez où consulter le comportement disciplinaire.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Règles du niveau")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Où consultez-vous le comportement disciplinaire ?"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Commencer ce niveau"));
+
+      await screen.findByText(
+        "Où consultez-vous le comportement disciplinaire ?",
+      );
+      expect(introSeenCalled).toBe(true);
+    });
+  });
+
+  describe("level completion celebration", () => {
+    it("shows the level score and an encouragement before offering to move to the next level", async () => {
+      const chapter = {
+        ...DISCOVERY_CHAPTER,
+        totalQuestions: 2,
+        levels: makeLevels({
+          DISCOVERY: {
+            stage: "DISCOVERY",
+            totalQuestions: 1,
+            solvedQuestions: 0,
+            unlocked: true,
+            objective: "Objectif découverte",
+            introSeen: true,
+          },
+          PRACTICE: {
+            stage: "PRACTICE",
+            totalQuestions: 1,
+            solvedQuestions: 0,
+            unlocked: false,
+            objective: "Objectif pratique",
+            introSeen: true,
+          },
+        }),
+        questions: [
+          DISCOVERY_CHAPTER.questions[0],
+          {
+            id: "qm",
+            order: 2,
+            type: "MCQ_SINGLE",
+            stage: "PRACTICE",
+            text: "Question de niveau pratique",
+            hint: null,
+            imageUrl: null,
+            deepLinkRoute: null,
+            solved: false,
+            attemptsCount: 0,
+            options: [{ id: "qm-correct", order: 1, text: "Réponse moyenne" }],
+          },
+        ],
+      };
+      const chapterAfterAnswer = {
+        ...chapter,
+        levels: makeLevels({
+          DISCOVERY: {
+            stage: "DISCOVERY",
+            totalQuestions: 1,
+            solvedQuestions: 1,
+            unlocked: true,
+            objective: "Objectif découverte",
+            introSeen: true,
+          },
+          PRACTICE: {
+            stage: "PRACTICE",
+            totalQuestions: 1,
+            solvedQuestions: 0,
+            unlocked: true,
+            objective: "Objectif pratique",
+            introSeen: true,
+          },
+        }),
+        questions: [
+          { ...chapter.questions[0], solved: true },
+          chapter.questions[1],
+        ],
+      };
+      mockFetch({ chapter, chapterAfterAnswer });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText(
+        "Où consultez-vous le comportement disciplinaire ?",
+      );
+      fireEvent.click(screen.getByText("Onglet Discipline"));
+      fireEvent.click(screen.getByText("Valider"));
+
+      await screen.findByText("Bonne réponse !");
+      fireEvent.click(screen.getByText("Mission suivante"));
+
+      await screen.findByText("Niveau Découverte terminé !");
+      expect(screen.getByText("1/1 missions réussies")).toBeInTheDocument();
+      expect(
+        screen.getByText("Prochaine étape : le niveau Pratique."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Passer au niveau Pratique")).toBeInTheDocument();
+    });
   });
 });

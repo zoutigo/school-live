@@ -37,6 +37,13 @@ export type QuizLevelSummary = {
   totalQuestions: number;
   solvedQuestions: number;
   unlocked: boolean;
+  // Objective shown on the level's intro page — a personalized editorial
+  // text when authored for this (chapter, stage), otherwise a generic
+  // fallback built from the chapter description.
+  objective: string;
+  // Whether this user has already dismissed this level's intro page —
+  // persisted server-side so it does not reappear on reconnection.
+  introSeen: boolean;
 };
 
 export type QuizChapterDetail = QuizChapterSummary & {
