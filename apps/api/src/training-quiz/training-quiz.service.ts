@@ -15,34 +15,33 @@ import type {
 } from "./training-quiz.types.js";
 
 type Locale = "FR" | "EN";
-type Difficulty = "EASY" | "MEDIUM" | "HARD";
+type Stage = "DISCOVERY" | "PRACTICE" | "MASTERY";
 
-const DIFFICULTY_ORDER: Difficulty[] = ["EASY", "MEDIUM", "HARD"];
+const STAGE_ORDER: Stage[] = ["DISCOVERY", "PRACTICE", "MASTERY"];
 
 @Injectable()
 export class TrainingQuizService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // A level is unlocked when every question of the previous level is solved
-  // (EASY is always unlocked). Assumes `questions` all belong to one chapter.
+  // A stage is unlocked when every question of the previous stage is solved
+  // (DISCOVERY is always unlocked). Assumes `questions` all belong to one
+  // chapter.
   private computeLevels(
-    questions: Array<{ difficulty: Difficulty; solved: boolean }>,
+    questions: Array<{ stage: Stage; solved: boolean }>,
   ): QuizLevelSummary[] {
     const levels: QuizLevelSummary[] = [];
-    let previousLevelCleared = true;
-    for (const difficulty of DIFFICULTY_ORDER) {
-      const levelQuestions = questions.filter(
-        (q) => q.difficulty === difficulty,
-      );
-      const totalQuestions = levelQuestions.length;
-      const solvedQuestions = levelQuestions.filter((q) => q.solved).length;
+    let previousStageCleared = true;
+    for (const stage of STAGE_ORDER) {
+      const stageQuestions = questions.filter((q) => q.stage === stage);
+      const totalQuestions = stageQuestions.length;
+      const solvedQuestions = stageQuestions.filter((q) => q.solved).length;
       levels.push({
-        difficulty,
+        stage,
         totalQuestions,
         solvedQuestions,
-        unlocked: previousLevelCleared,
+        unlocked: previousStageCleared,
       });
-      previousLevelCleared =
+      previousStageCleared =
         totalQuestions > 0 && solvedQuestions === totalQuestions;
     }
     return levels;
@@ -132,12 +131,12 @@ export class TrainingQuizService {
 
     const levels = this.computeLevels(
       chapter.questions.map((question) => ({
-        difficulty: question.difficulty,
+        stage: question.stage,
         solved: question.progress[0]?.solved ?? false,
       })),
     );
-    const unlockedDifficulties = new Set(
-      levels.filter((level) => level.unlocked).map((level) => level.difficulty),
+    const unlockedStages = new Set(
+      levels.filter((level) => level.unlocked).map((level) => level.stage),
     );
 
     return {
@@ -158,10 +157,10 @@ export class TrainingQuizService {
         id: question.id,
         order: question.order,
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         text: locale === "EN" ? question.textEn : question.textFr,
         hint:
-          question.difficulty === "HARD"
+          question.stage !== "DISCOVERY"
             ? locale === "EN"
               ? question.hintEn
               : question.hintFr
@@ -170,7 +169,7 @@ export class TrainingQuizService {
         deepLinkRoute: question.deepLinkRoute,
         solved: question.progress[0]?.solved ?? false,
         attemptsCount: question.progress[0]?.attemptsCount ?? 0,
-        options: unlockedDifficulties.has(question.difficulty)
+        options: unlockedStages.has(question.stage)
           ? question.options.map((option) => ({
               id: option.id,
               order: option.order,
@@ -197,7 +196,7 @@ export class TrainingQuizService {
             questions: {
               where: { isActive: true },
               select: {
-                difficulty: true,
+                stage: true,
                 progress: {
                   where: { userId: user.id, solved: true },
                   select: { id: true },
@@ -215,13 +214,12 @@ export class TrainingQuizService {
 
     const levels = this.computeLevels(
       question.chapter.questions.map((q) => ({
-        difficulty: q.difficulty,
+        stage: q.stage,
         solved: q.progress.length > 0,
       })),
     );
     const levelUnlocked =
-      levels.find((level) => level.difficulty === question.difficulty)
-        ?.unlocked ?? false;
+      levels.find((level) => level.stage === question.stage)?.unlocked ?? false;
     if (!levelUnlocked) {
       throw new BadRequestException("This level is locked");
     }
@@ -273,10 +271,11 @@ export class TrainingQuizService {
       alreadySolved: wasAlreadySolved,
       explanation:
         locale === "EN" ? question.explanationEn : question.explanationFr,
-      // Easy/medium never reveal which option was correct on a miss — the
-      // learner is redirected to the app instead of being handed the answer.
+      // Discovery/practice never reveal which option was correct on a miss —
+      // the learner is redirected to the app instead of being handed the
+      // answer.
       correctOptionIds:
-        correct || question.difficulty === "HARD" ? correctOptionIds : [],
+        correct || question.stage === "MASTERY" ? correctOptionIds : [],
       attemptsCount,
     };
   }

@@ -28,42 +28,42 @@ function jsonResponse(payload: unknown, status = 200) {
 }
 
 type Level = {
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  stage: "DISCOVERY" | "PRACTICE" | "MASTERY";
   totalQuestions: number;
   solvedQuestions: number;
   unlocked: boolean;
 };
 
-function makeLevels(overrides: Partial<Record<Level["difficulty"], Level>>) {
-  const base: Record<Level["difficulty"], Level> = {
-    EASY: {
-      difficulty: "EASY",
+function makeLevels(overrides: Partial<Record<Level["stage"], Level>>) {
+  const base: Record<Level["stage"], Level> = {
+    DISCOVERY: {
+      stage: "DISCOVERY",
       totalQuestions: 0,
       solvedQuestions: 0,
       unlocked: true,
     },
-    MEDIUM: {
-      difficulty: "MEDIUM",
+    PRACTICE: {
+      stage: "PRACTICE",
       totalQuestions: 0,
       solvedQuestions: 0,
       unlocked: false,
     },
-    HARD: {
-      difficulty: "HARD",
+    MASTERY: {
+      stage: "MASTERY",
       totalQuestions: 0,
       solvedQuestions: 0,
       unlocked: false,
     },
   };
-  return ["EASY", "MEDIUM", "HARD"].map((d) => ({
-    ...base[d as Level["difficulty"]],
-    ...overrides[d as Level["difficulty"]],
+  return ["DISCOVERY", "PRACTICE", "MASTERY"].map((s) => ({
+    ...base[s as Level["stage"]],
+    ...overrides[s as Level["stage"]],
   }));
 }
 
-// Chapter made only of an EASY level (2 questions) — used to exercise the
-// easy/medium flow: no hint, no answer reveal, dual-condition retry gate.
-const EASY_CHAPTER = {
+// Chapter made only of a DISCOVERY stage (2 questions) — used to exercise
+// the pure-recall flow: no hint, no answer reveal, free retry.
+const DISCOVERY_CHAPTER = {
   id: "chapter-1",
   moduleKey: "discipline",
   order: 1,
@@ -75,8 +75,8 @@ const EASY_CHAPTER = {
   totalQuestions: 2,
   solvedQuestions: 0,
   levels: makeLevels({
-    EASY: {
-      difficulty: "EASY",
+    DISCOVERY: {
+      stage: "DISCOVERY",
       totalQuestions: 2,
       solvedQuestions: 0,
       unlocked: true,
@@ -87,7 +87,7 @@ const EASY_CHAPTER = {
       id: "q1",
       order: 1,
       type: "MCQ_SINGLE",
-      difficulty: "EASY",
+      stage: "DISCOVERY",
       text: "Où consultez-vous le comportement disciplinaire ?",
       hint: null,
       imageUrl: null,
@@ -103,7 +103,7 @@ const EASY_CHAPTER = {
       id: "q2",
       order: 2,
       type: "MCQ_SINGLE",
-      difficulty: "EASY",
+      stage: "DISCOVERY",
       text: "Deuxième mission facile ?",
       hint: null,
       imageUrl: null,
@@ -118,10 +118,10 @@ const EASY_CHAPTER = {
   ],
 };
 
-// Chapter with EASY already cleared and one HARD question — used to
-// exercise the "advanced" flow: hint available, answer reveal, retry gated
-// only by the cooldown.
-const HARD_CHAPTER = {
+// Chapter with DISCOVERY already cleared and one PRACTICE question — used
+// to exercise the action-incitation flow: hint available, no answer
+// reveal, retry gated on visiting the real app screen.
+const PRACTICE_CHAPTER = {
   id: "chapter-1",
   moduleKey: "discipline",
   order: 1,
@@ -133,20 +133,14 @@ const HARD_CHAPTER = {
   totalQuestions: 1,
   solvedQuestions: 0,
   levels: makeLevels({
-    EASY: {
-      difficulty: "EASY",
+    DISCOVERY: {
+      stage: "DISCOVERY",
       totalQuestions: 1,
       solvedQuestions: 1,
       unlocked: true,
     },
-    MEDIUM: {
-      difficulty: "MEDIUM",
-      totalQuestions: 1,
-      solvedQuestions: 1,
-      unlocked: true,
-    },
-    HARD: {
-      difficulty: "HARD",
+    PRACTICE: {
+      stage: "PRACTICE",
       totalQuestions: 1,
       solvedQuestions: 0,
       unlocked: true,
@@ -157,8 +151,75 @@ const HARD_CHAPTER = {
       id: "qe",
       order: 1,
       type: "MCQ_SINGLE",
-      difficulty: "EASY",
-      text: "Question facile déjà résolue",
+      stage: "DISCOVERY",
+      text: "Question de découverte déjà résolue",
+      hint: null,
+      imageUrl: null,
+      deepLinkRoute: null,
+      solved: true,
+      attemptsCount: 1,
+      options: [{ id: "qe-correct", order: 1, text: "Réponse" }],
+    },
+    {
+      id: "q2",
+      order: 2,
+      type: "MCQ_SINGLE",
+      stage: "PRACTICE",
+      text: "Allez consulter la fiche de l'enfant, puis répondez.",
+      hint: "Ouvrez la fiche de l'enfant depuis la liste.",
+      imageUrl: null,
+      deepLinkRoute: "/children/{childId}/discipline",
+      solved: false,
+      attemptsCount: 0,
+      options: [
+        { id: "q2-correct", order: 1, text: "Bonne réponse" },
+        { id: "q2-wrong", order: 2, text: "Mauvaise réponse" },
+      ],
+    },
+  ],
+};
+
+// Chapter with DISCOVERY and PRACTICE already cleared and one MASTERY
+// question — used to exercise the advanced flow: hint available, answer
+// reveal, retry gated only by the cooldown.
+const MASTERY_CHAPTER = {
+  id: "chapter-1",
+  moduleKey: "discipline",
+  order: 1,
+  icon: "ShieldCheck",
+  colorFrom: "#3DA5F5",
+  colorTo: "#207FD5",
+  title: "Discipline",
+  description: "desc",
+  totalQuestions: 1,
+  solvedQuestions: 0,
+  levels: makeLevels({
+    DISCOVERY: {
+      stage: "DISCOVERY",
+      totalQuestions: 1,
+      solvedQuestions: 1,
+      unlocked: true,
+    },
+    PRACTICE: {
+      stage: "PRACTICE",
+      totalQuestions: 1,
+      solvedQuestions: 1,
+      unlocked: true,
+    },
+    MASTERY: {
+      stage: "MASTERY",
+      totalQuestions: 1,
+      solvedQuestions: 0,
+      unlocked: true,
+    },
+  }),
+  questions: [
+    {
+      id: "qe",
+      order: 1,
+      type: "MCQ_SINGLE",
+      stage: "DISCOVERY",
+      text: "Question de découverte déjà résolue",
       hint: null,
       imageUrl: null,
       deepLinkRoute: null,
@@ -170,8 +231,8 @@ const HARD_CHAPTER = {
       id: "qm",
       order: 2,
       type: "MCQ_SINGLE",
-      difficulty: "MEDIUM",
-      text: "Question moyenne déjà résolue",
+      stage: "PRACTICE",
+      text: "Question de pratique déjà résolue",
       hint: null,
       imageUrl: null,
       deepLinkRoute: null,
@@ -183,7 +244,7 @@ const HARD_CHAPTER = {
       id: "q2",
       order: 3,
       type: "MCQ_SINGLE",
-      difficulty: "HARD",
+      stage: "MASTERY",
       text: "Deuxième mission ?",
       hint: "Un indice pour la deuxième mission.",
       imageUrl: null,
@@ -199,7 +260,7 @@ const HARD_CHAPTER = {
 };
 
 function mockFetch({
-  chapter = EASY_CHAPTER,
+  chapter = DISCOVERY_CHAPTER,
   answerResult,
   linkedStudents = [{ id: "child-1" }],
 }: {
@@ -260,7 +321,7 @@ describe("TrainingQuizChapterPage", () => {
     expect(screen.getByText("Bien joué !")).toBeInTheDocument();
   });
 
-  describe("easy/medium level", () => {
+  describe("discovery stage", () => {
     it("shows the explanation but never reveals which option was correct on a miss", async () => {
       mockFetch({
         answerResult: {
@@ -294,7 +355,7 @@ describe("TrainingQuizChapterPage", () => {
       expect(screen.queryByText("Afficher un indice")).not.toBeInTheDocument();
     });
 
-    it("keeps retry locked until both the deep link is visited and the cooldown ends", async () => {
+    it("allows an immediate retry without requiring a visit to the app", async () => {
       mockFetch({
         answerResult: {
           correct: false,
@@ -308,6 +369,41 @@ describe("TrainingQuizChapterPage", () => {
 
       await screen.findByText("Onglet Discipline");
       fireEvent.click(screen.getByText("Messagerie"));
+      fireEvent.click(screen.getByText("Valider"));
+
+      await screen.findByText("Pas tout à fait");
+      expect(
+        screen.getByText("Repensez à la question et retentez votre chance."),
+      ).toBeInTheDocument();
+
+      const retryButton = screen.getByText("Réessayer").closest("button");
+      expect(retryButton).not.toBeDisabled();
+
+      fireEvent.click(screen.getByText("Réessayer"));
+      expect(screen.queryByText("Pas tout à fait")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("practice stage", () => {
+    it("shows a hint and keeps retry locked until both the deep link is visited and the cooldown ends", async () => {
+      mockFetch({
+        chapter: PRACTICE_CHAPTER,
+        answerResult: {
+          correct: false,
+          alreadySolved: false,
+          explanation: "Pas exactement.",
+          correctOptionIds: [],
+          attemptsCount: 1,
+        },
+      });
+      render(<TrainingQuizChapterPage />);
+
+      await screen.findByText(
+        "Allez consulter la fiche de l'enfant, puis répondez.",
+      );
+      expect(screen.getByText("Afficher un indice")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Mauvaise réponse"));
       fireEvent.click(screen.getByText("Valider"));
 
       await screen.findByText("Pas tout à fait");
@@ -337,10 +433,10 @@ describe("TrainingQuizChapterPage", () => {
     });
   });
 
-  describe("hard level", () => {
+  describe("mastery stage", () => {
     it("shows a hint and reveals the correct option, with retry gated only by the cooldown", async () => {
       mockFetch({
-        chapter: HARD_CHAPTER,
+        chapter: MASTERY_CHAPTER,
         answerResult: {
           correct: false,
           alreadySolved: false,
@@ -410,32 +506,32 @@ describe("TrainingQuizChapterPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("unlocks and switches to the next level once the current one is cleared", async () => {
+  it("unlocks and switches to the next stage once the current one is cleared", async () => {
     const chapter = {
-      ...EASY_CHAPTER,
+      ...DISCOVERY_CHAPTER,
       totalQuestions: 2,
       levels: makeLevels({
-        EASY: {
-          difficulty: "EASY",
+        DISCOVERY: {
+          stage: "DISCOVERY",
           totalQuestions: 1,
           solvedQuestions: 0,
           unlocked: true,
         },
-        MEDIUM: {
-          difficulty: "MEDIUM",
+        PRACTICE: {
+          stage: "PRACTICE",
           totalQuestions: 1,
           solvedQuestions: 0,
           unlocked: false,
         },
       }),
       questions: [
-        EASY_CHAPTER.questions[0],
+        DISCOVERY_CHAPTER.questions[0],
         {
           id: "qm",
           order: 2,
           type: "MCQ_SINGLE",
-          difficulty: "MEDIUM",
-          text: "Question de niveau moyen",
+          stage: "PRACTICE",
+          text: "Question de niveau pratique",
           hint: null,
           imageUrl: null,
           deepLinkRoute: null,
@@ -451,8 +547,8 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText(
       "Où consultez-vous le comportement disciplinaire ?",
     );
-    // MEDIUM tab is locked before EASY is cleared.
-    expect(screen.getByRole("tab", { name: /Moyen/ })).toBeDisabled();
+    // PRACTICE tab is locked before DISCOVERY is cleared.
+    expect(screen.getByRole("tab", { name: /Pratique/ })).toBeDisabled();
 
     fireEvent.click(screen.getByText("Onglet Discipline"));
     fireEvent.click(screen.getByText("Valider"));
@@ -460,26 +556,26 @@ describe("TrainingQuizChapterPage", () => {
     await screen.findByText("Bonne réponse !");
     fireEvent.click(screen.getByText("Mission suivante"));
 
-    await screen.findByText("Question de niveau moyen");
+    await screen.findByText("Question de niveau pratique");
     expect(
       screen.queryByText("Où consultez-vous le comportement disciplinaire ?"),
     ).not.toBeInTheDocument();
   });
 
-  it("shows the completion screen after the last mission of a single-level chapter", async () => {
+  it("shows the completion screen after the last mission of a single-stage chapter", async () => {
     mockFetch({
       chapter: {
-        ...EASY_CHAPTER,
+        ...DISCOVERY_CHAPTER,
         totalQuestions: 1,
         levels: makeLevels({
-          EASY: {
-            difficulty: "EASY",
+          DISCOVERY: {
+            stage: "DISCOVERY",
             totalQuestions: 1,
             solvedQuestions: 0,
             unlocked: true,
           },
         }),
-        questions: [EASY_CHAPTER.questions[0]],
+        questions: [DISCOVERY_CHAPTER.questions[0]],
       },
     });
     render(<TrainingQuizChapterPage />);

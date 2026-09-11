@@ -31,7 +31,7 @@ const QUESTIONS = [
   {
     order: 1,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q1-nouveau-message"),
     deepLinkRoute: "/messagerie",
     textFr: "Où écrire un nouveau message à l'école ?",
@@ -69,7 +69,7 @@ const QUESTIONS = [
   {
     order: 2,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q2-envoyes"),
     deepLinkRoute: "/messagerie",
     textFr:
@@ -89,7 +89,7 @@ const QUESTIONS = [
   {
     order: 3,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q3-boite-reception"),
     deepLinkRoute: "/messagerie",
     textFr: "Quel dossier affiche les messages que vous avez reçus ?",
@@ -114,13 +114,13 @@ const QUESTIONS = [
   {
     order: 4,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q4-brouillons"),
     deepLinkRoute: "/messagerie",
     textFr:
-      "Où retrouver un message que vous avez commencé à écrire mais pas encore envoyé ?",
+      "Allez dans la messagerie, commencez à écrire un nouveau message sans l'envoyer, puis revenez ici : où le retrouve-t-on ?",
     textEn:
-      "Where do you find a message you started writing but haven't sent yet?",
+      "Open messaging, start writing a new message without sending it, then come back: where do you find it?",
     hintFr: "Ce dossier garde vos messages inachevés.",
     hintEn: "This folder keeps your unfinished messages.",
     explanationFr:
@@ -149,13 +149,13 @@ const QUESTIONS = [
   {
     order: 5,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q5-archives"),
     deepLinkRoute: "/messagerie",
     textFr:
-      "Quel dossier permet de ranger un message sans le supprimer définitivement ?",
+      "Ouvrez un message de votre boîte de réception et cherchez une action pour le ranger sans le supprimer : quel dossier permet cela ?",
     textEn:
-      "Which folder lets you put a message aside without deleting it for good?",
+      "Open a message in your inbox and look for an action to put it aside without deleting it: which folder does that?",
     hintFr:
       "Pensez à un dossier qui garde une trace sans encombrer la boîte de réception.",
     hintEn:
@@ -178,13 +178,13 @@ const QUESTIONS = [
   {
     order: 6,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q6-repondre"),
     deepLinkRoute: "/messagerie",
     textFr:
-      "Vous pouvez répondre directement à un message reçu, sans avoir à recréer un nouveau message de zéro.",
+      "Ouvrez un message reçu et regardez les actions proposées : pouvez-vous y répondre directement, sans recréer un nouveau message de zéro ?",
     textEn:
-      "You can reply directly to a received message, without creating a new one from scratch.",
+      "Open a received message and look at the actions offered: can you reply to it directly, without creating a new one from scratch?",
     hintFr: "Ouvrez un message reçu et regardez les actions proposées.",
     hintEn: "Open a received message and look at the actions offered.",
     explanationFr:
@@ -199,7 +199,7 @@ const QUESTIONS = [
   {
     order: 7,
     type: "MCQ_MULTI",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q7-dossiers"),
     deepLinkRoute: "/messagerie",
     textFr:
@@ -227,7 +227,7 @@ const QUESTIONS = [
   {
     order: 8,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q8-recherche"),
     deepLinkRoute: "/messagerie",
     textFr:
@@ -265,7 +265,7 @@ const QUESTIONS = [
   {
     order: 9,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q9-envoyer-brouillon"),
     deepLinkRoute: "/messagerie",
     textFr:
@@ -304,7 +304,7 @@ const QUESTIONS = [
   {
     order: 10,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q10-destinataire"),
     deepLinkRoute: "/messagerie",
     textFr:
@@ -343,7 +343,7 @@ const QUESTIONS = [
   {
     order: 11,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -364,7 +364,7 @@ const QUESTIONS = [
   {
     order: 12,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr: "Comment savez-vous qu'un nouveau message est arrivé ?",
@@ -401,7 +401,7 @@ const QUESTIONS = [
   {
     order: 13,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr: "Il faut ressaisir l'adresse de l'école à chaque nouveau message.",
@@ -420,7 +420,7 @@ const QUESTIONS = [
   {
     order: 14,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr: "Qui peut recevoir vos messages envoyés depuis l'application ?",
@@ -457,7 +457,7 @@ const QUESTIONS = [
   {
     order: 15,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr: "Combien de dossiers principaux propose la messagerie ?",
@@ -481,7 +481,7 @@ const QUESTIONS = [
   {
     order: 16,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -501,7 +501,7 @@ const QUESTIONS = [
   {
     order: 17,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -540,11 +540,13 @@ const QUESTIONS = [
   {
     order: 18,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
-    textFr: "Pouvez-vous répondre à un message archivé ?",
-    textEn: "Can you reply to an archived message?",
+    textFr:
+      "Ouvrez un message archivé et regardez les actions proposées : pouvez-vous y répondre ?",
+    textEn:
+      "Open an archived message and look at the actions offered: can you reply to it?",
     hintFr: "Archiver ne bloque pas les actions possibles sur le message.",
     hintEn: "Archiving doesn't block the actions available on a message.",
     explanationFr:
@@ -573,11 +575,13 @@ const QUESTIONS = [
   {
     order: 19,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
-    textFr: "Archiver un message le retire aussi de la boîte de réception.",
-    textEn: "Archiving a message also removes it from the inbox.",
+    textFr:
+      "Archivez un message de votre boîte de réception, puis vérifiez : est-il aussi retiré de la boîte de réception ?",
+    textEn:
+      "Archive a message from your inbox, then check: is it also removed from the inbox?",
     hintFr: "Archiver déplace le message, il ne le duplique pas.",
     hintEn: "Archiving moves the message, it doesn't duplicate it.",
     explanationFr:
@@ -592,11 +596,13 @@ const QUESTIONS = [
   {
     order: 20,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
-    textFr: "Un message archivé peut-il être retrouvé plus tard ?",
-    textEn: "Can an archived message be found again later?",
+    textFr:
+      "Ouvrez le dossier Archives de la messagerie : un message archivé peut-il y être retrouvé plus tard ?",
+    textEn:
+      "Open the messaging Archive folder: can an archived message be found there later?",
     hintFr: "L'archivage n'est pas une suppression.",
     hintEn: "Archiving isn't deleting.",
     explanationFr: "Oui, dans le dossier Archives, à tout moment.",
@@ -627,13 +633,13 @@ const QUESTIONS = [
   {
     order: 21,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
-      "Un brouillon non terminé peut rester enregistré plusieurs jours avant d'être envoyé.",
+      "Laissez un brouillon inachevé dans la messagerie et revenez plus tard : reste-t-il enregistré sans être envoyé ?",
     textEn:
-      "An unfinished draft can stay saved for several days before being sent.",
+      "Leave an unfinished draft in messaging and come back later: does it stay saved without being sent?",
     hintFr: "Rien n'oblige à envoyer un brouillon immédiatement.",
     hintEn: "Nothing forces you to send a draft right away.",
     explanationFr:
@@ -648,11 +654,13 @@ const QUESTIONS = [
   {
     order: 22,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
-    textFr: 'Que devient un message une fois qu\'il est passé dans "Envoyés" ?',
-    textEn: 'What happens to a message once it\'s in "Sent"?',
+    textFr:
+      'Ouvrez le dossier "Envoyés" de la messagerie : que devient un message une fois qu\'il y figure ?',
+    textEn:
+      'Open the "Sent" folder in messaging: what happens to a message once it\'s in there?',
     hintFr: "Ce dossier garde une trace, il ne l'efface pas.",
     hintEn: "This folder keeps a record, it doesn't erase it.",
     explanationFr:
@@ -685,13 +693,13 @@ const QUESTIONS = [
   {
     order: 23,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
-      'Pourquoi utiliser "Répondre" plutôt que "Nouveau message" pour continuer un échange ?',
+      'Ouvrez un message reçu et cliquez sur "Répondre" : pourquoi utiliser ce bouton plutôt que "Nouveau message" pour continuer un échange ?',
     textEn:
-      'Why use "Reply" rather than "New message" to continue an exchange?',
+      'Open a received message and click "Reply": why use this button rather than "New message" to continue an exchange?',
     hintFr: "Cela évite de tout ressaisir.",
     hintEn: "It avoids retyping everything.",
     explanationFr:
@@ -725,12 +733,13 @@ const QUESTIONS = [
   {
     order: 24,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
-      "Il est possible d'avoir plusieurs brouillons non envoyés en même temps.",
-    textEn: "You can have several unsent drafts at the same time.",
+      "Commencez un deuxième brouillon sans envoyer le premier, puis ouvrez le dossier Brouillons : est-il possible d'en avoir plusieurs en attente en même temps ?",
+    textEn:
+      "Start a second draft without sending the first one, then open the Drafts folder: can you have several pending drafts at the same time?",
     hintFr: "Rien ne limite le nombre de brouillons en attente.",
     hintEn: "Nothing limits the number of pending drafts.",
     explanationFr:
@@ -745,7 +754,7 @@ const QUESTIONS = [
   {
     order: 25,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -784,7 +793,7 @@ const QUESTIONS = [
   {
     order: 26,
     type: "MCQ_MULTI",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -815,7 +824,7 @@ const QUESTIONS = [
   {
     order: 27,
     type: "TRUE_FALSE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -835,7 +844,7 @@ const QUESTIONS = [
   {
     order: 28,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -875,7 +884,7 @@ const QUESTIONS = [
   {
     order: 29,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -914,7 +923,7 @@ const QUESTIONS = [
   {
     order: 30,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -970,7 +979,7 @@ async function main() {
         chapterId: chapter.id,
         order: question.order,
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         textFr: question.textFr,
         textEn: question.textEn,
         hintFr: question.hintFr,
@@ -982,7 +991,7 @@ async function main() {
       },
       update: {
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         textFr: question.textFr,
         textEn: question.textEn,
         hintFr: question.hintFr,

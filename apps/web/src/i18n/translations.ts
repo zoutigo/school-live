@@ -5449,15 +5449,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.chapter.incorrectTitle": "Pas tout à fait",
     "trainingQuiz.chapter.retryHint":
       "Prenez un instant pour repenser à l'indice avant de réessayer.",
+    "trainingQuiz.chapter.discoveryRetryHint":
+      "Repensez à la question et retentez votre chance.",
     "trainingQuiz.chapter.deepLinkCta": "Voir dans l'application",
     "trainingQuiz.chapter.hintShowCta": "Afficher un indice",
     "trainingQuiz.chapter.hintHideCta": "Cacher l'indice",
     "trainingQuiz.chapter.hintLabel": "Indice",
     "trainingQuiz.chapter.hintAutoSuggest":
       "Vous bloquez ? Un indice est disponible ci-dessous.",
-    "trainingQuiz.chapter.difficulty.easy": "Facile",
-    "trainingQuiz.chapter.difficulty.medium": "Moyen",
-    "trainingQuiz.chapter.difficulty.hard": "Difficile",
+    "trainingQuiz.chapter.stage.discovery": "Découverte",
+    "trainingQuiz.chapter.stage.practice": "Pratique",
+    "trainingQuiz.chapter.stage.mastery": "Maîtrise",
     "trainingQuiz.chapter.levelProgress": "{solved}/{total}",
     "trainingQuiz.chapter.levelLocked":
       "Terminez le niveau précédent pour débloquer celui-ci.",
@@ -10677,14 +10679,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.chapter.incorrectTitle": "Not quite",
     "trainingQuiz.chapter.retryHint":
       "Take a moment to think back on the hint before trying again.",
+    "trainingQuiz.chapter.discoveryRetryHint":
+      "Think back on the question and give it another try.",
     "trainingQuiz.chapter.deepLinkCta": "See it in the app",
     "trainingQuiz.chapter.hintShowCta": "Show a hint",
     "trainingQuiz.chapter.hintHideCta": "Hide hint",
     "trainingQuiz.chapter.hintLabel": "Hint",
     "trainingQuiz.chapter.hintAutoSuggest": "Stuck? A hint is available below.",
-    "trainingQuiz.chapter.difficulty.easy": "Easy",
-    "trainingQuiz.chapter.difficulty.medium": "Medium",
-    "trainingQuiz.chapter.difficulty.hard": "Hard",
+    "trainingQuiz.chapter.stage.discovery": "Discovery",
+    "trainingQuiz.chapter.stage.practice": "Practice",
+    "trainingQuiz.chapter.stage.mastery": "Mastery",
     "trainingQuiz.chapter.levelProgress": "{solved}/{total}",
     "trainingQuiz.chapter.levelLocked":
       "Finish the previous level to unlock this one.",

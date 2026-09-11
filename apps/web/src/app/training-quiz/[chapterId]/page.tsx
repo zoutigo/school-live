@@ -19,12 +19,12 @@ import {
   type QuizAnswerOption,
   type QuizAnswerResult,
   type QuizChapterDetail,
-  type QuizDifficulty,
+  type QuizStage,
   type QuizQuestion,
 } from "../../../components/training-quiz/training-quiz-api";
 import { TrainingQuizIcon } from "../../../components/training-quiz/training-quiz-icon";
 
-const DIFFICULTY_ORDER: QuizDifficulty[] = ["EASY", "MEDIUM", "HARD"];
+const STAGE_ORDER: QuizStage[] = ["DISCOVERY", "PRACTICE", "MASTERY"];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -64,10 +64,10 @@ function shuffle<T>(items: T[], seed: number): T[] {
   return result;
 }
 
-const DIFFICULTY_STYLES: Record<QuizDifficulty, string> = {
-  EASY: "bg-teal-surface text-accent-teal-dark border-teal-border",
-  MEDIUM: "bg-warm-surface text-warm-accent-dark border-warm-border",
-  HARD: "bg-[#FBEAE8] text-mark-red border-mark-red/40",
+const STAGE_STYLES: Record<QuizStage, string> = {
+  DISCOVERY: "bg-teal-surface text-accent-teal-dark border-teal-border",
+  PRACTICE: "bg-warm-surface text-warm-accent-dark border-warm-border",
+  MASTERY: "bg-[#FBEAE8] text-mark-red border-mark-red/40",
 };
 
 type GlobalMe = { schoolSlug?: string | null };
@@ -117,23 +117,23 @@ function LevelTabs({
   t,
 }: {
   levels: QuizChapterDetail["levels"];
-  currentLevel: QuizDifficulty;
-  onSelect: (difficulty: QuizDifficulty) => void;
+  currentLevel: QuizStage;
+  onSelect: (stage: QuizStage) => void;
   t: (key: string) => string;
 }) {
   return (
     <div
       className="flex items-center gap-2 overflow-x-auto"
       role="tablist"
-      aria-label={t("trainingQuiz.chapter.difficulty.easy")}
+      aria-label={t("trainingQuiz.chapter.stage.discovery")}
     >
       {levels.map((level) => {
         if (level.totalQuestions === 0) return null;
-        const isCurrent = level.difficulty === currentLevel;
-        const difficultyKey = level.difficulty.toLowerCase();
+        const isCurrent = level.stage === currentLevel;
+        const stageKey = level.stage.toLowerCase();
         return (
           <button
-            key={level.difficulty}
+            key={level.stage}
             type="button"
             role="tab"
             aria-selected={isCurrent}
@@ -141,7 +141,7 @@ function LevelTabs({
             title={
               level.unlocked ? undefined : t("trainingQuiz.chapter.levelLocked")
             }
-            onClick={() => level.unlocked && onSelect(level.difficulty)}
+            onClick={() => level.unlocked && onSelect(level.stage)}
             className={[
               "flex shrink-0 items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors duration-200 motion-reduce:transition-none",
               !level.unlocked
@@ -158,7 +158,7 @@ function LevelTabs({
             ) : (
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
             )}
-            {t(`trainingQuiz.chapter.difficulty.${difficultyKey}`)}
+            {t(`trainingQuiz.chapter.stage.${stageKey}`)}
             <span className="font-normal opacity-80">
               {t("trainingQuiz.chapter.levelProgress")
                 .replace("{solved}", String(level.solvedQuestions))
@@ -183,7 +183,7 @@ export default function TrainingQuizChapterPage() {
   const [chapter, setChapter] = useState<QuizChapterDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [currentLevel, setCurrentLevel] = useState<QuizDifficulty>("EASY");
+  const [currentLevel, setCurrentLevel] = useState<QuizStage>("DISCOVERY");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<QuizAnswerResult | null>(null);
@@ -229,11 +229,9 @@ export default function TrainingQuizChapterPage() {
             level.totalQuestions > 0 &&
             level.solvedQuestions < level.totalQuestions,
         ) ?? data.levels.find((level) => level.totalQuestions > 0);
-      const level = firstUnfinishedLevel?.difficulty ?? "EASY";
-      setCurrentLevel(level);
-      const levelQuestions = data.questions.filter(
-        (q) => q.difficulty === level,
-      );
+      const stage = firstUnfinishedLevel?.stage ?? "DISCOVERY";
+      setCurrentLevel(stage);
+      const levelQuestions = data.questions.filter((q) => q.stage === stage);
       const firstUnsolved = levelQuestions.findIndex((q) => !q.solved);
       setCurrentIndex(firstUnsolved === -1 ? 0 : firstUnsolved);
     } catch {
@@ -254,20 +252,20 @@ export default function TrainingQuizChapterPage() {
   }, []);
 
   const levelQuestions = useMemo(
-    () => chapter?.questions.filter((q) => q.difficulty === currentLevel) ?? [],
+    () => chapter?.questions.filter((q) => q.stage === currentLevel) ?? [],
     [chapter, currentLevel],
   );
   const question = levelQuestions[currentIndex] ?? null;
   const isLastInLevel = currentIndex === levelQuestions.length - 1;
   const isLastLevelWithQuestions = chapter
-    ? DIFFICULTY_ORDER.filter(
-        (d) => chapter.levels.find((l) => l.difficulty === d)?.totalQuestions,
+    ? STAGE_ORDER.filter(
+        (s) => chapter.levels.find((l) => l.stage === s)?.totalQuestions,
       ).at(-1) === currentLevel
     : true;
   const isLast = isLastInLevel && isLastLevelWithQuestions;
-  const isEasyOrMedium = question
-    ? question.difficulty === "EASY" || question.difficulty === "MEDIUM"
-    : false;
+  // Only the Practice stage requires visiting the real app screen before a
+  // retry is allowed — Discovery is free recall, Mastery is self-contained.
+  const isPracticeStage = question ? question.stage === "PRACTICE" : false;
 
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "";
 
@@ -334,14 +332,12 @@ export default function TrainingQuizChapterPage() {
           );
           const levels: QuizChapterDetail["levels"] = [];
           let previousLevelCleared = true;
-          for (const difficulty of DIFFICULTY_ORDER) {
-            const levelQs = questions.filter(
-              (q) => q.difficulty === difficulty,
-            );
+          for (const stage of STAGE_ORDER) {
+            const levelQs = questions.filter((q) => q.stage === stage);
             const totalQuestions = levelQs.length;
             const solvedQuestions = levelQs.filter((q) => q.solved).length;
             levels.push({
-              difficulty,
+              stage,
               totalQuestions,
               solvedQuestions,
               unlocked: previousLevelCleared,
@@ -384,15 +380,15 @@ export default function TrainingQuizChapterPage() {
     resetQuestionState();
   }
 
-  function goToLevel(difficulty: QuizDifficulty) {
-    setCurrentLevel(difficulty);
+  function goToLevel(stage: QuizStage) {
+    setCurrentLevel(stage);
     setCurrentIndex(0);
     resetQuestionState();
   }
 
   function handleRetry() {
     if (cooldownSecondsLeft > 0) return;
-    if (isEasyOrMedium && !hasVisitedDeepLink) return;
+    if (isPracticeStage && !hasVisitedDeepLink) return;
     setResult(null);
     setSelected([]);
     setAttemptRound((prev) => prev + 1);
@@ -401,11 +397,9 @@ export default function TrainingQuizChapterPage() {
   function handleNext() {
     if (!chapter) return;
     if (isLastInLevel) {
-      const nextLevel = DIFFICULTY_ORDER.slice(
-        DIFFICULTY_ORDER.indexOf(currentLevel) + 1,
-      ).find(
-        (d) => chapter.levels.find((l) => l.difficulty === d)?.totalQuestions,
-      );
+      const nextLevel = STAGE_ORDER.slice(
+        STAGE_ORDER.indexOf(currentLevel) + 1,
+      ).find((s) => chapter.levels.find((l) => l.stage === s)?.totalQuestions);
       if (nextLevel) {
         goToLevel(nextLevel);
         return;
@@ -480,10 +474,10 @@ export default function TrainingQuizChapterPage() {
     return null;
   }
 
-  const difficultyKey = question.difficulty.toLowerCase() as
-    | "easy"
-    | "medium"
-    | "hard";
+  const stageKey = question.stage.toLowerCase() as
+    | "discovery"
+    | "practice"
+    | "mastery";
 
   return (
     <AppShell schoolSlug={schoolSlug} schoolName={t("trainingQuiz.shellName")}>
@@ -554,9 +548,9 @@ export default function TrainingQuizChapterPage() {
                 {question.text}
               </h2>
               <span
-                className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${DIFFICULTY_STYLES[question.difficulty]}`}
+                className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STAGE_STYLES[question.stage]}`}
               >
-                {t(`trainingQuiz.chapter.difficulty.${difficultyKey}`)}
+                {t(`trainingQuiz.chapter.stage.${stageKey}`)}
               </span>
             </div>
             {question.type === "MCQ_MULTI" ? (
@@ -610,7 +604,7 @@ export default function TrainingQuizChapterPage() {
               })}
             </div>
 
-            {question.difficulty === "HARD" && question.hint ? (
+            {question.stage !== "DISCOVERY" && question.hint ? (
               <div className="mt-3">
                 {!result ? (
                   <button
@@ -650,11 +644,13 @@ export default function TrainingQuizChapterPage() {
                 </p>
                 {!result.correct ? (
                   <p className="mt-1 text-xs text-text-secondary">
-                    {isEasyOrMedium
+                    {isPracticeStage
                       ? t("trainingQuiz.chapter.findAnswerInApp")
-                      : result.attemptsCount >= 2
-                        ? t("trainingQuiz.chapter.hintAutoSuggest")
-                        : t("trainingQuiz.chapter.retryHint")}
+                      : question.stage === "DISCOVERY"
+                        ? t("trainingQuiz.chapter.discoveryRetryHint")
+                        : result.attemptsCount >= 2
+                          ? t("trainingQuiz.chapter.hintAutoSuggest")
+                          : t("trainingQuiz.chapter.retryHint")}
                   </p>
                 ) : null}
 
@@ -671,7 +667,7 @@ export default function TrainingQuizChapterPage() {
                       onClick={handleRetry}
                       disabled={
                         cooldownSecondsLeft > 0 ||
-                        (isEasyOrMedium && !hasVisitedDeepLink)
+                        (isPracticeStage && !hasVisitedDeepLink)
                       }
                       className="w-full sm:w-auto"
                     >
@@ -686,7 +682,7 @@ export default function TrainingQuizChapterPage() {
                   {resolvedDeepLink ? (
                     <Button
                       variant={
-                        !result.correct && isEasyOrMedium ? "primary" : "ghost"
+                        !result.correct && isPracticeStage ? "primary" : "ghost"
                       }
                       onClick={() => {
                         setHasVisitedDeepLink(true);
@@ -707,7 +703,7 @@ export default function TrainingQuizChapterPage() {
                   ) : null}
                 </div>
                 {!result.correct &&
-                isEasyOrMedium &&
+                isPracticeStage &&
                 cooldownSecondsLeft === 0 &&
                 !hasVisitedDeepLink ? (
                   <p className="mt-2 text-xs text-text-secondary">

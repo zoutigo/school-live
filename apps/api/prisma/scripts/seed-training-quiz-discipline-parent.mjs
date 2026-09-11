@@ -31,7 +31,7 @@ const QUESTIONS = [
   {
     order: 1,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q1-fiche-enfant"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr: "Où consultez-vous le comportement disciplinaire de votre enfant ?",
@@ -70,7 +70,7 @@ const QUESTIONS = [
   {
     order: 2,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q2-notification"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -93,11 +93,13 @@ const QUESTIONS = [
   {
     order: 3,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q3-mention-positive"),
     deepLinkRoute: "/children/{childId}/discipline",
-    textFr: 'Que signifie une "mention positive" dans le module Discipline ?',
-    textEn: 'What does a "positive mention" mean in the Discipline module?',
+    textFr:
+      'Ouvrez le module Discipline de votre enfant et repérez une "mention positive" si elle existe : que signifie ce type d\'entrée ?',
+    textEn:
+      'Open your child\'s Discipline module and look for a "positive mention" if there is one: what does this kind of entry mean?',
     hintFr: "Le module Discipline ne sert pas qu'à signaler des sanctions.",
     hintEn: "The Discipline module isn't only there to report sanctions.",
     explanationFr:
@@ -130,11 +132,13 @@ const QUESTIONS = [
   {
     order: 4,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q4-historique"),
     deepLinkRoute: "/children/{childId}/discipline",
-    textFr: "Comment retrouver l'historique disciplinaire complet de l'année ?",
-    textEn: "How do you find the full disciplinary history for the year?",
+    textFr:
+      "Ouvrez le module Discipline de votre enfant : comment retrouver l'historique disciplinaire complet de l'année ?",
+    textEn:
+      "Open your child's Discipline module: how do you find the full disciplinary history for the year?",
     hintFr:
       "Le tableau du module Discipline n'affiche pas qu'un seul évènement.",
     hintEn: "The Discipline module table doesn't show just one event.",
@@ -169,7 +173,7 @@ const QUESTIONS = [
   {
     order: 5,
     type: "MCQ_MULTI",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q5-fiche-evenement"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -210,7 +214,7 @@ const QUESTIONS = [
   {
     order: 6,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q6-messagerie"),
     deepLinkRoute: "/messagerie",
     textFr:
@@ -250,7 +254,7 @@ const QUESTIONS = [
   {
     order: 7,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q7-punition-sanction"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -293,7 +297,7 @@ const QUESTIONS = [
   {
     order: 8,
     type: "TRUE_FALSE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q8-kpi-filtre"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -315,7 +319,7 @@ const QUESTIONS = [
   {
     order: 9,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q9-detail-evenement"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -356,7 +360,7 @@ const QUESTIONS = [
   {
     order: 10,
     type: "MCQ_MULTI",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q10-categories-suivies"),
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -384,7 +388,7 @@ const QUESTIONS = [
   {
     order: 11,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -404,7 +408,7 @@ const QUESTIONS = [
   {
     order: 12,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -443,7 +447,7 @@ const QUESTIONS = [
   {
     order: 13,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -464,7 +468,7 @@ const QUESTIONS = [
   {
     order: 14,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr: "Quel est le rôle principal du module Discipline pour un parent ?",
@@ -502,7 +506,7 @@ const QUESTIONS = [
   {
     order: 15,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -522,7 +526,7 @@ const QUESTIONS = [
   {
     order: 16,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -560,7 +564,7 @@ const QUESTIONS = [
   {
     order: 17,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -580,12 +584,13 @@ const QUESTIONS = [
   {
     order: 18,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
-      "Que se passe-t-il si votre enfant reçoit plusieurs avertissements dans le mois ?",
-    textEn: "What happens if your child gets several warnings within a month?",
+      "Ouvrez le module Discipline de votre enfant et comptez ses avertissements du mois s'il y en a : que se passe-t-il si plusieurs sont enregistrés ?",
+    textEn:
+      "Open your child's Discipline module and count this month's warnings if any: what happens if several are recorded?",
     hintFr:
       "Le module se contente d'enregistrer et d'afficher, il ne déclenche rien automatiquement.",
     hintEn:
@@ -622,12 +627,13 @@ const QUESTIONS = [
   {
     order: 19,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
-      "Les mentions positives comptent dans une moyenne de comportement chiffrée.",
-    textEn: "Positive mentions count toward a numeric behaviour average.",
+      "Ouvrez le module Discipline de votre enfant et observez son affichage : les mentions positives comptent-elles dans une moyenne de comportement chiffrée ?",
+    textEn:
+      "Open your child's Discipline module and look at how it's displayed: do positive mentions count toward a numeric behaviour average?",
     hintFr: "Le module Discipline n'affiche pas de note chiffrée.",
     hintEn: "The Discipline module doesn't display a numeric score.",
     explanationFr:
@@ -642,11 +648,13 @@ const QUESTIONS = [
   {
     order: 20,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
-    textFr: "Qui peut attribuer une mention positive à un élève ?",
-    textEn: "Who can give a student a positive mention?",
+    textFr:
+      "Ouvrez le module Discipline de votre enfant et regardez qui est l'auteur d'un évènement : qui peut attribuer une mention positive à un élève ?",
+    textEn:
+      "Open your child's Discipline module and look at who authored an event: who can give a student a positive mention?",
     hintFr: "Ce sont les mêmes personnes qui saisissent les sanctions.",
     hintEn: "It's the same people who record sanctions.",
     explanationFr:
@@ -675,12 +683,13 @@ const QUESTIONS = [
   {
     order: 21,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
-      "Un évènement disciplinaire peut-il être modifié après sa création ?",
-    textEn: "Can a disciplinary event be edited after it's created?",
+      "Ouvrez un évènement disciplinaire de votre enfant : cherchez-y un moyen de le modifier vous-même — un évènement peut-il être modifié après sa création ?",
+    textEn:
+      "Open one of your child's disciplinary events and look for a way to edit it yourself: can a disciplinary event be edited after it's created?",
     hintFr: "Le parent ne peut pas le faire lui-même.",
     hintEn: "The parent cannot do it themselves.",
     explanationFr:
@@ -709,13 +718,13 @@ const QUESTIONS = [
   {
     order: 22,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
-      "Le module Discipline distingue clairement les sanctions des punitions dans le tableau.",
+      "Ouvrez le tableau du module Discipline et comparez deux lignes de types différents : distingue-t-il clairement les sanctions des punitions ?",
     textEn:
-      "The Discipline module clearly distinguishes sanctions from punishments in the table.",
+      "Open the Discipline module's table and compare two rows of different types: does it clearly distinguish sanctions from punishments?",
     hintFr: "Chaque ligne du tableau précise le type d'évènement.",
     hintEn: "Each row in the table states the event type.",
     explanationFr:
@@ -730,11 +739,13 @@ const QUESTIONS = [
   {
     order: 23,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
-    textFr: "Comment l'école motive-t-elle un avertissement ?",
-    textEn: "How does the school justify a warning?",
+    textFr:
+      "Ouvrez la fiche d'un avertissement de votre enfant s'il y en a un : comment l'école le motive-t-elle ?",
+    textEn:
+      "Open one of your child's warning cards if there is one: how does the school justify it?",
     hintFr: "L'information est écrite sur la fiche de l'évènement.",
     hintEn: "The information is written on the event's card.",
     explanationFr:
@@ -768,13 +779,13 @@ const QUESTIONS = [
   {
     order: 24,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
-      "Une sanction disciplinaire peut avoir un impact sur le dossier scolaire de l'enfant.",
+      "Ouvrez le module Discipline de votre enfant et repérez une sanction si elle existe : peut-elle avoir un impact sur son dossier scolaire ?",
     textEn:
-      "A disciplinary sanction can have an impact on the child's school record.",
+      "Open your child's Discipline module and look for a sanction if there is one: can it have an impact on their school record?",
     hintFr: "Une sanction est plus grave qu'une simple punition.",
     hintEn: "A sanction is more serious than a simple punishment.",
     explanationFr:
@@ -789,7 +800,7 @@ const QUESTIONS = [
   {
     order: 25,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -830,7 +841,7 @@ const QUESTIONS = [
   {
     order: 26,
     type: "MCQ_MULTI",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -869,7 +880,7 @@ const QUESTIONS = [
   {
     order: 27,
     type: "TRUE_FALSE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -891,7 +902,7 @@ const QUESTIONS = [
   {
     order: 28,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/messagerie",
     textFr:
@@ -930,7 +941,7 @@ const QUESTIONS = [
   {
     order: 29,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
@@ -951,12 +962,13 @@ const QUESTIONS = [
   {
     order: 30,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/discipline",
     textFr:
-      "Quel est l'intérêt de consulter régulièrement le module Discipline ?",
-    textEn: "What's the benefit of checking the Discipline module regularly?",
+      "Ouvrez le module Discipline de votre enfant dès maintenant : quel est l'intérêt de le consulter régulièrement ?",
+    textEn:
+      "Open your child's Discipline module right now: what's the benefit of checking it regularly?",
     hintFr: "Mieux vaut agir tôt qu'être surpris en fin d'année.",
     hintEn: "It's better to act early than be surprised at year's end.",
     explanationFr:
@@ -1006,7 +1018,7 @@ async function main() {
         chapterId: chapter.id,
         order: question.order,
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         textFr: question.textFr,
         textEn: question.textEn,
         hintFr: question.hintFr,
@@ -1018,7 +1030,7 @@ async function main() {
       },
       update: {
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         textFr: question.textFr,
         textEn: question.textEn,
         hintFr: question.hintFr,

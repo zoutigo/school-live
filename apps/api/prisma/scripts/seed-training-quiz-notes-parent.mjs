@@ -31,7 +31,7 @@ const QUESTIONS = [
   {
     order: 1,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q1-onglet-evaluations"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr: "Où consulter les notes de votre enfant dans l'application ?",
@@ -69,7 +69,7 @@ const QUESTIONS = [
   {
     order: 2,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q2-onglet-moyennes"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -89,7 +89,7 @@ const QUESTIONS = [
   {
     order: 3,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: IMG("q3-onglet-graphiques"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -111,13 +111,13 @@ const QUESTIONS = [
   {
     order: 4,
     type: "MCQ_MULTI",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q4-detail-evaluation"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "Sur la fiche détaillée d'une évaluation, quelles informations de comparaison avec la classe sont affichées ? (plusieurs réponses)",
+      'Ouvrez une évaluation de votre enfant dans l\'onglet "Evaluations", puis regardez sa fiche détaillée : quelles informations de comparaison avec la classe y sont affichées ? (plusieurs réponses)',
     textEn:
-      "On an evaluation's detail card, which comparison figures with the class are shown? (select all that apply)",
+      'Open one of your child\'s evaluations in the "Evaluations" tab and look at its detail card: which comparison figures with the class are shown there? (select all that apply)',
     hintFr:
       'Ouvrez une évaluation dans l\'onglet "Evaluations" pour voir son détail.',
     hintEn: 'Open an evaluation in the "Evaluations" tab to see its detail.',
@@ -151,13 +151,13 @@ const QUESTIONS = [
   {
     order: 5,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q5-note-formative"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      'Une note marquée "formative" compte dans le calcul de la moyenne de la séquence.',
+      'Repérez une note marquée "formative" dans l\'onglet "Evaluations" de votre enfant : compte-t-elle dans le calcul de la moyenne de la séquence ?',
     textEn:
-      'A grade marked "formative" counts in the sequence average calculation.',
+      'Find a grade marked "formative" in your child\'s "Evaluations" tab: does it count in the sequence average calculation?',
     hintFr: "Une évaluation formative est affichée à titre indicatif.",
     hintEn: "A formative evaluation is shown for reference only.",
     explanationFr:
@@ -172,11 +172,13 @@ const QUESTIONS = [
   {
     order: 6,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: IMG("q6-badge-formative"),
     deepLinkRoute: "/children/{childId}/notes",
-    textFr: 'Que signifie un badge "formative" affiché sur une évaluation ?',
-    textEn: 'What does a "formative" badge on an evaluation mean?',
+    textFr:
+      'Trouvez une évaluation portant un badge "formative" dans la fiche de votre enfant : que signifie ce badge ?',
+    textEn:
+      'Find an evaluation with a "formative" badge on your child\'s profile: what does this badge mean?',
     hintFr:
       "Ce badge prévient que cette note n'a pas le même poids qu'un examen final.",
     hintEn:
@@ -211,7 +213,7 @@ const QUESTIONS = [
   {
     order: 7,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q7-point-vigilance"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -250,7 +252,7 @@ const QUESTIONS = [
   {
     order: 8,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q8-matiere-forte"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr: "Comment repérer la matière où votre enfant excelle le plus ?",
@@ -287,7 +289,7 @@ const QUESTIONS = [
   {
     order: 9,
     type: "TRUE_FALSE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q9-moyenne-non-formative"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -308,7 +310,7 @@ const QUESTIONS = [
   {
     order: 10,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: IMG("q10-ecart-classe"),
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -348,7 +350,7 @@ const QUESTIONS = [
   {
     order: 11,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -368,7 +370,7 @@ const QUESTIONS = [
   {
     order: 12,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr: 'Que retrouve-t-on dans l\'onglet "Evaluations" ?',
@@ -405,7 +407,7 @@ const QUESTIONS = [
   {
     order: 13,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr: "Chaque évaluation affiche la note obtenue par votre enfant.",
@@ -424,7 +426,7 @@ const QUESTIONS = [
   {
     order: 14,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr: "Où voir en un coup d'œil la moyenne générale de votre enfant ?",
@@ -461,7 +463,7 @@ const QUESTIONS = [
   {
     order: 15,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -482,7 +484,7 @@ const QUESTIONS = [
   {
     order: 16,
     type: "MCQ_SINGLE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -511,7 +513,7 @@ const QUESTIONS = [
   {
     order: 17,
     type: "TRUE_FALSE",
-    difficulty: "EASY",
+    stage: "DISCOVERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -531,11 +533,13 @@ const QUESTIONS = [
   {
     order: 18,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/messagerie",
-    textFr: "Que faire si vous pensez qu'une note affichée est incorrecte ?",
-    textEn: "What should you do if you think a displayed grade is incorrect?",
+    textFr:
+      "Imaginez qu'une note affichée vous semble incorrecte : ouvrez la messagerie et identifiez ce qu'il faut faire.",
+    textEn:
+      "Imagine a displayed grade looks incorrect to you: open messaging and identify what you should do.",
     hintFr:
       "Le canal direct avec l'enseignant est ailleurs dans l'application.",
     hintEn: "The direct channel to the teacher is elsewhere in the app.",
@@ -569,13 +573,13 @@ const QUESTIONS = [
   {
     order: 19,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "La moyenne de classe affichée sur une évaluation permet de situer le niveau de votre enfant sans connaître les notes individuelles des autres élèves.",
+      "Ouvrez une évaluation et observez la moyenne de classe affichée : vous permet-elle de situer le niveau de votre enfant sans connaître les notes individuelles des autres élèves ?",
     textEn:
-      "The class average shown on an evaluation lets you place your child's level without seeing other students' individual grades.",
+      "Open an evaluation and look at the class average shown: does it let you place your child's level without seeing other students' individual grades?",
     hintFr:
       "L'application ne révèle jamais le détail des notes des autres élèves.",
     hintEn: "The app never reveals other students' individual grades.",
@@ -591,13 +595,13 @@ const QUESTIONS = [
   {
     order: 20,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "Pourquoi une note formative n'apparaît-elle pas dans le calcul de la moyenne de séquence ?",
+      "Repérez une note formative dans la fiche de votre enfant, puis expliquez pourquoi elle n'apparaît pas dans le calcul de la moyenne de séquence.",
     textEn:
-      "Why doesn't a formative grade appear in the sequence average calculation?",
+      "Find a formative grade on your child's profile, then explain why it doesn't appear in the sequence average calculation.",
     hintFr: "Repensez à son rôle : informer, pas évaluer officiellement.",
     hintEn: "Think about its role: to inform, not to officially grade.",
     explanationFr:
@@ -630,13 +634,13 @@ const QUESTIONS = [
   {
     order: 21,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "Quel onglet permet de comparer les moyennes de plusieurs matières entre elles ?",
+      "Ouvrez l'onglet qui permet de comparer les moyennes de plusieurs matières entre elles : lequel est-ce ?",
     textEn:
-      "Which tab lets you compare the averages of several subjects with each other?",
+      "Open the tab that lets you compare the averages of several subjects with each other: which one is it?",
     hintFr: "Il liste toutes les matières côte à côte.",
     hintEn: "It lists every subject side by side.",
     explanationFr:
@@ -661,13 +665,13 @@ const QUESTIONS = [
   {
     order: 22,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "Les notes formatives restent visibles dans l'onglet Evaluations même si elles ne comptent pas dans la moyenne.",
+      "Ouvrez l'onglet Evaluations et vérifiez : les notes formatives y restent-elles visibles même si elles ne comptent pas dans la moyenne ?",
     textEn:
-      "Formative grades stay visible in the Evaluations tab even though they don't count toward the average.",
+      "Open the Evaluations tab and check: do formative grades stay visible there even though they don't count toward the average?",
     hintFr: "Elles sont marquées d'un badge distinct, pas masquées.",
     hintEn: "They're marked with a distinct badge, not hidden.",
     explanationFr:
@@ -682,12 +686,13 @@ const QUESTIONS = [
   {
     order: 23,
     type: "MCQ_SINGLE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "Sur quelle période porte la moyenne affichée dans l'onglet Moyennes ?",
-    textEn: "What period does the average shown in the Averages tab cover?",
+      "Ouvrez l'onglet Moyennes de votre enfant : sur quelle période porte la moyenne affichée ?",
+    textEn:
+      "Open your child's Averages tab: what period does the average shown there cover?",
     hintFr: "Elle se recalcule à chaque nouvelle période.",
     hintEn: "It's recalculated at each new period.",
     explanationFr:
@@ -720,13 +725,13 @@ const QUESTIONS = [
   {
     order: 24,
     type: "TRUE_FALSE",
-    difficulty: "MEDIUM",
+    stage: "PRACTICE",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
-      "Un enseignant peut ajouter un commentaire à une évaluation, visible par le parent.",
+      "Ouvrez la fiche détaillée d'une évaluation de votre enfant : un enseignant peut-il y ajouter un commentaire visible par le parent ?",
     textEn:
-      "A teacher can add a comment to an evaluation, visible to the parent.",
+      "Open one of your child's evaluation detail cards: can a teacher add a comment there that's visible to the parent?",
     hintFr:
       "La fiche détaillée d'une évaluation ne contient pas que des chiffres.",
     hintEn: "An evaluation's detail card isn't only numbers.",
@@ -742,7 +747,7 @@ const QUESTIONS = [
   {
     order: 25,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -783,7 +788,7 @@ const QUESTIONS = [
   {
     order: 26,
     type: "MCQ_MULTI",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -823,7 +828,7 @@ const QUESTIONS = [
   {
     order: 27,
     type: "TRUE_FALSE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -844,7 +849,7 @@ const QUESTIONS = [
   {
     order: 28,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -884,7 +889,7 @@ const QUESTIONS = [
   {
     order: 29,
     type: "MCQ_SINGLE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -923,7 +928,7 @@ const QUESTIONS = [
   {
     order: 30,
     type: "TRUE_FALSE",
-    difficulty: "HARD",
+    stage: "MASTERY",
     image: null,
     deepLinkRoute: "/children/{childId}/notes",
     textFr:
@@ -961,7 +966,7 @@ async function main() {
         chapterId: chapter.id,
         order: question.order,
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         textFr: question.textFr,
         textEn: question.textEn,
         hintFr: question.hintFr,
@@ -973,7 +978,7 @@ async function main() {
       },
       update: {
         type: question.type,
-        difficulty: question.difficulty,
+        stage: question.stage,
         textFr: question.textFr,
         textEn: question.textEn,
         hintFr: question.hintFr,

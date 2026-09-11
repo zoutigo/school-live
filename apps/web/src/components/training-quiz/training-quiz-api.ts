@@ -23,7 +23,7 @@ export type QuizChapterSummary = {
 };
 
 export type QuizQuestionType = "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE";
-export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD";
+export type QuizStage = "DISCOVERY" | "PRACTICE" | "MASTERY";
 
 export type QuizAnswerOption = { id: string; order: number; text: string };
 
@@ -31,9 +31,9 @@ export type QuizQuestion = {
   id: string;
   order: number;
   type: QuizQuestionType;
-  difficulty: QuizDifficulty;
+  stage: QuizStage;
   text: string;
-  // Only populated for HARD questions.
+  // Not populated for DISCOVERY questions.
   hint: string | null;
   imageUrl: string | null;
   deepLinkRoute: string | null;
@@ -42,15 +42,15 @@ export type QuizQuestion = {
   options: QuizAnswerOption[];
 };
 
-export type QuizLevel = {
-  difficulty: QuizDifficulty;
+export type QuizStageProgress = {
+  stage: QuizStage;
   totalQuestions: number;
   solvedQuestions: number;
   unlocked: boolean;
 };
 
 export type QuizChapterDetail = QuizChapterSummary & {
-  levels: QuizLevel[];
+  levels: QuizStageProgress[];
   questions: QuizQuestion[];
 };
 

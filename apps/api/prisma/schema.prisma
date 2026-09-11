@@ -2685,10 +2685,15 @@ enum QuizQuestionType {
   TRUE_FALSE
 }
 
-enum QuizDifficulty {
-  EASY
-  MEDIUM
-  HARD
+// Étape d'apprentissage du chapitre, pas une difficulté de question :
+// Découverte = reconnaissance passive, Pratique = incite à faire le geste
+// réel dans l'appli (deepLinkRoute) avant de pouvoir réessayer en cas
+// d'erreur, Maîtrise = question autonome avec indice et révélation de la
+// bonne réponse en cas d'échec.
+enum QuizStage {
+  DISCOVERY
+  PRACTICE
+  MASTERY
 }
 
 // Quiz de formation ludique : un chapitre = un module applicatif, pour un
@@ -2724,10 +2729,10 @@ model QuizQuestion {
   id        String           @id @default(cuid())
   chapterId String
   chapter   QuizChapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  order      Int
-  type       QuizQuestionType @default(MCQ_SINGLE)
-  difficulty QuizDifficulty   @default(EASY)
-  isActive   Boolean          @default(true)
+  order    Int
+  type     QuizQuestionType @default(MCQ_SINGLE)
+  stage    QuizStage        @default(DISCOVERY)
+  isActive Boolean          @default(true)
 
   textFr        String
   textEn        String
