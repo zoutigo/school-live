@@ -261,13 +261,16 @@ const MASTERY_CHAPTER = {
 
 function mockFetch({
   chapter = DISCOVERY_CHAPTER,
+  chapterAfterAnswer,
   answerResult,
   linkedStudents = [{ id: "child-1" }],
 }: {
   chapter?: unknown;
+  chapterAfterAnswer?: unknown;
   answerResult?: unknown;
   linkedStudents?: Array<{ id: string }>;
 } = {}) {
+  let answered = false;
   global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/schools/ecole-test/me")) {
@@ -275,9 +278,12 @@ function mockFetch({
     }
     if (url.endsWith("/me")) return jsonResponse({ schoolSlug: "ecole-test" });
     if (url.endsWith("/training-quiz/chapters/chapter-1")) {
-      return jsonResponse(chapter);
+      return jsonResponse(
+        answered && chapterAfterAnswer ? chapterAfterAnswer : chapter,
+      );
     }
     if (url.includes("/training-quiz/questions/") && init?.method === "POST") {
+      answered = true;
       return jsonResponse(
         answerResult ?? {
           correct: true,
@@ -560,6 +566,87 @@ describe("TrainingQuizChapterPage", () => {
     expect(
       screen.queryByText("Où consultez-vous le comportement disciplinaire ?"),
     ).not.toBeInTheDocument();
+  });
+
+  it("refetches the chapter on a correct answer so a newly-unlocked stage shows real options, not the empty list from the initial fetch", async () => {
+    // At fetch time PRACTICE is still locked, so the API withholds its real
+    // options (`options: []`) exactly like the live backend does for a
+    // not-yet-unlocked stage.
+    const chapterBeforeUnlock = {
+      ...DISCOVERY_CHAPTER,
+      totalQuestions: 2,
+      levels: makeLevels({
+        DISCOVERY: {
+          stage: "DISCOVERY",
+          totalQuestions: 1,
+          solvedQuestions: 0,
+          unlocked: true,
+        },
+        PRACTICE: {
+          stage: "PRACTICE",
+          totalQuestions: 1,
+          solvedQuestions: 0,
+          unlocked: false,
+        },
+      }),
+      questions: [
+        DISCOVERY_CHAPTER.questions[0],
+        {
+          id: "qm",
+          order: 2,
+          type: "MCQ_SINGLE",
+          stage: "PRACTICE",
+          text: "Question de niveau pratique",
+          hint: null,
+          imageUrl: null,
+          deepLinkRoute: null,
+          solved: false,
+          attemptsCount: 0,
+          options: [],
+        },
+      ],
+    };
+    const chapterAfterUnlock = {
+      ...chapterBeforeUnlock,
+      levels: makeLevels({
+        DISCOVERY: {
+          stage: "DISCOVERY",
+          totalQuestions: 1,
+          solvedQuestions: 1,
+          unlocked: true,
+        },
+        PRACTICE: {
+          stage: "PRACTICE",
+          totalQuestions: 1,
+          solvedQuestions: 0,
+          unlocked: true,
+        },
+      }),
+      questions: [
+        { ...chapterBeforeUnlock.questions[0], solved: true },
+        {
+          ...chapterBeforeUnlock.questions[1],
+          options: [{ id: "qm-correct", order: 1, text: "Réponse moyenne" }],
+        },
+      ],
+    };
+    mockFetch({
+      chapter: chapterBeforeUnlock,
+      chapterAfterAnswer: chapterAfterUnlock,
+    });
+    render(<TrainingQuizChapterPage />);
+
+    await screen.findByText(
+      "Où consultez-vous le comportement disciplinaire ?",
+    );
+    fireEvent.click(screen.getByText("Onglet Discipline"));
+    fireEvent.click(screen.getByText("Valider"));
+
+    await screen.findByText("Bonne réponse !");
+    fireEvent.click(screen.getByText("Mission suivante"));
+
+    await screen.findByText("Question de niveau pratique");
+    expect(screen.getByText("Réponse moyenne")).toBeInTheDocument();
   });
 
   it("shows the completion screen after the last mission of a single-stage chapter", async () => {

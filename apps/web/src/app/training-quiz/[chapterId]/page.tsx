@@ -325,35 +325,45 @@ export default function TrainingQuizChapterPage() {
       const res = await submitAnswer(question.id, selected);
       setResult(res);
       if (res.correct) {
-        setChapter((prev) => {
-          if (!prev) return prev;
-          const questions = prev.questions.map((q) =>
-            q.id === question.id ? { ...q, solved: true } : q,
-          );
-          const levels: QuizChapterDetail["levels"] = [];
-          let previousLevelCleared = true;
-          for (const stage of STAGE_ORDER) {
-            const levelQs = questions.filter((q) => q.stage === stage);
-            const totalQuestions = levelQs.length;
-            const solvedQuestions = levelQs.filter((q) => q.solved).length;
-            levels.push({
-              stage,
-              totalQuestions,
-              solvedQuestions,
-              unlocked: previousLevelCleared,
-            });
-            previousLevelCleared =
-              totalQuestions > 0 && solvedQuestions === totalQuestions;
-          }
-          return {
-            ...prev,
-            solvedQuestions: question.solved
-              ? prev.solvedQuestions
-              : prev.solvedQuestions + 1,
-            questions,
-            levels,
-          };
-        });
+        // A correct answer can unlock the next stage. The API only sends real
+        // `options` for stages that were already unlocked when the chapter was
+        // fetched, so a stage unlocked purely by local state would render its
+        // questions with an empty option list — refetch to get real options
+        // for the newly-unlocked stage instead of patching state locally.
+        try {
+          const fresh = await getChapter(chapterId);
+          setChapter(fresh);
+        } catch {
+          setChapter((prev) => {
+            if (!prev) return prev;
+            const questions = prev.questions.map((q) =>
+              q.id === question.id ? { ...q, solved: true } : q,
+            );
+            const levels: QuizChapterDetail["levels"] = [];
+            let previousLevelCleared = true;
+            for (const stage of STAGE_ORDER) {
+              const levelQs = questions.filter((q) => q.stage === stage);
+              const totalQuestions = levelQs.length;
+              const solvedQuestions = levelQs.filter((q) => q.solved).length;
+              levels.push({
+                stage,
+                totalQuestions,
+                solvedQuestions,
+                unlocked: previousLevelCleared,
+              });
+              previousLevelCleared =
+                totalQuestions > 0 && solvedQuestions === totalQuestions;
+            }
+            return {
+              ...prev,
+              solvedQuestions: question.solved
+                ? prev.solvedQuestions
+                : prev.solvedQuestions + 1,
+              questions,
+              levels,
+            };
+          });
+        }
       } else {
         if (res.attemptsCount >= 2) {
           setHintOpen(true);
