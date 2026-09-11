@@ -100,7 +100,11 @@ export function LevelIntro({
         </div>
 
         <div className="mt-6 flex flex-col-reverse items-center justify-center gap-2 sm:flex-row">
-          <Button variant="secondary" onClick={onBack} className="w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            onClick={onBack}
+            className="w-full sm:w-auto"
+          >
             {t("trainingQuiz.chapter.back")}
           </Button>
           <Button

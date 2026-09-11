@@ -333,6 +333,21 @@ describe("FamilyFeedPage", () => {
   });
 
   it("publishes a poll with an attachment", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/uploads/attachment")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            url: "https://cdn.example.test/transport.pdf",
+          }),
+        }) as unknown as Promise<Response>;
+      }
+      return Promise.reject(new Error("network disabled in test"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    document.cookie = "school_live_csrf_token=csrf-token";
+
     const { container } = render(
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
     );
@@ -366,6 +381,10 @@ describe("FamilyFeedPage", () => {
       },
     );
 
+    await waitFor(() => {
+      expect(screen.queryByText("Envoi en cours...")).not.toBeInTheDocument();
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "Publier" }));
 
     await waitFor(() => {
@@ -376,6 +395,118 @@ describe("FamilyFeedPage", () => {
     expect(
       within(postCard).getByText("Quel horaire vous convient ?"),
     ).toBeInTheDocument();
+  });
+
+  it("uploads the attachment file and disables publish until the upload resolves", async () => {
+    let resolveUpload!: (value: {
+      ok: boolean;
+      json: () => Promise<{ url: string }>;
+    }) => void;
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/uploads/attachment")) {
+        return new Promise((resolve) => {
+          resolveUpload = resolve;
+        }) as unknown as Promise<Response>;
+      }
+      return Promise.reject(new Error("network disabled in test"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    document.cookie = "school_live_csrf_token=csrf-token";
+
+    const { container } = render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Publier une info" }));
+    fireEvent.change(screen.getByPlaceholderText("Titre de la publication"), {
+      target: { value: "Annonce avec piece jointe" },
+    });
+    setEditorText(container, "Contenu publication test");
+    fireEvent.change(
+      screen.getByLabelText("Ajouter des pieces jointes a la publication"),
+      {
+        target: {
+          files: [
+            new File(["pdf"], "reglement.pdf", { type: "application/pdf" }),
+          ],
+        },
+      },
+    );
+
+    expect(screen.getByText("Envoi en cours...")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publier" })).toBeDisabled();
+
+    resolveUpload({
+      ok: true,
+      json: async () => ({ url: "https://cdn.example.test/reglement.pdf" }),
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Envoi en cours...")).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Publier" })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Publier" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("Annonce avec piece jointe")[0],
+      ).toBeInTheDocument();
+    });
+    const postCard = getPostCard("Annonce avec piece jointe");
+    expect(within(postCard).getByText("reglement.pdf")).toBeInTheDocument();
+  });
+
+  it("shows an upload error and excludes the attachment from publishing when the upload fails", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/uploads/attachment")) {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ message: "Fichier trop volumineux" }),
+        }) as unknown as Promise<Response>;
+      }
+      return Promise.reject(new Error("network disabled in test"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    document.cookie = "school_live_csrf_token=csrf-token";
+
+    const { container } = render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Publier une info" }));
+    fireEvent.change(screen.getByPlaceholderText("Titre de la publication"), {
+      target: { value: "Annonce piece jointe echec" },
+    });
+    setEditorText(container, "Contenu publication test");
+    fireEvent.change(
+      screen.getByLabelText("Ajouter des pieces jointes a la publication"),
+      {
+        target: {
+          files: [
+            new File(["pdf"], "trop-gros.pdf", { type: "application/pdf" }),
+          ],
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Envoi echoue")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Publier" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("Annonce piece jointe echec")[0],
+      ).toBeInTheDocument();
+    });
+    const postCard = getPostCard("Annonce piece jointe echec");
+    expect(
+      within(postCard).queryByText("trop-gros.pdf"),
+    ).not.toBeInTheDocument();
   });
 
   it("publishes a new post when required fields are completed", async () => {
@@ -401,6 +532,21 @@ describe("FamilyFeedPage", () => {
   });
 
   it("allows author to edit then delete own post", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/uploads/attachment")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            url: "https://cdn.example.test/upload.pdf",
+          }),
+        }) as unknown as Promise<Response>;
+      }
+      return Promise.reject(new Error("network disabled in test"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    document.cookie = "school_live_csrf_token=csrf-token";
+
     const { container } = render(
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
     );
@@ -422,6 +568,9 @@ describe("FamilyFeedPage", () => {
         },
       },
     );
+    await waitFor(() => {
+      expect(screen.queryByText("Envoi en cours...")).not.toBeInTheDocument();
+    });
     fireEvent.click(screen.getByRole("button", { name: "Publier" }));
 
     await waitFor(() => {
@@ -452,6 +601,9 @@ describe("FamilyFeedPage", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Supprimer legacy-edit.pdf" }),
     );
+    await waitFor(() => {
+      expect(screen.queryByText("Envoi en cours...")).not.toBeInTheDocument();
+    });
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
     await waitFor(() => {

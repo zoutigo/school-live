@@ -948,7 +948,9 @@ describe("TrainingQuizChapterPage", () => {
 
       await screen.findByText("Troisième mission de maîtrise, non résolue");
       expect(screen.getByText("Mission 2 sur 2")).toBeInTheDocument();
-      expect(screen.queryByText("Objectif de ce niveau")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Objectif de ce niveau"),
+      ).not.toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /Maîtrise/ })).toHaveAttribute(
         "aria-selected",
         "true",

@@ -208,6 +208,63 @@ describe("HelpFaqsService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("résout l'audience du profil actif (enseignant) même si l'utilisateur a aussi un profil parent", async () => {
+    prisma.helpFaq.findMany.mockResolvedValue([
+      {
+        id: "faq-teacher",
+        schoolId: null,
+        school: null,
+        audience: "TEACHER",
+        title: "FAQ Enseignant Scolive",
+        slug: "faq-enseignant-scolive",
+        description: null,
+        status: "PUBLISHED",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { themes: 3 },
+      },
+    ]);
+
+    const user = makeUser({
+      activeRole: "TEACHER",
+      memberships: [
+        { schoolId: "school-1", role: "PARENT" },
+        { schoolId: "school-1", role: "TEACHER" },
+      ],
+    });
+
+    const result = await service.getCurrentFaq(user, {});
+
+    expect(result.resolvedAudience).toBe("TEACHER");
+  });
+
+  it("retombe sur le scan par priorité des memberships si aucun profil actif n'est défini", async () => {
+    prisma.helpFaq.findMany.mockResolvedValue([
+      {
+        id: "faq-teacher",
+        schoolId: null,
+        school: null,
+        audience: "TEACHER",
+        title: "FAQ Enseignant Scolive",
+        slug: "faq-enseignant-scolive",
+        description: null,
+        status: "PUBLISHED",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { themes: 3 },
+      },
+    ]);
+
+    const user = makeUser({
+      activeRole: null,
+      memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+    });
+
+    const result = await service.getCurrentFaq(user, {});
+
+    expect(result.resolvedAudience).toBe("TEACHER");
+  });
+
   it("refuse la liste admin aux non platform", async () => {
     await expect(
       service.listGlobalFaqsAdmin(makeUser(), {}),
