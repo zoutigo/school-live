@@ -7,6 +7,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service.js";
 import { EnrollmentsService } from "../enrollments/enrollments.service.js";
 import { EvaluationsService } from "../evaluations/evaluations.service.js";
+import { PromotionDecisionNotificationsService } from "../notifications/promotion-decision-notifications.service.js";
 import { ensureClassHasCapacity } from "../common/class-capacity.util.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { SetTermReportDecisionDto } from "./dto/set-term-report-decision.dto.js";
@@ -25,6 +26,7 @@ export class PromotionsService {
     private readonly prisma: PrismaService,
     private readonly enrollmentsService: EnrollmentsService,
     private readonly evaluationsService: EvaluationsService,
+    private readonly promotionDecisionNotifications: PromotionDecisionNotificationsService,
   ) {}
 
   /**
@@ -213,6 +215,15 @@ export class PromotionsService {
         report.schoolYearId,
       );
     }
+
+    // Le parent (et l'eleve) doivent etre alertes des que le conseil de
+    // classe statue : c'est le point de depart du parcours de reinscription
+    // (paiement, fournitures). Sans cette notification, la famille ne
+    // decouvre la decision qu'en se connectant spontanement.
+    await this.promotionDecisionNotifications.enqueue({
+      schoolId,
+      reportId: updated.id,
+    });
 
     return updated;
   }

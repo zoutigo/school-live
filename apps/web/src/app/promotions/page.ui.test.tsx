@@ -45,13 +45,13 @@ const CLASSROOMS = [
   },
 ];
 
-function mockFetchBase() {
+function mockFetchBase(role: string = "SCHOOL_ADMIN") {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const url = String(input);
     const method = init?.method ?? "GET";
 
     if (url.endsWith("/api/me")) {
-      return jsonResponse({ role: "SCHOOL_ADMIN", schoolSlug: "college-vogt" });
+      return jsonResponse({ role, schoolSlug: "college-vogt" });
     }
     if (url.includes("/admin/classrooms")) {
       return jsonResponse(CLASSROOMS);
@@ -278,6 +278,36 @@ describe("Promotions page", () => {
       expect(activateCall).toBeTruthy();
       const body = JSON.parse(String(activateCall?.[1]?.body));
       expect(body).toMatchObject({ schoolYearId: "sy-2026" });
+    });
+  });
+
+  it("autorise le professeur referent a saisir sa decision, sans acces a l'affectation ni aux annees scolaires", async () => {
+    const fetchMock = mockFetchBase("TEACHER");
+    render(<PromotionsPage />);
+
+    fireEvent.click(await screen.findByLabelText("Classe (annee en cours)"));
+    fireEvent.click(await screen.findByRole("option", { name: /CE1 A/ }));
+
+    expect(await screen.findByText("Ntamack Remi")).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("button", { name: "Attente d'affectation" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Annees scolaires" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Niveau cible"));
+    fireEvent.click(await screen.findByRole("option", { name: "CE2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes("/promotions/term-reports/") &&
+          init?.method === "PATCH",
+      );
+      expect(patchCall).toBeTruthy();
     });
   });
 });

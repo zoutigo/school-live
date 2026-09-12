@@ -5,6 +5,7 @@ import { NotificationsModule } from "../notifications/notifications.module.js";
 import { GradePublishedNotificationJobsWorker } from "./grade-published-notification-jobs.worker.js";
 import { HomeworkNotificationJobsWorker } from "./homework-notification-jobs.worker.js";
 import { MailJobsWorker } from "./mail-jobs.worker.js";
+import { PromotionDecisionNotificationJobsWorker } from "./promotion-decision-notification-jobs.worker.js";
 import { PushJobsWorker } from "./push-jobs.worker.js";
 import { RoomStatusChangeJobsWorker } from "./room-status-change-jobs.worker.js";
 import { TimetableChangeJobsWorker } from "./timetable-change-jobs.worker.js";
@@ -25,6 +26,7 @@ import { TimetableChangeJobsWorker } from "./timetable-change-jobs.worker.js";
     HomeworkNotificationJobsWorker,
     GradePublishedNotificationJobsWorker,
     RoomStatusChangeJobsWorker,
+    PromotionDecisionNotificationJobsWorker,
   ],
 })
 export class WorkerModule {}

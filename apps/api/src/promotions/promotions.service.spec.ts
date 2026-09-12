@@ -16,6 +16,7 @@ import { Test } from "@nestjs/testing";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { EnrollmentsService } from "../enrollments/enrollments.service.js";
 import { EvaluationsService } from "../evaluations/evaluations.service.js";
+import { PromotionDecisionNotificationsService } from "../notifications/promotion-decision-notifications.service.js";
 import { PromotionsService } from "./promotions.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 
@@ -80,6 +81,7 @@ describe("PromotionsService", () => {
     ensureNextSchoolYearExists: jest.Mock;
   };
   let evaluationsService: { computeClassTermAverages: jest.Mock };
+  let promotionDecisionNotifications: { enqueue: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
@@ -93,6 +95,9 @@ describe("PromotionsService", () => {
     evaluationsService = {
       computeClassTermAverages: jest.fn().mockResolvedValue(new Map()),
     };
+    promotionDecisionNotifications = {
+      enqueue: jest.fn(),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -100,6 +105,10 @@ describe("PromotionsService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: EnrollmentsService, useValue: enrollmentsService },
         { provide: EvaluationsService, useValue: evaluationsService },
+        {
+          provide: PromotionDecisionNotificationsService,
+          useValue: promotionDecisionNotifications,
+        },
       ],
     }).compile();
     service = module.get(PromotionsService);
@@ -362,6 +371,39 @@ describe("PromotionsService", () => {
           decision: "LEFT",
         }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("notifie la famille (et l'eleve) une fois la decision enregistree, quelle que soit la decision", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        term: "TERM_3",
+        classId: CLASS_ID,
+        schoolYearId: YEAR_ID,
+      });
+      await service.setTermReportDecision(adminUser, SCHOOL_ID, "report-1", {
+        decision: "PROMOTED",
+        nextAcademicLevelId: "level-1",
+      });
+      expect(promotionDecisionNotifications.enqueue).toHaveBeenCalledWith({
+        schoolId: SCHOOL_ID,
+        reportId: "report-1",
+      });
+    });
+
+    it("notifie aussi la famille pour une decision LEFT", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        term: "TERM_3",
+        classId: CLASS_ID,
+        schoolYearId: YEAR_ID,
+      });
+      await service.setTermReportDecision(adminUser, SCHOOL_ID, "report-1", {
+        decision: "LEFT",
+      });
+      expect(promotionDecisionNotifications.enqueue).toHaveBeenCalledWith({
+        schoolId: SCHOOL_ID,
+        reportId: "report-1",
+      });
     });
   });
 

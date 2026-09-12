@@ -9,6 +9,8 @@ import { GradePublishedNotificationsProjectionService } from "./grade-published-
 import { HomeworkNotificationsProjectionService } from "./homework-notifications-projection.service.js";
 import { HomeworkNotificationsService } from "./homework-notifications.service.js";
 import { MobilePushTokensService } from "./mobile-push-tokens.service.js";
+import { PromotionDecisionNotificationsService } from "./promotion-decision-notifications.service.js";
+import { PromotionDecisionNotificationsProjectionService } from "./promotion-decision-notifications-projection.service.js";
 import { PushService } from "./push.service.js";
 import { RoomStatusChangeNotificationsService } from "./room-status-change-notifications.service.js";
 import { RoomStatusChangeProjectionService } from "./room-status-change-projection.service.js";
@@ -34,6 +36,8 @@ import { TimetableChangeProjectionService } from "./timetable-change-projection.
     GradePublishedNotificationsProjectionService,
     RoomStatusChangeNotificationsService,
     RoomStatusChangeProjectionService,
+    PromotionDecisionNotificationsService,
+    PromotionDecisionNotificationsProjectionService,
   ],
   exports: [
     MobilePushTokensService,
@@ -46,6 +50,8 @@ import { TimetableChangeProjectionService } from "./timetable-change-projection.
     GradePublishedNotificationsProjectionService,
     RoomStatusChangeNotificationsService,
     RoomStatusChangeProjectionService,
+    PromotionDecisionNotificationsService,
+    PromotionDecisionNotificationsProjectionService,
   ],
 })
 export class NotificationsModule {}

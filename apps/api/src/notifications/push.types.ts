@@ -120,3 +120,17 @@ export type StudentHealthReportPushPayload = {
     reportId: string;
   };
 };
+
+export const PUSH_JOB_SEND_PROMOTION_DECISION = "send-promotion-decision-push";
+
+export type PromotionDecisionPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "PROMOTION_DECISION";
+    schoolSlug: string;
+    studentId: string;
+    decision: "PROMOTED" | "REPEATED" | "LEFT";
+  };
+};

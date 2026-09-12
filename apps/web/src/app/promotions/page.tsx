@@ -132,7 +132,8 @@ export default function PromotionsPage() {
       me.role === "ADMIN" ||
       me.role === "SCHOOL_ADMIN" ||
       me.role === "SCHOOL_MANAGER" ||
-      me.role === "SUPERVISOR";
+      me.role === "SUPERVISOR" ||
+      me.role === "TEACHER";
     if (!allowed || !me.schoolSlug) {
       router.replace(
         me.schoolSlug ? `/schools/${me.schoolSlug}/dashboard` : "/",
@@ -475,6 +476,12 @@ export default function PromotionsPage() {
   const canManageYears =
     role === "SCHOOL_ADMIN" || role === "ADMIN" || role === "SUPER_ADMIN";
   const canActivateYear = canManageYears || role === "SCHOOL_MANAGER";
+  // Le professeur referent ne peut saisir que la decision du conseil de
+  // classe (autorise cote API sur ses propres classes) : l'affectation en
+  // classe definitive et la gestion des annees scolaires restent reservees
+  // aux roles d'administration ecole (PROMOTION_ROLES cote API, qui exclut
+  // TEACHER sur ces deux routes).
+  const canAccessWaitingAndYears = role !== "TEACHER";
 
   const targetYearClassrooms = classrooms.filter(
     (c) => c.schoolYear.id === targetSchoolYearId,
@@ -586,24 +593,28 @@ export default function PromotionsPage() {
               >
                 {t("promotions.subtab.decisions")}
               </Button>
-              <Button
-                type="button"
-                variant={subTab === "waiting" ? "primary" : "secondary"}
-                onClick={() => setSubTab("waiting")}
-              >
-                {t("promotions.subtab.waiting")}
-                {targetSchoolYearId ? ` (${waiting.length})` : ""}
-              </Button>
-              <Button
-                type="button"
-                variant={subTab === "years" ? "primary" : "secondary"}
-                onClick={() => setSubTab("years")}
-              >
-                {t("promotions.subtab.years")}
-              </Button>
+              {canAccessWaitingAndYears ? (
+                <>
+                  <Button
+                    type="button"
+                    variant={subTab === "waiting" ? "primary" : "secondary"}
+                    onClick={() => setSubTab("waiting")}
+                  >
+                    {t("promotions.subtab.waiting")}
+                    {targetSchoolYearId ? ` (${waiting.length})` : ""}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={subTab === "years" ? "primary" : "secondary"}
+                    onClick={() => setSubTab("years")}
+                  >
+                    {t("promotions.subtab.years")}
+                  </Button>
+                </>
+              ) : null}
             </div>
 
-            {schoolYears.length <= 1 ? (
+            {canAccessWaitingAndYears && schoolYears.length <= 1 ? (
               <div className="mb-4 rounded-card border border-warm-border bg-warm-surface p-3 text-sm text-warm-accent-dark">
                 {t("promotions.years.alert")}
               </div>
