@@ -217,6 +217,63 @@ describe("Situation financiere (parent) page", () => {
     ).toBeDisabled();
   });
 
+  it("affiche une alerte 'echeancier non configure' au lieu d'un montant a 0 quand requiredAmount est absent", async () => {
+    mockFetch({
+      walletId: "wallet-1",
+      balance: 50000,
+      transactions: [],
+      children: [
+        {
+          student: { id: "student-1", firstName: "Remi", lastName: "Ntamack" },
+          status: "READY_TO_REINSCRIBE",
+          targetSchoolYearId: "sy-2026",
+          targetSchoolYearLabel: "2026-2027",
+          requiredAmount: null,
+        },
+      ],
+    });
+    render(<ParentFinancePage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Porte-monnaie" }),
+    );
+    await screen.findByText("Remi Ntamack");
+
+    expect(
+      await screen.findByTestId("fee-schedule-missing-student-1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Je paie et je reinscris" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("affiche le badge et le message de confirmation quand l'enfant est deja reinscrit", async () => {
+    mockFetch({
+      walletId: "wallet-1",
+      balance: 0,
+      transactions: [],
+      children: [
+        {
+          student: { id: "student-1", firstName: "Remi", lastName: "Ntamack" },
+          status: "ALREADY_REINSCRIBED",
+          targetSchoolYearId: "sy-2026",
+          targetSchoolYearLabel: "2026-2027",
+        },
+      ],
+    });
+    render(<ParentFinancePage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Porte-monnaie" }),
+    );
+    await screen.findByText("Remi Ntamack");
+
+    expect(screen.getAllByText("Deja reinscrit(e)").length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole("button", { name: "Je paie et je reinscris" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("demarre le tour d'aide guidee quand onboardingHelpEnabled est actif", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
