@@ -481,7 +481,14 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/classrooms")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
   listClassrooms(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listClassrooms(schoolId);
   }
@@ -691,7 +698,14 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/school-years")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
   listSchoolYears(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listSchoolYears(schoolId);
   }
@@ -811,7 +825,7 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/tracks")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "TEACHER", "ADMIN", "SUPER_ADMIN")
   listTracks(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listTracks(schoolId);
   }

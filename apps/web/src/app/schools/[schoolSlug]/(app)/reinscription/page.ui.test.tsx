@@ -194,6 +194,30 @@ describe("Reinscription (parent) page", () => {
     expect(screen.getByTestId("pay-and-reinscribe-student-1")).toBeDisabled();
   });
 
+  it("affiche une alerte 'echeancier non configure' au lieu d'un montant a 0 quand requiredAmount est absent", async () => {
+    mockFetch({
+      ...WALLET_ONE_CHILD_READY,
+      children: [
+        {
+          ...WALLET_ONE_CHILD_READY.children[0],
+          requiredAmount: null,
+        },
+      ],
+    });
+    render(<ReinscriptionPage />);
+
+    await screen.findByText("Remi Ntamack");
+    expect(
+      await screen.findByTestId("fee-schedule-missing-student-1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("pay-and-reinscribe-student-1"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("insufficient-balance-student-1"),
+    ).not.toBeInTheDocument();
+  });
+
   it("recolore la card, masque le CTA et suggere la liste des fournitures une fois reinscrit", async () => {
     mockFetch({
       walletId: "wallet-1",

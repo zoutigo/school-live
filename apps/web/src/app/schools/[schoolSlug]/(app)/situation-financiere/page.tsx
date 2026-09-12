@@ -15,6 +15,10 @@ import { Card } from "../../../../../components/ui/card";
 import { FormTextInput } from "../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../components/ui/form-field";
 import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
+import {
+  ChildReenrollmentCard,
+  type ChildFinanceStatus,
+} from "../../../../../components/finance/child-reenrollment-card";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
@@ -54,18 +58,6 @@ type WalletTransactionRow = {
   amount: number;
   createdAt: string;
   note: string | null;
-};
-
-type ChildFinanceStatus = {
-  student: { id: string; firstName: string; lastName: string };
-  status:
-    | "DECISION_PENDING"
-    | "NEXT_YEAR_NOT_OPEN"
-    | "ALREADY_REINSCRIBED"
-    | "READY_TO_REINSCRIBE";
-  targetSchoolYearId?: string;
-  targetSchoolYearLabel?: string;
-  requiredAmount?: number | null;
 };
 
 type WalletSummary = {
@@ -675,57 +667,19 @@ export default function ParentFinancePage() {
                   >
                     <div className="grid gap-3">
                       {(financeWallet?.children ?? []).map((child) => (
-                        <article
+                        <ChildReenrollmentCard
                           key={child.student.id}
-                          className="rounded-card border border-border p-3"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-heading font-semibold text-text-primary">
-                              {child.student.firstName} {child.student.lastName}
-                            </p>
-                            <Badge
-                              tone={
-                                child.status === "ALREADY_REINSCRIBED"
-                                  ? "ok"
-                                  : child.status === "READY_TO_REINSCRIBE"
-                                    ? "warn"
-                                    : "neutral"
-                              }
-                            >
-                              {t(
-                                `finSituation.children.status.${child.status}`,
-                              )}
-                            </Badge>
-                          </div>
-                          {child.status === "READY_TO_REINSCRIBE" ? (
-                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm text-text-secondary">
-                                {t("finSituation.children.required")}{" "}
-                                {formatXaf(child.requiredAmount ?? 0)}
-                                {child.targetSchoolYearLabel
-                                  ? ` (${child.targetSchoolYearLabel})`
-                                  : ""}
-                              </p>
-                              <OnboardingTarget
-                                id={FINANCE_PARENT_TOUR_TARGETS.reinscribe}
-                              >
-                                <Button
-                                  type="button"
-                                  onClick={() => onPayAndReinscribe(child)}
-                                  disabled={
-                                    reinscribingStudentId ===
-                                      child.student.id ||
-                                    !financeWallet ||
-                                    financeWallet.balance <
-                                      (child.requiredAmount ?? 0)
-                                  }
-                                >
-                                  {t("finSituation.children.payAndReinscribe")}
-                                </Button>
-                              </OnboardingTarget>
-                            </div>
-                          ) : null}
-                        </article>
+                          schoolSlug={schoolSlug}
+                          child={child}
+                          walletBalance={financeWallet?.balance ?? 0}
+                          submitting={
+                            reinscribingStudentId === child.student.id
+                          }
+                          onPayAndReinscribe={onPayAndReinscribe}
+                          reinscribeTourTargetId={
+                            FINANCE_PARENT_TOUR_TARGETS.reinscribe
+                          }
+                        />
                       ))}
                       {(financeWallet?.children ?? []).length === 0 ? (
                         <p className="text-sm text-text-secondary">

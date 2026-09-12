@@ -1,5 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import {
+  PUSH_JOB_SEND_PROMOTION_DECISION,
   PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
@@ -58,6 +59,7 @@ describe("PushJobsWorker", () => {
   const pushPort = {
     sendTimetableChangeNotification: jest.fn(),
     sendRoomStatusChangeNotification: jest.fn(),
+    sendPromotionDecisionNotification: jest.fn(),
   };
 
   const config = {} as ConfigService;
@@ -69,6 +71,7 @@ describe("PushJobsWorker", () => {
     globalScope.__pushWorkerInstances = [];
     pushPort.sendTimetableChangeNotification.mockReset();
     pushPort.sendRoomStatusChangeNotification.mockReset();
+    pushPort.sendPromotionDecisionNotification.mockReset();
   });
 
   it("creates a worker on init and routes jobs to push port", async () => {
@@ -99,6 +102,20 @@ describe("PushJobsWorker", () => {
     });
     expect(pushPort.sendRoomStatusChangeNotification).toHaveBeenCalledWith({
       tokens: ["ExponentPushToken[b]"],
+    });
+  });
+
+  it("routes promotion decision jobs to push port", async () => {
+    const worker = new PushJobsWorker(config, pushPort as never);
+    worker.onModuleInit();
+
+    const instances = getWorkerInstances();
+    await instances[0]?.processor({
+      name: PUSH_JOB_SEND_PROMOTION_DECISION,
+      data: { tokens: ["ExponentPushToken[c]"] },
+    });
+    expect(pushPort.sendPromotionDecisionNotification).toHaveBeenCalledWith({
+      tokens: ["ExponentPushToken[c]"],
     });
   });
 

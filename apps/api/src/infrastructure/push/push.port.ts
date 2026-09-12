@@ -1,6 +1,7 @@
 import type {
   GradePublishedPushPayload,
   HomeworkCreatedPushPayload,
+  PromotionDecisionPushPayload,
   ResourceSubmissionDiscardedPushPayload,
   ResourceSubmissionRejectedPushPayload,
   RoomStatusChangePushPayload,
@@ -39,5 +40,8 @@ export type PushPort = {
   ): Promise<void>;
   sendStudentHealthReportNotification(
     payload: StudentHealthReportPushPayload,
+  ): Promise<void>;
+  sendPromotionDecisionNotification(
+    payload: PromotionDecisionPushPayload,
   ): Promise<void>;
 };

@@ -1,6 +1,7 @@
 import { Logger } from "@nestjs/common";
 import { PushService } from "../src/notifications/push.service";
 import {
+  PUSH_JOB_SEND_PROMOTION_DECISION,
   PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
@@ -14,6 +15,7 @@ describe("PushService", () => {
   const pushPort = {
     sendTimetableChangeNotification: jest.fn(),
     sendRoomStatusChangeNotification: jest.fn(),
+    sendPromotionDecisionNotification: jest.fn(),
   };
 
   const service = new PushService(queue as never, pushPort as never);
@@ -22,6 +24,7 @@ describe("PushService", () => {
     queue.add.mockReset();
     pushPort.sendTimetableChangeNotification.mockReset();
     pushPort.sendRoomStatusChangeNotification.mockReset();
+    pushPort.sendPromotionDecisionNotification.mockReset();
   });
 
   it("queues timetable change push notifications", async () => {
@@ -151,5 +154,45 @@ describe("PushService", () => {
     );
     expect(loggerSpy).toHaveBeenCalled();
     loggerSpy.mockRestore();
+  });
+
+  it("queues promotion decision push notifications", async () => {
+    const payload = {
+      tokens: ["ExponentPushToken[a]"],
+      title: "Decision du conseil de classe",
+      body: "Eloi Talla est admis(e) en 5eme.",
+      data: {
+        type: "PROMOTION_DECISION" as const,
+        schoolSlug: "college-vogt",
+        studentId: "student-1",
+        decision: "PROMOTED" as const,
+      },
+    };
+
+    await service.sendPromotionDecisionNotification(payload);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      PUSH_QUEUE_NAME,
+      PUSH_JOB_SEND_PROMOTION_DECISION,
+      payload,
+    );
+    expect(pushPort.sendPromotionDecisionNotification).not.toHaveBeenCalled();
+  });
+
+  it("skips queueing promotion decision push when no token is available", async () => {
+    await service.sendPromotionDecisionNotification({
+      tokens: [],
+      title: "Ignored",
+      body: "Ignored",
+      data: {
+        type: "PROMOTION_DECISION",
+        schoolSlug: "college-vogt",
+        studentId: "student-1",
+        decision: "PROMOTED",
+      },
+    });
+
+    expect(queue.add).not.toHaveBeenCalled();
+    expect(pushPort.sendPromotionDecisionNotification).not.toHaveBeenCalled();
   });
 });

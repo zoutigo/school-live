@@ -12,6 +12,7 @@ import { PUSH_PORT, type PushPort } from "../infrastructure/push/push.port.js";
 import {
   PUSH_JOB_SEND_GRADE_PUBLISHED,
   PUSH_JOB_SEND_HOMEWORK_CREATED,
+  PUSH_JOB_SEND_PROMOTION_DECISION,
   PUSH_JOB_SEND_RESOURCE_SUBMISSION_DISCARDED,
   PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED,
   PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
@@ -22,6 +23,7 @@ import {
   PUSH_QUEUE_NAME,
   type GradePublishedPushPayload,
   type HomeworkCreatedPushPayload,
+  type PromotionDecisionPushPayload,
   type ResourceSubmissionDiscardedPushPayload,
   type ResourceSubmissionRejectedPushPayload,
   type RoomStatusChangePushPayload,
@@ -96,6 +98,12 @@ export class PushJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === PUSH_JOB_SEND_STUDENT_HEALTH_REPORT) {
           await this.pushPort.sendStudentHealthReportNotification(
             job.data as StudentHealthReportPushPayload,
+          );
+          return;
+        }
+        if (job.name === PUSH_JOB_SEND_PROMOTION_DECISION) {
+          await this.pushPort.sendPromotionDecisionNotification(
+            job.data as PromotionDecisionPushPayload,
           );
           return;
         }
