@@ -3420,6 +3420,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.children.deadlinePassed": "Date limite depassee",
     "reinscriptionWeb.children.insufficientBalance":
       "Solde insuffisant : approvisionnez votre porte-monnaie de {amount} pour reinscrire.",
+    "reinscriptionWeb.children.feeScheduleMissing":
+      "Aucun echeancier n'est encore configure pour ce niveau : contactez l'ecole pour connaitre le montant a regler.",
     "reinscriptionWeb.children.confirmed.title": "Inscription confirmee !",
     "reinscriptionWeb.children.confirmed.message":
       "Preparez la rentree en consultant la liste des fournitures.",

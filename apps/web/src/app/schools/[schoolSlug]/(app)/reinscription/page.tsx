@@ -527,12 +527,22 @@ export default function ReinscriptionPage() {
                   >
                     <div className="grid gap-3">
                       {eligibleChildren.map((child) => {
-                        const required = child.requiredAmount ?? 0;
                         const isReady = child.status === "READY_TO_REINSCRIBE";
                         const isConfirmed =
                           child.status === "ALREADY_REINSCRIBED";
+                        // requiredAmount est absent quand aucun echeancier n'est
+                        // encore configure pour le niveau cible : distinct de 0
+                        // (echeancier existant mais integralement paye), pour ne
+                        // jamais laisser croire a une reinscription gratuite.
+                        const feeScheduleMissing =
+                          isReady &&
+                          (child.requiredAmount === null ||
+                            child.requiredAmount === undefined);
+                        const required = child.requiredAmount ?? 0;
                         const insufficientBalance =
-                          isReady && (!wallet || wallet.balance < required);
+                          isReady &&
+                          !feeScheduleMissing &&
+                          (!wallet || wallet.balance < required);
                         const daysLeft = child.reinscriptionDeadline
                           ? daysUntil(child.reinscriptionDeadline)
                           : null;
@@ -612,7 +622,18 @@ export default function ReinscriptionPage() {
                               </div>
                             ) : null}
 
-                            {isReady ? (
+                            {isReady && feeScheduleMissing ? (
+                              <div
+                                className="mt-2 rounded-card border border-warm-border bg-warm-surface p-3 text-xs font-semibold text-warm-accent-dark"
+                                data-testid={`fee-schedule-missing-${child.student.id}`}
+                              >
+                                {t(
+                                  "reinscriptionWeb.children.feeScheduleMissing",
+                                )}
+                              </div>
+                            ) : null}
+
+                            {isReady && !feeScheduleMissing ? (
                               <div className="mt-2 grid gap-1 rounded-card border border-warm-border bg-warm-surface p-3">
                                 <p className="text-xs font-semibold text-text-secondary">
                                   {t("reinscriptionWeb.children.required")}

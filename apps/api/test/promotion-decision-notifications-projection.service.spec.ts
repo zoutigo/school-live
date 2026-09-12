@@ -33,7 +33,9 @@ describe("PromotionDecisionNotificationsProjectionService", () => {
         findUnique: jest
           .fn()
           .mockResolvedValue(
-            overrides && "report" in overrides ? overrides.report : buildReport(),
+            overrides && "report" in overrides
+              ? overrides.report
+              : buildReport(),
           ),
       },
       mobilePushToken: {
@@ -84,7 +86,9 @@ describe("PromotionDecisionNotificationsProjectionService", () => {
           lastName: "Talla",
           user: null,
           parentLinks: [
-            { parent: { id: "parent-suspended", activationStatus: "SUSPENDED" } },
+            {
+              parent: { id: "parent-suspended", activationStatus: "SUSPENDED" },
+            },
           ],
         },
       }),
@@ -111,7 +115,9 @@ describe("PromotionDecisionNotificationsProjectionService", () => {
           user: { id: "student-user-1", activationStatus: "ACTIVE" },
           parentLinks: [
             { parent: { id: "parent-1", activationStatus: "ACTIVE" } },
-            { parent: { id: "parent-suspended", activationStatus: "SUSPENDED" } },
+            {
+              parent: { id: "parent-suspended", activationStatus: "SUSPENDED" },
+            },
           ],
         },
       }),
@@ -149,7 +155,10 @@ describe("PromotionDecisionNotificationsProjectionService", () => {
 
   it("builds a REPEATED message with the repeated level", async () => {
     const prisma = buildPrisma({
-      report: buildReport({ decision: "REPEATED", nextAcademicLevel: { label: "6ème" } }),
+      report: buildReport({
+        decision: "REPEATED",
+        nextAcademicLevel: { label: "6ème" },
+      }),
     });
     const pushService = buildPushService();
     const service = new PromotionDecisionNotificationsProjectionService(
