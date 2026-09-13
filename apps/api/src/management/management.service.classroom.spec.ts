@@ -71,3 +71,56 @@ describe("ManagementService.getClassroom", () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe("ManagementService.updateClassroom", () => {
+  function makeUpdateService(existing: Record<string, unknown>) {
+    const prisma = {
+      class: {
+        findFirst: jest.fn().mockResolvedValue(existing),
+        update: jest.fn().mockResolvedValue({ id: existing.id }),
+      },
+      schoolMembership: {
+        findFirst: jest.fn().mockResolvedValue({ id: "membership-1" }),
+      },
+      curriculum: {
+        findFirst: jest.fn(),
+      },
+    };
+    const service = new ManagementService(
+      prisma as unknown as PrismaService,
+      {} as unknown as MailService,
+    );
+    return { service, prisma };
+  }
+
+  it("assigns a referent teacher without re-validating unrelated track/curriculum fields", async () => {
+    // Regression test: a class whose stored trackId no longer matches its
+    // curriculum's trackId (pre-existing data drift) must still allow
+    // unrelated updates, such as assigning a referent teacher, to succeed.
+    const existing = {
+      id: "class-1",
+      schoolId: "school-1",
+      academicLevelId: "al-1",
+      trackId: "track-stale",
+      curriculumId: "curriculum-1",
+    };
+    const { service, prisma } = makeUpdateService(existing);
+
+    await service.updateClassroom("school-1", "class-1", {
+      referentTeacherUserId: "teacher-1",
+    });
+
+    expect(prisma.curriculum.findFirst).not.toHaveBeenCalled();
+    expect(prisma.class.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "class-1" },
+        data: expect.objectContaining({
+          referentTeacherUserId: "teacher-1",
+          academicLevelId: "al-1",
+          trackId: "track-stale",
+          curriculumId: "curriculum-1",
+        }),
+      }),
+    );
+  });
+});
