@@ -2519,17 +2519,28 @@ export class ManagementService {
       );
     }
 
-    const academicReferences = await this.resolveClassAcademicReferences(
-      schoolId,
-      parsed.academicLevelId,
-      parsed.trackId,
-      parsed.curriculumId,
-      {
-        academicLevelId: existing.academicLevelId ?? undefined,
-        trackId: existing.trackId ?? undefined,
-        curriculumId: existing.curriculumId ?? undefined,
-      },
-    );
+    const academicFieldsProvided =
+      parsed.academicLevelId !== undefined ||
+      parsed.trackId !== undefined ||
+      parsed.curriculumId !== undefined;
+
+    const academicReferences = academicFieldsProvided
+      ? await this.resolveClassAcademicReferences(
+          schoolId,
+          parsed.academicLevelId,
+          parsed.trackId,
+          parsed.curriculumId,
+          {
+            academicLevelId: existing.academicLevelId ?? undefined,
+            trackId: existing.trackId ?? undefined,
+            curriculumId: existing.curriculumId ?? undefined,
+          },
+        )
+      : {
+          academicLevelId: existing.academicLevelId ?? undefined,
+          trackId: existing.trackId ?? undefined,
+          curriculumId: existing.curriculumId ?? undefined,
+        };
 
     return this.prisma.class.update({
       where: { id: classId },

@@ -4,11 +4,12 @@ import { MailModule } from "../mail/mail.module.js";
 import { NotificationsModule } from "../notifications/notifications.module.js";
 import { SchoolsModule } from "../schools/schools.module.js";
 import { StudentHealthController } from "./student-health.controller.js";
+import { TeacherClassHealthController } from "./teacher-class-health.controller.js";
 import { StudentHealthService } from "./student-health.service.js";
 
 @Module({
   imports: [AccessModule, SchoolsModule, MailModule, NotificationsModule],
-  controllers: [StudentHealthController],
+  controllers: [StudentHealthController, TeacherClassHealthController],
   providers: [StudentHealthService],
   exports: [StudentHealthService],
 })

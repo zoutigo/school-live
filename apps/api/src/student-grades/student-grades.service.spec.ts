@@ -30,7 +30,7 @@ const makePrismaMock = () => ({
     delete: jest.fn(),
     findMany: jest.fn(),
   },
-  class: { findFirst: jest.fn() },
+  class: { findFirst: jest.fn(), findMany: jest.fn() },
   student: { findFirst: jest.fn() },
   enrollment: { findFirst: jest.fn(), findMany: jest.fn() },
   subject: { findFirst: jest.fn() },
@@ -138,7 +138,7 @@ describe("StudentGradesService", () => {
       classId: "class-1",
       subjectId: "sub-1",
       schoolYearId: "sy-1",
-      class: { name: "6e A" },
+      class: { name: "6e A", referentTeacherUserId: "teacher-user-1" },
       subject: { name: "Maths" },
     };
 
@@ -146,6 +146,7 @@ describe("StudentGradesService", () => {
       prisma.school.findUnique.mockResolvedValue(school);
       prisma.schoolYear.findMany.mockResolvedValue([schoolYear]);
       prisma.enrollment.findMany.mockResolvedValue([]);
+      prisma.class.findMany.mockResolvedValue([]);
     });
 
     it("SCHOOL_ADMIN activeRole → returns all TeacherClassSubject (admin branch)", async () => {
@@ -167,6 +168,9 @@ describe("StudentGradesService", () => {
         }),
       );
       expect(result.assignments).toHaveLength(1);
+      expect(result.assignments[0]).toMatchObject({
+        referentTeacherUserId: "teacher-user-1",
+      });
     });
 
     it("TEACHER activeRole with SCHOOL_ADMIN membership → teacher branch (only own assignments)", async () => {
@@ -182,13 +186,67 @@ describe("StudentGradesService", () => {
         ],
       });
 
-      await service.context(user, "school-1");
+      const result = await service.context(user, "school-1");
 
       expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ teacherUserId: "teacher-user-1" }),
         }),
       );
+      expect(result.assignments[0]).toMatchObject({
+        referentTeacherUserId: "teacher-user-1",
+      });
+    });
+
+    it("TEACHER activeRole with no subject assignment in own referent class → still returns that class", async () => {
+      prisma.teacherClassSubject.findMany.mockResolvedValue([]);
+      prisma.class.findMany.mockResolvedValue([
+        { id: "class-2", name: "6e B", schoolYearId: "sy-1" },
+      ]);
+      const user = makeUser({
+        id: "teacher-user-1",
+        activeRole: "TEACHER",
+        memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+      });
+
+      const result = await service.context(user, "school-1");
+
+      expect(prisma.class.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            referentTeacherUserId: "teacher-user-1",
+            id: { notIn: [] },
+          }),
+        }),
+      );
+      expect(result.assignments).toHaveLength(1);
+      expect(result.assignments[0]).toMatchObject({
+        classId: "class-2",
+        className: "6e B",
+        subjectId: "",
+        subjectName: "",
+        referentTeacherUserId: "teacher-user-1",
+      });
+    });
+
+    it("TEACHER activeRole already assigned in own referent class → does not duplicate it via the referent fallback", async () => {
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        teacherClassSubjectRow,
+      ]);
+      const user = makeUser({
+        id: "teacher-user-1",
+        activeRole: "TEACHER",
+        memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+      });
+
+      const result = await service.context(user, "school-1");
+
+      expect(prisma.class.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: { notIn: ["class-1"] } }),
+        }),
+      );
+      expect(result.assignments).toHaveLength(1);
     });
 
     it("PARENT activeRole → returns empty assignments", async () => {

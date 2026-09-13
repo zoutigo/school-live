@@ -290,6 +290,7 @@ export class StudentGradesService {
       className: string;
       subjectName: string;
       schoolYearId: string;
+      referentTeacherUserId: string | null;
     }> = [];
 
     const activeRole = user.activeRole;
@@ -314,6 +315,7 @@ export class StudentGradesService {
           class: {
             select: {
               name: true,
+              referentTeacherUserId: true,
             },
           },
           subject: {
@@ -330,6 +332,7 @@ export class StudentGradesService {
         className: row.class.name,
         subjectName: row.subject.name,
         schoolYearId: row.schoolYearId,
+        referentTeacherUserId: row.class.referentTeacherUserId,
       }));
     } else if (activeRole === "TEACHER") {
       const rows = await this.prisma.teacherClassSubject.findMany({
@@ -347,6 +350,7 @@ export class StudentGradesService {
           class: {
             select: {
               name: true,
+              referentTeacherUserId: true,
             },
           },
           subject: {
@@ -363,7 +367,32 @@ export class StudentGradesService {
         className: row.class.name,
         subjectName: row.subject.name,
         schoolYearId: row.schoolYearId,
+        referentTeacherUserId: row.class.referentTeacherUserId,
       }));
+
+      const assignedClassIds = new Set(assignments.map((a) => a.classId));
+      const referentClasses = await this.prisma.class.findMany({
+        where: {
+          schoolId: effectiveSchoolId,
+          referentTeacherUserId: user.id,
+          id: { notIn: Array.from(assignedClassIds) },
+          ...(selectedSchoolYearId
+            ? { schoolYearId: selectedSchoolYearId }
+            : {}),
+        },
+        select: { id: true, name: true, schoolYearId: true },
+      });
+
+      for (const classroom of referentClasses) {
+        assignments.push({
+          classId: classroom.id,
+          subjectId: "",
+          className: classroom.name,
+          subjectName: "",
+          schoolYearId: classroom.schoolYearId,
+          referentTeacherUserId: user.id,
+        });
+      }
     } else {
       return {
         schoolYears: years.map((year) => ({

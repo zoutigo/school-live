@@ -5179,6 +5179,11 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Cet onglet liste les demandes envoyées via le formulaire de contact public du site, des plus récentes aux plus anciennes. Cliquez sur un message pour lire son détail — il est alors marqué comme lu.",
 
     "health.title": "Santé",
+    "health.teacherReferent.title": "Santé",
+    "health.teacherReferent.empty.message":
+      "Aucun élève inscrit dans cette classe pour le moment.",
+    "health.teacherReferent.errors.load":
+      "Impossible de charger la liste des élèves.",
     "health.subtitleDefault": "Informations de santé de l'élève",
     "health.common.loading": "Chargement…",
     "health.common.csrfInvalid": "Session invalide, veuillez vous reconnecter.",
@@ -10464,6 +10469,10 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This tab lists submissions sent through the site's public contact form, newest first. Click a message to read its details — it is then marked as read.",
 
     "health.title": "Health",
+    "health.teacherReferent.title": "Health",
+    "health.teacherReferent.empty.message":
+      "No student enrolled in this class yet.",
+    "health.teacherReferent.errors.load": "Could not load the student list.",
     "health.subtitleDefault": "Student health information",
     "health.common.loading": "Loading…",
     "health.common.csrfInvalid": "Invalid session, please sign in again.",

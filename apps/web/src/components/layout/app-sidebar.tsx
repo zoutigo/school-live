@@ -58,6 +58,7 @@ export const SIDEBAR_HELP_TOUR_TARGET = "sidebar-help-target";
 type SidebarProps = {
   schoolSlug?: string | null;
   role: Role;
+  userId?: string;
   isTester?: boolean;
   onNavigate?: () => void;
   onLogoutClick?: () => void;
@@ -82,6 +83,7 @@ type TeacherClassNav = {
   classId: string;
   className: string;
   schoolYearId: string;
+  referentTeacherUserId: string | null;
 };
 
 type TeacherClassWithItems = TeacherClassNav & {
@@ -710,6 +712,7 @@ function buildTeacherClassItems(
   classId: string,
   t: TranslateFn,
   classBadge: TeacherClassBadgeSummary | undefined,
+  isReferentTeacher: boolean,
 ): NavItem[] {
   const base = `/schools/${schoolSlug}/classes/${classId}`;
 
@@ -733,6 +736,16 @@ function buildTeacherClassItems(
       icon: ShieldCheck,
       matchPrefix: `${base}/discipline`,
     },
+    ...(isReferentTeacher
+      ? [
+          {
+            label: t("health.title"),
+            href: `${base}/sante`,
+            icon: HeartPulse,
+            matchPrefix: `${base}/sante`,
+          } satisfies NavItem,
+        ]
+      : []),
     {
       label: t("timetable.sidebar.emploiDuTemps"),
       href: `${base}/emploi-du-temps`,
@@ -751,6 +764,7 @@ function buildTeacherClassItems(
 export function AppSidebar({
   schoolSlug,
   role,
+  userId,
   isTester,
   onNavigate,
   onLogoutClick,
@@ -925,6 +939,7 @@ export function AppSidebar({
           classId: string;
           className: string;
           schoolYearId: string;
+          referentTeacherUserId: string | null;
         }>;
       };
 
@@ -935,6 +950,7 @@ export function AppSidebar({
             classId: entry.classId,
             className: entry.className,
             schoolYearId: entry.schoolYearId,
+            referentTeacherUserId: entry.referentTeacherUserId ?? null,
           });
         }
       });
@@ -978,9 +994,10 @@ export function AppSidebar({
         badgeSummary?.teacherClasses.find(
           (classBadge) => classBadge.classId === entry.classId,
         ),
+        Boolean(userId && entry.referentTeacherUserId === userId),
       ),
     }));
-  }, [teacherClasses, schoolSlug, t, badgeSummary]);
+  }, [teacherClasses, schoolSlug, t, badgeSummary, userId]);
 
   const teacherGeneralItems = useMemo(
     () => items.filter((item) => item.href !== "/settings"),
