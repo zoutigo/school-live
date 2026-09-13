@@ -369,6 +369,30 @@ export class StudentGradesService {
         schoolYearId: row.schoolYearId,
         referentTeacherUserId: row.class.referentTeacherUserId,
       }));
+
+      const assignedClassIds = new Set(assignments.map((a) => a.classId));
+      const referentClasses = await this.prisma.class.findMany({
+        where: {
+          schoolId: effectiveSchoolId,
+          referentTeacherUserId: user.id,
+          id: { notIn: Array.from(assignedClassIds) },
+          ...(selectedSchoolYearId
+            ? { schoolYearId: selectedSchoolYearId }
+            : {}),
+        },
+        select: { id: true, name: true, schoolYearId: true },
+      });
+
+      for (const classroom of referentClasses) {
+        assignments.push({
+          classId: classroom.id,
+          subjectId: "",
+          className: classroom.name,
+          subjectName: "",
+          schoolYearId: classroom.schoolYearId,
+          referentTeacherUserId: user.id,
+        });
+      }
     } else {
       return {
         schoolYears: years.map((year) => ({
