@@ -12,6 +12,7 @@ import type {
   SchoolRole,
 } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { computeAgeInYears } from "../common/age.util.js";
 import { publicEmailOrNull } from "../common/email.util.js";
 import { MailService } from "../mail/mail.service.js";
 import { PushService } from "../notifications/push.service.js";
@@ -45,22 +46,33 @@ export class StudentHealthService {
     private readonly pushService: PushService,
   ) {}
 
+  /**
+   * Scoped to the currently active role, never the raw membership list: a
+   * user with several roles across schools (e.g. both PARENT and TEACHER at
+   * the same school) must only get the access level of the role they are
+   * actually acting as right now.
+   */
   private hasSchoolRole(
     user: AuthenticatedUser,
     schoolId: string,
     role: SchoolRole,
   ) {
-    return user.memberships.some(
-      (membership) =>
-        membership.schoolId === schoolId && membership.role === role,
+    return (
+      user.activeRole === role &&
+      user.memberships.some(
+        (membership) =>
+          membership.schoolId === schoolId && membership.role === role,
+      )
     );
   }
 
+  /**
+   * Scoped to the active role, not the raw platformRoles list: a platform
+   * admin acting with activeRole=TEACHER must not silently inherit
+   * platform-admin health access.
+   */
   private isPlatformAdmin(user: AuthenticatedUser) {
-    return (
-      user.platformRoles.includes("SUPER_ADMIN") ||
-      user.platformRoles.includes("ADMIN")
-    );
+    return user.activeRole === "SUPER_ADMIN" || user.activeRole === "ADMIN";
   }
 
   private isHealthManager(user: AuthenticatedUser, schoolId: string) {
@@ -195,6 +207,97 @@ export class StudentHealthService {
       return "referent" as const;
     }
     throw new ForbiddenException("Insufficient role");
+  }
+
+  /**
+   * Roster of a referent teacher's own class, used as the entry point into
+   * the per-student health screens (which already enforce the referent's
+   * read-only, active-conditions-only access on their own). Restricted to
+   * the class's referent teacher: an ordinary subject teacher of the same
+   * class has no health access at all.
+   */
+  async listClassRosterForReferent(
+    schoolId: string,
+    user: AuthenticatedUser,
+    classId: string,
+  ) {
+    const classroom = await this.prisma.class.findFirst({
+      where: { id: classId, schoolId },
+      select: { id: true, name: true, referentTeacherUserId: true },
+    });
+    if (!classroom) {
+      throw new NotFoundException("Class not found");
+    }
+    if (classroom.referentTeacherUserId !== user.id) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+    const activeSchoolYearId = school?.activeSchoolYearId ?? null;
+
+    const students = await this.prisma.student.findMany({
+      where: {
+        schoolId,
+        enrollments: {
+          some: {
+            classId,
+            ...(activeSchoolYearId ? { schoolYearId: activeSchoolYearId } : {}),
+          },
+        },
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        user: { select: { recoveryBirthDate: true } },
+      },
+    });
+
+    const activeConditions = students.length
+      ? await this.prisma.studentHealthCondition.findMany({
+          where: {
+            schoolId,
+            active: true,
+            studentId: { in: students.map((student) => student.id) },
+          },
+          select: { studentId: true, alertLevel: true },
+        })
+      : [];
+
+    const alertRank: Record<StudentHealthAlertLevel, number> = {
+      INFO: 0,
+      ATTENTION: 1,
+      URGENT: 2,
+    };
+    const alertByStudent = new Map<string, StudentHealthAlertLevel>();
+    for (const condition of activeConditions) {
+      const current = alertByStudent.get(condition.studentId);
+      if (!current || alertRank[condition.alertLevel] > alertRank[current]) {
+        alertByStudent.set(condition.studentId, condition.alertLevel);
+      }
+    }
+
+    const now = new Date();
+    return {
+      class: { id: classroom.id, name: classroom.name },
+      items: students.map((student) => {
+        const birthDate = student.user?.recoveryBirthDate ?? null;
+        return {
+          id: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          age: birthDate ? computeAgeInYears(birthDate, now) : null,
+          activeConditionsCount: activeConditions.filter(
+            (condition) => condition.studentId === student.id,
+          ).length,
+          highestActiveAlertLevel: alertByStudent.get(student.id) ?? null,
+        };
+      }),
+    };
   }
 
   async listConditions(

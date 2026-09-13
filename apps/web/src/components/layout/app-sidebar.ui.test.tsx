@@ -198,6 +198,61 @@ describe("AppSidebar teacher class links", () => {
       screen.queryByRole("link", { name: "Cahier de notes" }),
     ).not.toBeInTheDocument();
   });
+
+  it("shows a Santé link only for the class where the teacher is the referent", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return new Response(
+          JSON.stringify({
+            assignments: [
+              {
+                classId: "class-1",
+                className: "6e B",
+                schoolYearId: "sy-1",
+                referentTeacherUserId: "teacher-1",
+              },
+              {
+                classId: "class-2",
+                className: "6e C",
+                schoolYearId: "sy-1",
+                referentTeacherUserId: "teacher-2",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(
+      <AppSidebar
+        role="TEACHER"
+        schoolSlug="college-vogt"
+        userId="teacher-1"
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "6e B" }));
+    expect(screen.getByRole("link", { name: "Santé" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/classes/class-1/sante",
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "6e C" }));
+    expect(
+      screen.queryByRole("link", { name: "Santé" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("AppSidebar parent child links", () => {

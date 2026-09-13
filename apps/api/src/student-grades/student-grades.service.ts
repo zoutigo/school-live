@@ -290,6 +290,7 @@ export class StudentGradesService {
       className: string;
       subjectName: string;
       schoolYearId: string;
+      referentTeacherUserId: string | null;
     }> = [];
 
     const activeRole = user.activeRole;
@@ -314,6 +315,7 @@ export class StudentGradesService {
           class: {
             select: {
               name: true,
+              referentTeacherUserId: true,
             },
           },
           subject: {
@@ -330,6 +332,7 @@ export class StudentGradesService {
         className: row.class.name,
         subjectName: row.subject.name,
         schoolYearId: row.schoolYearId,
+        referentTeacherUserId: row.class.referentTeacherUserId,
       }));
     } else if (activeRole === "TEACHER") {
       const rows = await this.prisma.teacherClassSubject.findMany({
@@ -347,6 +350,7 @@ export class StudentGradesService {
           class: {
             select: {
               name: true,
+              referentTeacherUserId: true,
             },
           },
           subject: {
@@ -363,6 +367,7 @@ export class StudentGradesService {
         className: row.class.name,
         subjectName: row.subject.name,
         schoolYearId: row.schoolYearId,
+        referentTeacherUserId: row.class.referentTeacherUserId,
       }));
     } else {
       return {

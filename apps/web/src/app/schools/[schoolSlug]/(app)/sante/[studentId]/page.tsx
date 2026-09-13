@@ -91,6 +91,17 @@ export default function SchoolSanteStudentPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isReferentView, setIsReferentView] = useState(false);
+
+  useEffect(() => {
+    if (!schoolSlug) return;
+    fetch(`${API_URL}/schools/${schoolSlug}/me`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload: { role?: string } | null) => {
+        if (payload?.role === "TEACHER") setIsReferentView(true);
+      })
+      .catch(() => {});
+  }, [schoolSlug]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CareEventRow | null>(null);
@@ -249,15 +260,17 @@ export default function SchoolSanteStudentPage() {
                 : t("health.admin.profile.ageUnknown")}
             </p>
           </div>
-          <OnboardingTarget id={HEALTH_SCHOOL_TOUR_TARGETS.studentFab}>
-            <Button
-              type="button"
-              onClick={openCreate}
-              data-testid="sante-student-add-care"
-            >
-              {t("health.admin.profile.addCare")}
-            </Button>
-          </OnboardingTarget>
+          {!isReferentView ? (
+            <OnboardingTarget id={HEALTH_SCHOOL_TOUR_TARGETS.studentFab}>
+              <Button
+                type="button"
+                onClick={openCreate}
+                data-testid="sante-student-add-care"
+              >
+                {t("health.admin.profile.addCare")}
+              </Button>
+            </OnboardingTarget>
+          ) : null}
         </div>
       </Card>
 
@@ -432,14 +445,16 @@ export default function SchoolSanteStudentPage() {
                           ? ` · ${t("health.admin.profile.byPrefix")} ${item.payload.authorUser.firstName} ${item.payload.authorUser.lastName}`
                           : ""}
                       </p>
-                      <button
-                        type="button"
-                        className="mt-1 text-xs font-semibold text-primary underline"
-                        onClick={() => openEdit(item.payload)}
-                        data-testid={`sante-care-edit-${item.payload.id}`}
-                      >
-                        {t("health.admin.profile.editCare")}
-                      </button>
+                      {!isReferentView ? (
+                        <button
+                          type="button"
+                          className="mt-1 text-xs font-semibold text-primary underline"
+                          onClick={() => openEdit(item.payload)}
+                          data-testid={`sante-care-edit-${item.payload.id}`}
+                        >
+                          {t("health.admin.profile.editCare")}
+                        </button>
+                      ) : null}
                     </div>
                   ) : (
                     <div

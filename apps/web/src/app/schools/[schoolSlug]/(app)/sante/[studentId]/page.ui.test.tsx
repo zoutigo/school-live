@@ -319,3 +319,59 @@ describe("School sante student page (fiche élève)", () => {
     expect(screen.queryByTestId("sante-care-form-summary")).toBeNull();
   });
 });
+
+describe("School sante student page — vue enseignant référent (lecture seule)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+  });
+
+  function mockFetchAsReferent() {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/me")) return jsonResponse({ role: "TEACHER" });
+      if (url.includes("/health/history")) {
+        return jsonResponse({
+          items: [
+            {
+              kind: "CARE_EVENT",
+              at: CARE_EVENT_1.occurredAt,
+              payload: CARE_EVENT_1,
+            },
+            {
+              kind: "REPORT",
+              at: REPORT_1.createdAt,
+              payload: REPORT_1,
+            },
+          ],
+        });
+      }
+      if (url.includes("/health/conditions"))
+        return jsonResponse({ items: [] });
+      return jsonResponse({}, 404);
+    });
+  }
+
+  it("n'affiche pas le bouton d'ajout de soin", async () => {
+    mockFetchAsReferent();
+    render(<SchoolSanteStudentPage />);
+
+    await screen.findByText("Chute dans la cour");
+    expect(screen.queryByTestId("sante-student-add-care")).toBeNull();
+  });
+
+  it("n'affiche pas le lien Modifier sur un soin", async () => {
+    mockFetchAsReferent();
+    render(<SchoolSanteStudentPage />);
+
+    await screen.findByText("Chute dans la cour");
+    expect(screen.queryByTestId("sante-care-edit-care-1")).toBeNull();
+  });
+
+  it("affiche toujours le bouton d'acquittement d'un signalement en attente", async () => {
+    mockFetchAsReferent();
+    render(<SchoolSanteStudentPage />);
+
+    await screen.findByTestId("sante-report-acknowledge-report-1");
+  });
+});

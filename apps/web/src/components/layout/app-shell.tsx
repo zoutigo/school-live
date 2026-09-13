@@ -30,6 +30,7 @@ function applyAccountLocale(preferredLocale?: "FR" | "EN" | null): void {
 }
 
 type MeResponse = {
+  id: string;
   firstName: string;
   lastName: string;
   role: Role | null;
@@ -301,6 +302,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
               <AppSidebar
                 schoolSlug={activeSchoolSlug}
                 role={role}
+                userId={me?.id}
                 isTester={me?.isTester}
                 onLogoutClick={() => setLogoutConfirmOpen(true)}
               />
@@ -322,6 +324,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
               <AppSidebar
                 schoolSlug={activeSchoolSlug}
                 role={role}
+                userId={me?.id}
                 isTester={me?.isTester}
                 onNavigate={() => setMobileOpen(false)}
                 onLogoutClick={() => setLogoutConfirmOpen(true)}

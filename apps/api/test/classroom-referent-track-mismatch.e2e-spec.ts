@@ -203,7 +203,11 @@ describe("Classroom referent assignment with stale track/curriculum e2e", () => 
 
     const classroom = await prisma.class.findUniqueOrThrow({
       where: { id: classId },
-      select: { referentTeacherUserId: true, trackId: true, curriculumId: true },
+      select: {
+        referentTeacherUserId: true,
+        trackId: true,
+        curriculumId: true,
+      },
     });
     expect(classroom.referentTeacherUserId).toBe(teacherUserId);
     // The pre-existing mismatch is left untouched, not silently "fixed".
@@ -230,9 +234,7 @@ describe("Classroom referent assignment with stale track/curriculum e2e", () => 
     );
 
     expect(result.response.status).toBe(400);
-    expect(result.body?.message).toContain(
-      "Track must match curriculum track",
-    );
+    expect(result.body?.message).toContain("Track must match curriculum track");
 
     await prisma.track.deleteMany({ where: { id: otherTrack.id } });
   });

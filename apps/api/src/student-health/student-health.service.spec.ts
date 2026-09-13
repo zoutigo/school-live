@@ -58,6 +58,7 @@ const makePrismaMock = () => ({
       firstName: "Nathan",
       lastName: "Mbele",
     }),
+    findMany: jest.fn().mockResolvedValue([]),
   },
   parentStudent: {
     findFirst: jest.fn(),
@@ -198,6 +199,69 @@ describe("StudentHealthService", () => {
       );
 
       expect(result.items).toEqual([{ id: "c1", active: true }]);
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ active: true }),
+        }),
+      );
+    });
+
+    it("un référent qui a AUSSI un membership PARENT à la même école ne doit obtenir que l'accès référent (actives uniquement), pas l'accès parent complet", async () => {
+      // Regression: hasSchoolRole matchait n'importe quel membership, pas le
+      // rôle actif — un compte cumulant TEACHER (référent) et PARENT sur la
+      // même école, avec un vrai lien ParentStudent vers cet élève, obtenait
+      // l'accès parent (sans filtre) même en agissant avec activeRole=TEACHER.
+      const dualRoleReferent: AuthenticatedUser = {
+        id: REFERENT_TEACHER_USER_ID,
+        activeRole: "TEACHER",
+        platformRoles: [],
+        memberships: [
+          { schoolId: SCHOOL_ID, role: "TEACHER" },
+          { schoolId: SCHOOL_ID, role: "PARENT" },
+        ],
+        profileCompleted: true,
+        firstName: "Test",
+        lastName: "User",
+      };
+      // A real ParentStudent link exists, but must not be consulted while
+      // acting as TEACHER.
+      prisma.parentStudent.findFirst.mockResolvedValue({ id: "link-1" });
+      prisma.studentHealthCondition.findMany.mockResolvedValue([
+        { id: "c1", active: true },
+      ]);
+      prisma.studentHealthCondition.count.mockResolvedValue(1);
+
+      await service.listConditions(SCHOOL_ID, dualRoleReferent, STUDENT_ID);
+
+      expect(prisma.parentStudent.findFirst).not.toHaveBeenCalled();
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ active: true }),
+        }),
+      );
+    });
+
+    it("un référent qui cumule aussi des platformRoles (SUPER_ADMIN/ADMIN) mais agit avec activeRole=TEACHER ne doit obtenir que l'accès référent, pas l'accès manager complet", async () => {
+      // Regression: isPlatformAdmin lisait platformRoles brut, pas le rôle
+      // actif — un compte plateforme (ADMIN/SUPER_ADMIN) référent d'une
+      // classe obtenait l'accès manager (toutes conditions, actives et
+      // inactives) même en agissant explicitement en tant qu'enseignant.
+      const dualRoleReferent: AuthenticatedUser = {
+        id: REFERENT_TEACHER_USER_ID,
+        activeRole: "TEACHER",
+        platformRoles: ["SUPER_ADMIN", "ADMIN"],
+        memberships: [{ schoolId: SCHOOL_ID, role: "TEACHER" }],
+        profileCompleted: true,
+        firstName: "Test",
+        lastName: "User",
+      };
+      prisma.studentHealthCondition.findMany.mockResolvedValue([
+        { id: "c1", active: true },
+      ]);
+      prisma.studentHealthCondition.count.mockResolvedValue(1);
+
+      await service.listConditions(SCHOOL_ID, dualRoleReferent, STUDENT_ID);
+
       expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ active: true }),
@@ -825,6 +889,103 @@ describe("StudentHealthService", () => {
       await expect(
         service.getHistory(SCHOOL_ID, OTHER_TEACHER, STUDENT_ID),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ── listClassRosterForReferent ──────────────────────────────────────────────
+
+  describe("listClassRosterForReferent", () => {
+    const OTHER_STUDENT_ID = "student-2";
+
+    beforeEach(() => {
+      prisma.class.findFirst.mockResolvedValue({
+        id: CLASS_ID,
+        name: "6e B",
+        referentTeacherUserId: REFERENT_TEACHER_USER_ID,
+      });
+      prisma.student.findMany.mockResolvedValue([
+        {
+          id: STUDENT_ID,
+          firstName: "Nathan",
+          lastName: "Mbele",
+          user: { recoveryBirthDate: null },
+        },
+        {
+          id: OTHER_STUDENT_ID,
+          firstName: "Aline",
+          lastName: "Talla",
+          user: { recoveryBirthDate: null },
+        },
+      ]);
+      prisma.studentHealthCondition.findMany.mockResolvedValue([
+        { studentId: STUDENT_ID, alertLevel: "URGENT" },
+        { studentId: STUDENT_ID, alertLevel: "INFO" },
+      ]);
+    });
+
+    it("renvoie la liste des élèves de la classe pour le référent, avec le niveau d'alerte le plus élevé", async () => {
+      const result = await service.listClassRosterForReferent(
+        SCHOOL_ID,
+        REFERENT_TEACHER,
+        CLASS_ID,
+      );
+
+      expect(result.class).toEqual({ id: CLASS_ID, name: "6e B" });
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: STUDENT_ID,
+          activeConditionsCount: 2,
+          highestActiveAlertLevel: "URGENT",
+        }),
+        expect.objectContaining({
+          id: OTHER_STUDENT_ID,
+          activeConditionsCount: 0,
+          highestActiveAlertLevel: null,
+        }),
+      ]);
+    });
+
+    it("scope la recherche des élèves à la classe et à l'année scolaire active", async () => {
+      await service.listClassRosterForReferent(
+        SCHOOL_ID,
+        REFERENT_TEACHER,
+        CLASS_ID,
+      );
+
+      expect(prisma.student.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            schoolId: SCHOOL_ID,
+            enrollments: {
+              some: { classId: CLASS_ID, schoolYearId: SCHOOL_YEAR_ID },
+            },
+          }),
+        }),
+      );
+    });
+
+    it("refuse un enseignant de la classe qui n'en est pas le référent", async () => {
+      await expect(
+        service.listClassRosterForReferent(SCHOOL_ID, OTHER_TEACHER, CLASS_ID),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("refuse un parent ou un tiers", async () => {
+      await expect(
+        service.listClassRosterForReferent(SCHOOL_ID, PARENT, CLASS_ID),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("leve NotFoundException si la classe n'existe pas dans l'école", async () => {
+      prisma.class.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.listClassRosterForReferent(
+          SCHOOL_ID,
+          REFERENT_TEACHER,
+          "ghost-class",
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

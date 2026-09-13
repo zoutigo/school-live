@@ -138,7 +138,7 @@ describe("StudentGradesService", () => {
       classId: "class-1",
       subjectId: "sub-1",
       schoolYearId: "sy-1",
-      class: { name: "6e A" },
+      class: { name: "6e A", referentTeacherUserId: "teacher-user-1" },
       subject: { name: "Maths" },
     };
 
@@ -167,6 +167,9 @@ describe("StudentGradesService", () => {
         }),
       );
       expect(result.assignments).toHaveLength(1);
+      expect(result.assignments[0]).toMatchObject({
+        referentTeacherUserId: "teacher-user-1",
+      });
     });
 
     it("TEACHER activeRole with SCHOOL_ADMIN membership → teacher branch (only own assignments)", async () => {
@@ -182,13 +185,16 @@ describe("StudentGradesService", () => {
         ],
       });
 
-      await service.context(user, "school-1");
+      const result = await service.context(user, "school-1");
 
       expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ teacherUserId: "teacher-user-1" }),
         }),
       );
+      expect(result.assignments[0]).toMatchObject({
+        referentTeacherUserId: "teacher-user-1",
+      });
     });
 
     it("PARENT activeRole → returns empty assignments", async () => {
