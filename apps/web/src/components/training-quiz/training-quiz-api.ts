@@ -9,6 +9,12 @@ function csrfHeaders(
   return token ? { ...headers, "x-csrf-token": token } : headers;
 }
 
+export type QuizChapterCurrentStage = {
+  stage: QuizStage;
+  totalQuestions: number;
+  solvedQuestions: number;
+};
+
 export type QuizChapterSummary = {
   id: string;
   moduleKey: string;
@@ -20,6 +26,7 @@ export type QuizChapterSummary = {
   description: string;
   totalQuestions: number;
   solvedQuestions: number;
+  currentStage: QuizChapterCurrentStage | null;
 };
 
 export type QuizQuestionType = "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE";

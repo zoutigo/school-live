@@ -155,6 +155,73 @@ describe("TrainingQuizService", () => {
 
       expect(result[0].title).toBe("Discipline (EN)");
     });
+
+    it("reports the first unfinished unlocked stage as currentStage, not the chapter total", async () => {
+      prisma.quizChapter.findMany.mockResolvedValue([
+        {
+          id: "chapter-1",
+          moduleKey: "discipline",
+          order: 1,
+          icon: "shield",
+          colorFrom: "#111",
+          colorTo: "#222",
+          titleFr: "Discipline",
+          titleEn: "Discipline",
+          descriptionFr: "desc fr",
+          descriptionEn: "desc en",
+          questions: [
+            { id: "d1", stage: "DISCOVERY", progress: [{ id: "p1" }] },
+            { id: "d2", stage: "DISCOVERY", progress: [{ id: "p2" }] },
+            { id: "p1", stage: "PRACTICE", progress: [] },
+            { id: "p2", stage: "PRACTICE", progress: [] },
+            { id: "m1", stage: "MASTERY", progress: [] },
+          ],
+        },
+      ]);
+
+      const result = await service.listChapters(makeUser());
+
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          totalQuestions: 5,
+          solvedQuestions: 2,
+          currentStage: {
+            stage: "PRACTICE",
+            totalQuestions: 2,
+            solvedQuestions: 0,
+          },
+        }),
+      );
+    });
+
+    it("falls back to the first stage with questions once the chapter is fully solved", async () => {
+      prisma.quizChapter.findMany.mockResolvedValue([
+        {
+          id: "chapter-1",
+          moduleKey: "discipline",
+          order: 1,
+          icon: "shield",
+          colorFrom: "#111",
+          colorTo: "#222",
+          titleFr: "Discipline",
+          titleEn: "Discipline",
+          descriptionFr: "desc fr",
+          descriptionEn: "desc en",
+          questions: [
+            { id: "d1", stage: "DISCOVERY", progress: [{ id: "p1" }] },
+            { id: "p1", stage: "PRACTICE", progress: [{ id: "p2" }] },
+          ],
+        },
+      ]);
+
+      const result = await service.listChapters(makeUser());
+
+      expect(result[0].currentStage).toEqual({
+        stage: "DISCOVERY",
+        totalQuestions: 1,
+        solvedQuestions: 1,
+      });
+    });
   });
 
   describe("getChapter", () => {

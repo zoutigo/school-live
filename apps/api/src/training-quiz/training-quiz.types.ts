@@ -1,3 +1,9 @@
+export type QuizChapterCurrentStage = {
+  stage: "DISCOVERY" | "PRACTICE" | "MASTERY";
+  totalQuestions: number;
+  solvedQuestions: number;
+};
+
 export type QuizChapterSummary = {
   id: string;
   moduleKey: string;
@@ -9,6 +15,9 @@ export type QuizChapterSummary = {
   description: string;
   totalQuestions: number;
   solvedQuestions: number;
+  // The stage the learner would resume at if opening this chapter now, or
+  // null when the chapter has no active questions yet.
+  currentStage: QuizChapterCurrentStage | null;
 };
 
 export type QuizAnswerOptionPublic = {

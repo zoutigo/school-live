@@ -5427,6 +5427,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.list.empty":
       "Aucun chapitre de formation n'est disponible pour votre rôle pour le moment.",
     "trainingQuiz.list.missionsCount": "{count} missions",
+    "trainingQuiz.list.currentStageMissionsCount": "{stage} : {count} missions",
     "trainingQuiz.list.startCta": "Commencer",
     "trainingQuiz.list.continueCta": "Continuer",
     "trainingQuiz.list.completeCta": "Revoir",
@@ -10704,6 +10705,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.list.empty":
       "No training chapter is available for your role yet.",
     "trainingQuiz.list.missionsCount": "{count} missions",
+    "trainingQuiz.list.currentStageMissionsCount": "{stage}: {count} missions",
     "trainingQuiz.list.startCta": "Start",
     "trainingQuiz.list.continueCta": "Continue",
     "trainingQuiz.list.completeCta": "Review",
