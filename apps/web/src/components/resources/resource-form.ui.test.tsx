@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResourceForm } from "./resource-form";
 import type {
@@ -152,7 +158,9 @@ describe("ResourceForm", () => {
       expect(
         screen.queryByTestId("resources-mine-form-school-search"),
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId("resources-mine-form-school")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("resources-mine-form-school"),
+      ).toBeInTheDocument();
     });
 
     it("charge la liste des écoles au montage et les propose dans le menu déroulant", async () => {
@@ -213,9 +221,9 @@ describe("ResourceForm", () => {
       ).toHaveAttribute("aria-selected", "true");
 
       // Le niveau précédemment choisi doit avoir été réinitialisé.
-      expect(
-        screen.getByTestId("resources-mine-form-level"),
-      ).toHaveTextContent("Choisir un niveau");
+      expect(screen.getByTestId("resources-mine-form-level")).toHaveTextContent(
+        "Choisir un niveau",
+      );
     });
 
     it("filtre les niveaux compatibles avec le systeme linguistique de l'école sélectionnée (les niveaux neutres restent visibles, ceux d'un autre systeme sont masqués)", async () => {
@@ -230,9 +238,7 @@ describe("ResourceForm", () => {
       fireEvent.click(screen.getByTestId("resources-mine-form-level"));
       expect(screen.getByText("Grade 6")).toBeInTheDocument();
       expect(screen.getByText("6ème")).toBeInTheDocument();
-      expect(
-        screen.queryByText("6ème (filière FR)"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("6ème (filière FR)")).not.toBeInTheDocument();
     });
 
     it("affiche l'erreur 'École requise' si le formulaire ASSESSMENT est soumis sans école", async () => {
@@ -277,7 +283,9 @@ describe("ResourceForm", () => {
         "resources-mine-form-level",
         "resources-mine-form-level-option-level-1ere",
       );
-      expect(screen.getByTestId("resources-mine-form-track")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("resources-mine-form-track"),
+      ).toBeInTheDocument();
     });
 
     it("les options de matière dépendent du curriculum résolu (niveau + série)", async () => {
@@ -318,17 +326,17 @@ describe("ResourceForm", () => {
         "resources-mine-form-subject",
         "resources-mine-form-subject-option-subj-fr",
       );
-      expect(screen.getByTestId("resources-mine-form-subject")).toHaveTextContent(
-        "Français",
-      );
+      expect(
+        screen.getByTestId("resources-mine-form-subject"),
+      ).toHaveTextContent("Français");
 
       await selectViaCombobox(
         "resources-mine-form-level",
         "resources-mine-form-level-option-level-1ere",
       );
-      expect(screen.getByTestId("resources-mine-form-subject")).toHaveTextContent(
-        "Choisir une matiere",
-      );
+      expect(
+        screen.getByTestId("resources-mine-form-subject"),
+      ).toHaveTextContent("Choisir une matiere");
     });
   });
 
@@ -339,13 +347,15 @@ describe("ResourceForm", () => {
       fireEvent.click(screen.getByTestId("resources-mine-form-submit"));
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId("resources-mine-form-level"),
-        ).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByTestId("resources-mine-form-level")).toHaveAttribute(
+          "aria-invalid",
+          "true",
+        );
       });
-      expect(
-        screen.getByTestId("resources-mine-form-subject"),
-      ).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByTestId("resources-mine-form-subject")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
     });
 
     it("exige la série quand le niveau sélectionné en a une", async () => {
@@ -358,9 +368,10 @@ describe("ResourceForm", () => {
       fireEvent.click(screen.getByTestId("resources-mine-form-submit"));
 
       await waitFor(() =>
-        expect(
-          screen.getByTestId("resources-mine-form-track"),
-        ).toHaveAttribute("aria-invalid", "true"),
+        expect(screen.getByTestId("resources-mine-form-track")).toHaveAttribute(
+          "aria-invalid",
+          "true",
+        ),
       );
     });
 
@@ -513,9 +524,9 @@ describe("ResourceForm", () => {
 
       await waitFor(() => expect(mockApi.searchSchools).toHaveBeenCalled());
 
-      expect(screen.getByTestId("resources-mine-form-school")).toHaveTextContent(
-        "École fermée depuis",
-      );
+      expect(
+        screen.getByTestId("resources-mine-form-school"),
+      ).toHaveTextContent("École fermée depuis");
 
       fireEvent.click(screen.getByTestId("resources-mine-form-school"));
       expect(

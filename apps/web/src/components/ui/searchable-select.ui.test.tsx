@@ -177,7 +177,10 @@ describe("SearchableSelect", () => {
   it("mode async : ne filtre pas localement, delegue chaque frappe a onSearchChange", () => {
     const onSearchChange = vi.fn();
     render(
-      <ControlledSelect options={MANY_OPTIONS} onSearchChange={onSearchChange} />,
+      <ControlledSelect
+        options={MANY_OPTIONS}
+        onSearchChange={onSearchChange}
+      />,
     );
     fireEvent.click(screen.getByTestId("test-select"));
 
@@ -230,7 +233,10 @@ describe("SearchableSelect", () => {
   it("mode async : reinitialise la recherche a la fermeture (selection, echap, clic exterieur)", () => {
     const onSearchChange = vi.fn();
     render(
-      <ControlledSelect options={MANY_OPTIONS} onSearchChange={onSearchChange} />,
+      <ControlledSelect
+        options={MANY_OPTIONS}
+        onSearchChange={onSearchChange}
+      />,
     );
 
     fireEvent.click(screen.getByTestId("test-select"));
