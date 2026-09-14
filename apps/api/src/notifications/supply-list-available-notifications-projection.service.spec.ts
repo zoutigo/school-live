@@ -64,7 +64,9 @@ describe("SupplyListAvailableNotificationsProjectionService", () => {
       studentId: STUDENT_ID,
       schoolYearId: SCHOOL_YEAR_ID,
     });
-    expect(pushService.sendSupplyListAvailableNotification).not.toHaveBeenCalled();
+    expect(
+      pushService.sendSupplyListAvailableNotification,
+    ).not.toHaveBeenCalled();
   });
 
   it("ne fait rien si l'annee scolaire est introuvable", async () => {
@@ -74,7 +76,9 @@ describe("SupplyListAvailableNotificationsProjectionService", () => {
       studentId: STUDENT_ID,
       schoolYearId: SCHOOL_YEAR_ID,
     });
-    expect(pushService.sendSupplyListAvailableNotification).not.toHaveBeenCalled();
+    expect(
+      pushService.sendSupplyListAvailableNotification,
+    ).not.toHaveBeenCalled();
   });
 
   it("ne notifie que les parents actifs, jamais l'eleve", async () => {
@@ -90,7 +94,9 @@ describe("SupplyListAvailableNotificationsProjectionService", () => {
         }),
       }),
     );
-    expect(pushService.sendSupplyListAvailableNotification).toHaveBeenCalledWith(
+    expect(
+      pushService.sendSupplyListAvailableNotification,
+    ).toHaveBeenCalledWith(
       expect.objectContaining({
         tokens: ["ExpoPushToken[abc]"],
         body: expect.stringContaining("Remi Ntamack"),
@@ -119,6 +125,8 @@ describe("SupplyListAvailableNotificationsProjectionService", () => {
       schoolYearId: SCHOOL_YEAR_ID,
     });
     expect(prisma.mobilePushToken.findMany).not.toHaveBeenCalled();
-    expect(pushService.sendSupplyListAvailableNotification).not.toHaveBeenCalled();
+    expect(
+      pushService.sendSupplyListAvailableNotification,
+    ).not.toHaveBeenCalled();
   });
 });

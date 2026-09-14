@@ -22,10 +22,10 @@ function mockFetch(options: {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
     if (url.endsWith("/me")) {
-      return new Response(
-        JSON.stringify({ role, linkedStudents }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ role, linkedStudents }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
     if (url.includes("/me/supply-lists/students/") && url.endsWith("/seen")) {
       return new Response(null, { status: 200 });
@@ -58,7 +58,9 @@ describe("ChildSupplyListPage (parent)", () => {
   });
 
   it("affiche un etat 'pas encore ouverte' quand aucune annee cible n'est resolue", async () => {
-    mockFetch({ supplyList: { targetSchoolYearId: null, items: [], seen: true } });
+    mockFetch({
+      supplyList: { targetSchoolYearId: null, items: [], seen: true },
+    });
     render(<ChildSupplyListPage />);
 
     expect(
@@ -100,7 +102,9 @@ describe("ChildSupplyListPage (parent)", () => {
         targetSchoolYearId: "sy-2026",
         targetSchoolYearLabel: "2026-2027",
         seen: false,
-        items: [{ id: "i1", rank: 1, label: "Cahier", quantity: 1, note: null }],
+        items: [
+          { id: "i1", rank: 1, label: "Cahier", quantity: 1, note: null },
+        ],
       },
     });
     render(<ChildSupplyListPage />);
@@ -120,7 +124,9 @@ describe("ChildSupplyListPage (parent)", () => {
         targetSchoolYearId: "sy-2026",
         targetSchoolYearLabel: "2026-2027",
         seen: true,
-        items: [{ id: "i1", rank: 1, label: "Cahier", quantity: 1, note: null }],
+        items: [
+          { id: "i1", rank: 1, label: "Cahier", quantity: 1, note: null },
+        ],
       },
     });
     render(<ChildSupplyListPage />);

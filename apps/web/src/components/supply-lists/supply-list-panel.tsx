@@ -56,19 +56,31 @@ export function SupplyListPanel({
   return (
     <Card title={title ?? t("supplyList.page.title")} subtitle={subtitle}>
       {loading ? (
-        <p className="text-sm text-text-secondary" data-testid="supply-list-loading">
+        <p
+          className="text-sm text-text-secondary"
+          data-testid="supply-list-loading"
+        >
           {t("supplyList.page.loading")}
         </p>
       ) : error ? (
-        <p className="text-sm text-notification" data-testid="supply-list-error">
+        <p
+          className="text-sm text-notification"
+          data-testid="supply-list-error"
+        >
           {t("supplyList.page.error")}
         </p>
       ) : !supplyList?.targetSchoolYearId ? (
-        <p className="text-sm text-text-secondary" data-testid="supply-list-not-ready">
+        <p
+          className="text-sm text-text-secondary"
+          data-testid="supply-list-not-ready"
+        >
           {t("supplyList.page.notReady")}
         </p>
       ) : supplyList.items.length === 0 ? (
-        <p className="text-sm text-text-secondary" data-testid="supply-list-empty">
+        <p
+          className="text-sm text-text-secondary"
+          data-testid="supply-list-empty"
+        >
           {t("supplyList.page.empty")}
         </p>
       ) : (
@@ -95,10 +107,7 @@ export function SupplyListPanel({
                     </p>
                     {item.note ? (
                       <p className="text-xs text-text-secondary">
-                        {t("supplyList.page.note").replace(
-                          "{note}",
-                          item.note,
-                        )}
+                        {t("supplyList.page.note").replace("{note}", item.note)}
                       </p>
                     ) : null}
                   </div>

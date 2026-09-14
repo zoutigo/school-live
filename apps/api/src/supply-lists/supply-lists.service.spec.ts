@@ -148,7 +148,12 @@ describe("SupplyListsService", () => {
     it("refuse si l'eleve n'est pas rattache a ce parent", async () => {
       prisma.parentStudent.findFirst.mockResolvedValue(null);
       await expect(
-        service.getMyChildSupplyList(SCHOOL_ID, "parent-1", "PARENT", STUDENT_ID),
+        service.getMyChildSupplyList(
+          SCHOOL_ID,
+          "parent-1",
+          "PARENT",
+          STUDENT_ID,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -243,7 +248,12 @@ describe("SupplyListsService", () => {
     it("refuse si l'eleve n'est pas rattache a ce parent", async () => {
       prisma.parentStudent.findFirst.mockResolvedValue(null);
       await expect(
-        service.markMyChildSupplyListSeen(SCHOOL_ID, "parent-1", "PARENT", STUDENT_ID),
+        service.markMyChildSupplyListSeen(
+          SCHOOL_ID,
+          "parent-1",
+          "PARENT",
+          STUDENT_ID,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 

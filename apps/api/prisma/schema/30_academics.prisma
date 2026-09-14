@@ -37,6 +37,7 @@ model SchoolYear {
   feeSchedules        FeeSchedule[]
   studentPayments     StudentPayment[]
   supplyLists         SupplyList[]
+  supplyListViews     SupplyListView[]
   reinscriptionDeadlines ReinscriptionDeadline[]
 
   @@unique([schoolId, label])

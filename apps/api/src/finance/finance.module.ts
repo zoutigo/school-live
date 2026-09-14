@@ -10,7 +10,12 @@ import {
 import { FinanceService } from "./finance.service.js";
 
 @Module({
-  imports: [AccessModule, SchoolsModule, EnrollmentsModule, NotificationsModule],
+  imports: [
+    AccessModule,
+    SchoolsModule,
+    EnrollmentsModule,
+    NotificationsModule,
+  ],
   controllers: [FinanceController, ParentFinanceController],
   providers: [FinanceService],
   exports: [FinanceService],

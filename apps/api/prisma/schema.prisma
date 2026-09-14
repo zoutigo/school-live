@@ -869,8 +869,8 @@ model SchoolYear {
   calendarEvents          SchoolCalendarEvent[]
   feeSchedules            FeeSchedule[]
   studentPayments         StudentPayment[]
-  supplyListViews         SupplyListView[]
   supplyLists             SupplyList[]
+  supplyListViews         SupplyListView[]
   reinscriptionDeadlines  ReinscriptionDeadline[]
 
   @@unique([schoolId, label])

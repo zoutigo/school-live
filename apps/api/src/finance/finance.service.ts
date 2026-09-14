@@ -474,7 +474,10 @@ export class FinanceService {
     );
 
     const priorPaymentsCount = await this.prisma.studentPayment.count({
-      where: { studentId: payload.studentId, schoolYearId: payload.schoolYearId },
+      where: {
+        studentId: payload.studentId,
+        schoolYearId: payload.schoolYearId,
+      },
     });
 
     const payment = await this.prisma.studentPayment.create({
