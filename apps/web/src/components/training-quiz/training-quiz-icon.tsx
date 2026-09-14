@@ -5,6 +5,9 @@ import {
   MessageSquare,
   CalendarDays,
   Wallet,
+  ClipboardList,
+  GraduationCap,
+  HeartPulse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,6 +18,9 @@ const ICONS: Record<string, LucideIcon> = {
   MessageSquare,
   CalendarDays,
   Wallet,
+  ClipboardList,
+  GraduationCap,
+  HeartPulse,
 };
 
 export function TrainingQuizIcon({

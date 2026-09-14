@@ -2264,13 +2264,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.summary.late": "En retard",
 
     "homework.sidebar.devoirs": "Devoirs",
-    "homework.sidebar.cahierDeTexte": "Cahier de texte",
+    "homework.sidebar.cahierDeTexte": "Devoirs",
 
     "homework.dashboard.title": "Devoirs en cours",
     "homework.dashboard.noHomework": "Aucun devoir en cours",
     "homework.dashboard.viewAll": "Voir tout",
 
-    "homework.cahierDeTexte.title": "Cahier de texte",
+    "homework.cahierDeTexte.title": "Devoirs",
     "homework.cahierDeTexte.subtitle": "Travail a faire",
     "homework.cahierDeTexte.summary":
       "Consultez les devoirs et consignes de travail de votre enfant.",
@@ -3518,7 +3518,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.quickLink.classFeed.hint": "Fil et actualites de classe",
     "childAccueil.quickLink.timetable.label": "Emploi du temps",
     "childAccueil.quickLink.timetable.hint": "Cours et prochains creneaux",
-    "childAccueil.quickLink.homework.label": "Cahier de texte",
+    "childAccueil.quickLink.homework.label": "Devoirs",
     "childAccueil.quickLink.homework.hint": "Travail et consignes",
     "childAccueil.panel.supplies.title": "Fournitures scolaires",
     "childAccueil.panel.supplies.action": "Voir la liste complete",
@@ -7687,13 +7687,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.summary.late": "Late",
 
     "homework.sidebar.devoirs": "Homework",
-    "homework.sidebar.cahierDeTexte": "Homework notebook",
+    "homework.sidebar.cahierDeTexte": "Homework",
 
     "homework.dashboard.title": "Ongoing homework",
     "homework.dashboard.noHomework": "No homework in progress",
     "homework.dashboard.viewAll": "View all",
 
-    "homework.cahierDeTexte.title": "Homework notebook",
+    "homework.cahierDeTexte.title": "Homework",
     "homework.cahierDeTexte.subtitle": "Work to do",
     "homework.cahierDeTexte.summary":
       "View your child's homework and instructions.",
@@ -8864,7 +8864,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.quickLink.classFeed.hint": "Class feed and news",
     "childAccueil.quickLink.timetable.label": "Timetable",
     "childAccueil.quickLink.timetable.hint": "Classes and upcoming slots",
-    "childAccueil.quickLink.homework.label": "Homework diary",
+    "childAccueil.quickLink.homework.label": "Homework",
     "childAccueil.quickLink.homework.hint": "Work and instructions",
     "childAccueil.panel.supplies.title": "School supplies",
     "childAccueil.panel.supplies.action": "View full list",

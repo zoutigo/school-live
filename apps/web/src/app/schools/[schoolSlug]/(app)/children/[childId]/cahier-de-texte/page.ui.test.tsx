@@ -274,7 +274,10 @@ describe("Child cahier de texte page (vue parent)", () => {
     fireEvent.click(screen.getByText("Voir"));
 
     await waitFor(() => {
-      expect(screen.getByText("Devoirs").nextSibling).toHaveTextContent("2");
+      const totalLabels = screen.getAllByText("Devoirs");
+      expect(totalLabels[totalLabels.length - 1].nextSibling).toHaveTextContent(
+        "2",
+      );
     });
     const late = screen.getByText("En retard").nextSibling;
     const todo = screen.getByText("A faire").nextSibling;

@@ -786,7 +786,7 @@ describe("AppSidebar badges", () => {
     const notesLink = screen.getByRole("link", { name: /Notes/ });
     await waitFor(() => expect(notesLink).toHaveTextContent("4"));
 
-    const cahierLink = screen.getByRole("link", { name: /Cahier de texte/ });
+    const cahierLink = screen.getByRole("link", { name: /Devoirs/ });
     await waitFor(() => expect(cahierLink).toHaveTextContent("3"));
 
     const suppliesLink = screen.getByRole("link", {
@@ -1052,9 +1052,10 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
       "/schools/college-vogt/moi/vie-de-classe",
     );
 
-    expect(
-      screen.getByRole("link", { name: "Cahier de texte" }),
-    ).toHaveAttribute("href", "/schools/college-vogt/moi/cahier-de-texte");
+    expect(screen.getByRole("link", { name: "Devoirs" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/cahier-de-texte",
+    );
   });
 
   it("n'expose aucun lien Santé (exclusion volontaire)", async () => {
