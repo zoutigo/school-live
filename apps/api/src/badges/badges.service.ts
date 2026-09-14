@@ -3,6 +3,7 @@ import type { BadgeScope } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { FinanceService } from "../finance/finance.service.js";
+import { SupplyListsService } from "../supply-lists/supply-lists.service.js";
 import type {
   ChildBadgeSummary,
   TeacherClassBadgeSummary,
@@ -19,6 +20,7 @@ export class BadgesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financeService: FinanceService,
+    private readonly supplyListsService: SupplyListsService,
   ) {}
 
   async getUnreadSummary(
@@ -46,7 +48,8 @@ export class BadgesService {
         sum +
         child.homeworkPending +
         child.notesUnread +
-        child.disciplineUnread,
+        child.disciplineUnread +
+        child.suppliesAvailable,
       0,
     );
     const teacherTotal = teacherClasses.reduce(
@@ -190,16 +193,21 @@ export class BadgesService {
     user: AuthenticatedUser,
     schoolId: string,
   ): Promise<ChildBadgeSummary[]> {
-    const students = await this.resolveChildStudents(user, schoolId);
+    const { students, isParentContext } = await this.resolveChildStudents(
+      user,
+      schoolId,
+    );
     return Promise.all(
-      students.map((student) => this.getChildBadge(user.id, schoolId, student)),
+      students.map((student) =>
+        this.getChildBadge(user.id, schoolId, student, isParentContext),
+      ),
     );
   }
 
   private async resolveChildStudents(
     user: AuthenticatedUser,
     schoolId: string,
-  ): Promise<StudentRef[]> {
+  ): Promise<{ students: StudentRef[]; isParentContext: boolean }> {
     const parentLinks = await this.prisma.parentStudent.findMany({
       where: { parentUserId: user.id, schoolId },
       select: {
@@ -207,20 +215,24 @@ export class BadgesService {
       },
     });
     if (parentLinks.length > 0) {
-      return parentLinks.map((link) => link.student);
+      return {
+        students: parentLinks.map((link) => link.student),
+        isParentContext: true,
+      };
     }
 
     const self = await this.prisma.student.findUnique({
       where: { schoolId_userId: { schoolId, userId: user.id } },
       select: { id: true, firstName: true, lastName: true },
     });
-    return self ? [self] : [];
+    return { students: self ? [self] : [], isParentContext: false };
   }
 
   private async getChildBadge(
     userId: string,
     schoolId: string,
     student: StudentRef,
+    isParentContext: boolean,
   ): Promise<ChildBadgeSummary> {
     const enrollmentRow = await this.prisma.enrollment.findFirst({
       where: {
@@ -239,11 +251,19 @@ export class BadgesService {
         }
       : null;
 
-    const [homeworkPending, notesUnread, disciplineUnread] = await Promise.all([
-      this.getHomeworkPending(schoolId, student.id, enrollment),
-      this.getNotesUnread(userId, student.id),
-      this.getDisciplineUnread(userId, schoolId, student.id),
-    ]);
+    const [homeworkPending, notesUnread, disciplineUnread, suppliesAvailable] =
+      await Promise.all([
+        this.getHomeworkPending(schoolId, student.id, enrollment),
+        this.getNotesUnread(userId, student.id),
+        this.getDisciplineUnread(userId, schoolId, student.id),
+        isParentContext
+          ? this.supplyListsService.getSupplyListBadgeCount(
+              schoolId,
+              userId,
+              student.id,
+            )
+          : Promise.resolve(0),
+      ]);
 
     return {
       studentId: student.id,
@@ -252,6 +272,7 @@ export class BadgesService {
       homeworkPending,
       notesUnread,
       disciplineUnread,
+      suppliesAvailable,
     };
   }
 

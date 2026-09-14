@@ -9,6 +9,7 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { EnrollmentsService } from "../enrollments/enrollments.service.js";
+import { SupplyListAvailableNotificationsService } from "../notifications/supply-list-available-notifications.service.js";
 import { FinanceService } from "./finance.service.js";
 
 const SCHOOL_ID = "school-1";
@@ -69,6 +70,7 @@ const makePrismaMock = () => {
     studentPayment: {
       create: jest.fn().mockResolvedValue({ id: "payment-1" }),
       aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
+      count: jest.fn().mockResolvedValue(0),
     },
     wallet: {
       upsert: jest.fn().mockResolvedValue({ id: "wallet-1" }),
@@ -100,6 +102,7 @@ describe("FinanceService", () => {
     getConfirmedDecisionOrThrow: jest.Mock;
     confirmReinscription: jest.Mock;
   };
+  let supplyListAvailableNotificationsService: { enqueue: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
@@ -107,12 +110,19 @@ describe("FinanceService", () => {
       getConfirmedDecisionOrThrow: jest.fn().mockResolvedValue(DECISION),
       confirmReinscription: jest.fn().mockResolvedValue({ id: "enr-1" }),
     };
+    supplyListAvailableNotificationsService = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
         FinanceService,
         { provide: PrismaService, useValue: prisma },
         { provide: EnrollmentsService, useValue: enrollmentsService },
+        {
+          provide: SupplyListAvailableNotificationsService,
+          useValue: supplyListAvailableNotificationsService,
+        },
       ],
     }).compile();
     service = module.get(FinanceService);
@@ -173,6 +183,26 @@ describe("FinanceService", () => {
         "PAYMENT_THRESHOLD",
         "accountant-1",
       );
+    });
+
+    it("notifie la disponibilite de la liste de fournitures au tout premier paiement de l'annee", async () => {
+      prisma.studentPayment.count.mockResolvedValue(0);
+      await service.recordDirectPayment(SCHOOL_ID, payload, "accountant-1");
+      expect(
+        supplyListAvailableNotificationsService.enqueue,
+      ).toHaveBeenCalledWith({
+        schoolId: SCHOOL_ID,
+        studentId: STUDENT_ID,
+        schoolYearId: TARGET_YEAR_ID,
+      });
+    });
+
+    it("ne renotifie pas aux paiements suivants de la meme annee", async () => {
+      prisma.studentPayment.count.mockResolvedValue(1);
+      await service.recordDirectPayment(SCHOOL_ID, payload, "accountant-1");
+      expect(
+        supplyListAvailableNotificationsService.enqueue,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -264,6 +294,13 @@ describe("FinanceService", () => {
         "PAYMENT_THRESHOLD",
         "parent-1",
       );
+      expect(
+        supplyListAvailableNotificationsService.enqueue,
+      ).toHaveBeenCalledWith({
+        schoolId: SCHOOL_ID,
+        studentId: STUDENT_ID,
+        schoolYearId: TARGET_YEAR_ID,
+      });
     });
 
     it("ne debite rien de plus si la premiere echeance est deja soldee par un paiement direct anterieur", async () => {
@@ -281,6 +318,9 @@ describe("FinanceService", () => {
         reinscriptionConfirmed: true,
       });
       expect(prisma.walletTransaction.create).not.toHaveBeenCalled();
+      expect(
+        supplyListAvailableNotificationsService.enqueue,
+      ).not.toHaveBeenCalled();
     });
   });
 

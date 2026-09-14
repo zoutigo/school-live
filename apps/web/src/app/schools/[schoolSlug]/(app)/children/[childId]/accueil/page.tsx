@@ -690,7 +690,7 @@ function ChildAccueilDashboard({
             <DashboardPanel
               title={t("childAccueil.panel.supplies.title")}
               icon={<ShoppingBag className="h-4 w-4" />}
-              actionHref={`/schools/${schoolSlug}/reinscription`}
+              actionHref={`/schools/${schoolSlug}/children/${childId}/fournitures`}
               actionLabel={t("childAccueil.panel.supplies.action")}
             >
               <div

@@ -136,22 +136,58 @@ export class SupplyListsService {
   }
 
   /**
-   * Liste de fournitures pour l'enfant d'un parent, scopee au niveau/filiere
-   * cible decide par le conseil de classe (l'annee que l'enfant s'apprete a
-   * integrer), pas son niveau actuel.
+   * Verifie que l'utilisateur courant (parent OU l'eleve lui-meme) peut
+   * consulter la liste de fournitures de studentId, et renvoie l'id parent
+   * a utiliser pour le suivi "vu" (SupplyListView), null pour un eleve en
+   * consultation de sa propre fiche (le badge ne concerne que les parents).
    */
-  async getMyChildSupplyList(
+  private async assertAccessAndResolveParentUserId(
     schoolId: string,
-    parentUserId: string,
+    requesterUserId: string,
+    requesterRole: string | null | undefined,
     studentId: string,
-  ) {
+  ): Promise<string | null> {
+    if (requesterRole === "STUDENT") {
+      const student = await this.prisma.student.findFirst({
+        where: { id: studentId, schoolId, userId: requesterUserId },
+        select: { id: true },
+      });
+      if (!student) {
+        throw new BadRequestException(
+          "Cet eleve n'est pas rattache a cet utilisateur",
+        );
+      }
+      return null;
+    }
+
     const link = await this.prisma.parentStudent.findFirst({
-      where: { schoolId, parentUserId, studentId },
+      where: { schoolId, parentUserId: requesterUserId, studentId },
       select: { id: true },
     });
     if (!link) {
       throw new BadRequestException("Cet eleve n'est pas rattache a ce parent");
     }
+    return requesterUserId;
+  }
+
+  /**
+   * Liste de fournitures pour l'enfant d'un parent (ou pour l'eleve
+   * lui-meme), scopee au niveau/filiere cible decide par le conseil de
+   * classe (l'annee que l'enfant s'apprete a integrer), pas son niveau
+   * actuel. Le badge "vu" ne s'applique qu'a la consultation parent.
+   */
+  async getMyChildSupplyList(
+    schoolId: string,
+    requesterUserId: string,
+    requesterRole: string | null | undefined,
+    studentId: string,
+  ) {
+    const parentUserId = await this.assertAccessAndResolveParentUserId(
+      schoolId,
+      requesterUserId,
+      requesterRole,
+      studentId,
+    );
 
     const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
       schoolId,
@@ -166,20 +202,142 @@ export class SupplyListsService {
       return { targetSchoolYearId: null, items: [] };
     }
 
-    const supplyList = await this.prisma.supplyList.findFirst({
-      where: {
-        schoolId,
-        schoolYearId: nextYear.id,
-        academicLevelId: decision.nextAcademicLevelId,
-        trackId: decision.nextTrackId,
-      },
-      include: { items: { orderBy: { rank: "asc" } } },
-    });
+    const [supplyList, view] = await Promise.all([
+      this.prisma.supplyList.findFirst({
+        where: {
+          schoolId,
+          schoolYearId: nextYear.id,
+          academicLevelId: decision.nextAcademicLevelId,
+          trackId: decision.nextTrackId,
+        },
+        include: { items: { orderBy: { rank: "asc" } } },
+      }),
+      parentUserId
+        ? this.prisma.supplyListView.findUnique({
+            where: {
+              parentUserId_studentId_schoolYearId: {
+                parentUserId,
+                studentId,
+                schoolYearId: nextYear.id,
+              },
+            },
+            select: { seenAt: true },
+          })
+        : null,
+    ]);
 
     return {
       targetSchoolYearId: nextYear.id,
       targetSchoolYearLabel: nextYear.label,
       items: supplyList?.items ?? [],
+      seen: parentUserId ? view !== null : true,
     };
+  }
+
+  /**
+   * Marque comme vue, pour ce parent, la liste de fournitures ciblee par
+   * getMyChildSupplyList (annee "suivante" resolue depuis la decision du
+   * conseil de classe). Sert uniquement a eteindre le badge de menu. Sans
+   * effet pour une consultation "eleve" (pas de badge cote eleve).
+   */
+  async markMyChildSupplyListSeen(
+    schoolId: string,
+    requesterUserId: string,
+    requesterRole: string | null | undefined,
+    studentId: string,
+  ) {
+    const parentUserId = await this.assertAccessAndResolveParentUserId(
+      schoolId,
+      requesterUserId,
+      requesterRole,
+      studentId,
+    );
+    if (!parentUserId) {
+      return { targetSchoolYearId: null };
+    }
+
+    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+      schoolId,
+      studentId,
+    );
+    const nextYear = await this.resolveLikelyNextSchoolYear(
+      schoolId,
+      decision.sourceSchoolYearId,
+    );
+    if (!nextYear) {
+      return { targetSchoolYearId: null };
+    }
+
+    await this.prisma.supplyListView.upsert({
+      where: {
+        parentUserId_studentId_schoolYearId: {
+          parentUserId,
+          studentId,
+          schoolYearId: nextYear.id,
+        },
+      },
+      create: {
+        schoolId,
+        parentUserId,
+        studentId,
+        schoolYearId: nextYear.id,
+      },
+      update: { seenAt: new Date() },
+    });
+
+    return { targetSchoolYearId: nextYear.id };
+  }
+
+  /**
+   * Badge de menu (sidebar parent) : 1 si une liste de fournitures non vide
+   * existe pour l'annee cible et n'a pas encore ete consultee par ce parent,
+   * 0 sinon (y compris si aucune decision de conseil n'existe encore, cas le
+   * plus frequent en cours d'annee). Ne s'applique qu'a un vrai lien parent
+   * verifie par l'appelant.
+   */
+  async getSupplyListBadgeCount(
+    schoolId: string,
+    parentUserId: string,
+    studentId: string,
+  ): Promise<number> {
+    try {
+      const decision =
+        await this.enrollmentsService.getConfirmedDecisionOrThrow(
+          schoolId,
+          studentId,
+        );
+      const nextYear = await this.resolveLikelyNextSchoolYear(
+        schoolId,
+        decision.sourceSchoolYearId,
+      );
+      if (!nextYear) return 0;
+
+      const [supplyList, view] = await Promise.all([
+        this.prisma.supplyList.findFirst({
+          where: {
+            schoolId,
+            schoolYearId: nextYear.id,
+            academicLevelId: decision.nextAcademicLevelId,
+            trackId: decision.nextTrackId,
+          },
+          select: { items: { select: { id: true }, take: 1 } },
+        }),
+        this.prisma.supplyListView.findUnique({
+          where: {
+            parentUserId_studentId_schoolYearId: {
+              parentUserId,
+              studentId,
+              schoolYearId: nextYear.id,
+            },
+          },
+          select: { seenAt: true },
+        }),
+      ]);
+
+      const hasItems = (supplyList?.items.length ?? 0) > 0;
+      return hasItems && view === null ? 1 : 0;
+    } catch {
+      return 0;
+    }
   }
 }

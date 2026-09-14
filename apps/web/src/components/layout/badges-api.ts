@@ -11,6 +11,7 @@ export type ChildBadgeSummary = {
   homeworkPending: number;
   notesUnread: number;
   disciplineUnread: number;
+  suppliesAvailable: number;
 };
 
 export type TeacherClassBadgeSummary = {

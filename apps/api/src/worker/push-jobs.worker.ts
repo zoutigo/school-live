@@ -19,6 +19,7 @@ import {
   PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT,
   PUSH_JOB_SEND_STUDENT_HEALTH_REPORT,
   PUSH_JOB_SEND_STUDENT_LIFE_EVENT,
+  PUSH_JOB_SEND_SUPPLY_LIST_AVAILABLE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
   type GradePublishedPushPayload,
@@ -30,6 +31,7 @@ import {
   type StudentHealthCareEventPushPayload,
   type StudentHealthReportPushPayload,
   type StudentLifeEventPushPayload,
+  type SupplyListAvailablePushPayload,
   type TimetableChangePushPayload,
 } from "../notifications/push.types.js";
 
@@ -104,6 +106,12 @@ export class PushJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === PUSH_JOB_SEND_PROMOTION_DECISION) {
           await this.pushPort.sendPromotionDecisionNotification(
             job.data as PromotionDecisionPushPayload,
+          );
+          return;
+        }
+        if (job.name === PUSH_JOB_SEND_SUPPLY_LIST_AVAILABLE) {
+          await this.pushPort.sendSupplyListAvailableNotification(
+            job.data as SupplyListAvailablePushPayload,
           );
           return;
         }

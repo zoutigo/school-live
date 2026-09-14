@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
@@ -199,7 +200,6 @@ export function ChildReenrollmentCard({
   walletBalance,
   submitting,
   onPayAndReinscribe,
-  onViewSupplies,
   showInstallmentBreakdown = false,
   reinscribeTourTargetId,
 }: {
@@ -208,7 +208,6 @@ export function ChildReenrollmentCard({
   walletBalance: number;
   submitting: boolean;
   onPayAndReinscribe: (child: ChildFinanceStatus) => void;
-  onViewSupplies?: () => void;
   showInstallmentBreakdown?: boolean;
   reinscribeTourTargetId?: string;
 }) {
@@ -386,16 +385,13 @@ export function ChildReenrollmentCard({
               )}
             </p>
           ) : null}
-          {onViewSupplies ? (
-            <button
-              type="button"
-              onClick={onViewSupplies}
-              data-testid={`view-supplies-${child.student.id}`}
-              className="justify-self-start text-xs font-semibold text-primary"
-            >
-              {t("reinscriptionWeb.children.confirmed.viewSupplies")}
-            </button>
-          ) : null}
+          <Link
+            href={`/schools/${schoolSlug}/children/${child.student.id}/fournitures`}
+            data-testid={`view-supplies-${child.student.id}`}
+            className="justify-self-start text-xs font-semibold text-primary"
+          >
+            {t("reinscriptionWeb.children.confirmed.viewSupplies")}
+          </Link>
         </div>
       ) : null}
 

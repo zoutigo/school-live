@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AccessModule } from "../access/access.module.js";
 import { SchoolsModule } from "../schools/schools.module.js";
 import { EnrollmentsModule } from "../enrollments/enrollments.module.js";
+import { NotificationsModule } from "../notifications/notifications.module.js";
 import {
   FinanceController,
   ParentFinanceController,
@@ -9,7 +10,7 @@ import {
 import { FinanceService } from "./finance.service.js";
 
 @Module({
-  imports: [AccessModule, SchoolsModule, EnrollmentsModule],
+  imports: [AccessModule, SchoolsModule, EnrollmentsModule, NotificationsModule],
   controllers: [FinanceController, ParentFinanceController],
   providers: [FinanceService],
   exports: [FinanceService],

@@ -42,8 +42,6 @@ type MeResponse = {
   onboardingHelpEnabled?: boolean;
 };
 
-type TabKey = "paiement" | "fournitures";
-
 type WalletTransactionRow = {
   id: string;
   type: "TOPUP" | "ALLOCATION";
@@ -59,20 +57,6 @@ type WalletSummary = {
   children: ChildFinanceStatus[];
 };
 
-type SupplyItemRow = {
-  id: string;
-  rank: number;
-  label: string;
-  quantity: number;
-  note: string | null;
-};
-
-type ChildSupplyList = {
-  targetSchoolYearId: string | null;
-  targetSchoolYearLabel?: string;
-  items: SupplyItemRow[];
-};
-
 function formatXaf(amount: number) {
   return new Intl.NumberFormat("fr-CM", {
     style: "currency",
@@ -86,7 +70,6 @@ export default function ReinscriptionPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabKey>("paiement");
   const [me, setMe] = useState<MeResponse | null>(null);
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,10 +77,6 @@ export default function ReinscriptionPage() {
   const [reinscribingStudentId, setReinscribingStudentId] = useState<
     string | null
   >(null);
-  const [supplyLists, setSupplyLists] = useState<
-    Record<string, ChildSupplyList>
-  >({});
-  const [supplyListsLoading, setSupplyListsLoading] = useState(false);
 
   const loadWallet = useCallback(async () => {
     setError(null);
@@ -127,32 +106,6 @@ export default function ReinscriptionPage() {
   const eligibleChildren = (wallet?.children ?? []).filter(
     (child) => child.status !== "DECISION_PENDING",
   );
-
-  const loadSupplyLists = useCallback(async () => {
-    if (eligibleChildren.length === 0) return;
-    setSupplyListsLoading(true);
-    try {
-      const entries = await Promise.all(
-        eligibleChildren.map(async (child) => {
-          const response = await fetch(
-            `${API_URL}/schools/${schoolSlug}/me/supply-lists/students/${child.student.id}`,
-            { credentials: "include" },
-          );
-          const payload = response.ok
-            ? ((await response.json()) as ChildSupplyList)
-            : { targetSchoolYearId: null, items: [] };
-          return [child.student.id, payload] as const;
-        }),
-      );
-      setSupplyLists(Object.fromEntries(entries));
-    } finally {
-      setSupplyListsLoading(false);
-    }
-  }, [schoolSlug, JSON.stringify(eligibleChildren.map((c) => c.student.id))]);
-
-  useEffect(() => {
-    if (tab === "fournitures") void loadSupplyLists();
-  }, [tab, loadSupplyLists]);
 
   async function loadProfile() {
     setLoading(true);
@@ -273,37 +226,6 @@ export default function ReinscriptionPage() {
           <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : (
           <div className="grid gap-4">
-            <OnboardingTarget
-              id={REINSCRIPTION_PARENT_TOUR_TARGETS.suppliesTab}
-            >
-              <div className="-mx-1 flex items-end gap-1 overflow-x-auto border-b border-border px-1 pb-1">
-                <button
-                  type="button"
-                  onClick={() => setTab("paiement")}
-                  data-testid="reinscription-tab-paiement"
-                  className={`shrink-0 rounded-t-card px-3 py-2 text-sm font-heading font-semibold ${
-                    tab === "paiement"
-                      ? "border border-border border-b-surface bg-surface text-primary"
-                      : "text-text-secondary"
-                  }`}
-                >
-                  {t("reinscriptionWeb.tabs.paiement")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTab("fournitures")}
-                  data-testid="reinscription-tab-fournitures"
-                  className={`shrink-0 rounded-t-card px-3 py-2 text-sm font-heading font-semibold ${
-                    tab === "fournitures"
-                      ? "border border-border border-b-surface bg-surface text-primary"
-                      : "text-text-secondary"
-                  }`}
-                >
-                  {t("reinscriptionWeb.tabs.fournitures")}
-                </button>
-              </div>
-            </OnboardingTarget>
-
             {error ? (
               <div className="rounded-card border border-notification bg-notification/5 p-3 text-sm text-notification">
                 {error}
@@ -315,7 +237,7 @@ export default function ReinscriptionPage() {
               </div>
             ) : null}
 
-            {tab === "paiement" ? (
+            {
               <div className="grid gap-4">
                 <OnboardingTarget id={REINSCRIPTION_PARENT_TOUR_TARGETS.wallet}>
                   <article
@@ -362,7 +284,6 @@ export default function ReinscriptionPage() {
                             reinscribingStudentId === child.student.id
                           }
                           onPayAndReinscribe={onPayAndReinscribe}
-                          onViewSupplies={() => setTab("fournitures")}
                           showInstallmentBreakdown
                           reinscribeTourTargetId={
                             REINSCRIPTION_PARENT_TOUR_TARGETS.reinscribe
@@ -378,58 +299,7 @@ export default function ReinscriptionPage() {
                   </Card>
                 </OnboardingTarget>
               </div>
-            ) : null}
-
-            {tab === "fournitures" ? (
-              <div
-                className="grid gap-3"
-                data-testid="reinscription-supplies-list"
-              >
-                {supplyListsLoading ? (
-                  <p className="text-sm text-text-secondary">
-                    {t("common.loading")}
-                  </p>
-                ) : eligibleChildren.length === 0 ? (
-                  <p className="text-sm text-text-secondary">
-                    {t("reinscriptionWeb.supplies.emptyList")}
-                  </p>
-                ) : (
-                  eligibleChildren.map((child) => {
-                    const supplyList = supplyLists[child.student.id];
-                    return (
-                      <Card
-                        key={child.student.id}
-                        title={`${child.student.firstName} ${child.student.lastName}`}
-                        subtitle={supplyList?.targetSchoolYearLabel}
-                        className="bg-background"
-                      >
-                        {!supplyList || !supplyList.targetSchoolYearId ? (
-                          <p className="text-sm text-text-secondary">
-                            {t("reinscriptionWeb.supplies.notOpenYet")}
-                          </p>
-                        ) : supplyList.items.length === 0 ? (
-                          <p className="text-sm text-text-secondary">
-                            {t("reinscriptionWeb.supplies.empty")}
-                          </p>
-                        ) : (
-                          <ul className="grid gap-1 text-sm text-text-secondary">
-                            {supplyList.items
-                              .slice()
-                              .sort((a, b) => a.rank - b.rank)
-                              .map((item) => (
-                                <li key={item.id}>
-                                  {item.rank}. {item.label} — x{item.quantity}
-                                  {item.note ? ` (${item.note})` : ""}
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-            ) : null}
+            }
           </div>
         )}
       </Card>

@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { FinanceService } from "../finance/finance.service.js";
+import { SupplyListsService } from "../supply-lists/supply-lists.service.js";
 import { BadgesService } from "./badges.service.js";
 
 function makeUser(
@@ -43,11 +44,15 @@ describe("BadgesService", () => {
   let service: BadgesService;
   let prisma: ReturnType<typeof makePrismaMock>;
   let financeService: { countChildrenReadyToReinscribe: jest.Mock };
+  let supplyListsService: { getSupplyListBadgeCount: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
     financeService = {
       countChildrenReadyToReinscribe: jest.fn().mockResolvedValue(0),
+    };
+    supplyListsService = {
+      getSupplyListBadgeCount: jest.fn().mockResolvedValue(0),
     };
 
     // Defaults so getUnreadSummary doesn't throw when a path isn't under test.
@@ -71,6 +76,7 @@ describe("BadgesService", () => {
         BadgesService,
         { provide: PrismaService, useValue: prisma },
         { provide: FinanceService, useValue: financeService },
+        { provide: SupplyListsService, useValue: supplyListsService },
       ],
     }).compile();
 
@@ -118,11 +124,49 @@ describe("BadgesService", () => {
           homeworkPending: 1,
           notesUnread: 4,
           disciplineUnread: 1,
+          suppliesAvailable: 0,
         },
       ]);
       expect(result.teacherClasses).toEqual([]);
-      // 3 + 2 + 0 + 0 + (1 + 4 + 1) + 0
+      // 3 + 2 + 0 + 0 + (1 + 4 + 1 + 0) + 0
       expect(result.total).toBe(11);
+    });
+
+    it("inclut suppliesAvailable dans le badge enfant et dans le total quand une liste de fournitures est disponible et non consultee", async () => {
+      prisma.parentStudent.findMany.mockResolvedValue([
+        {
+          student: { id: "student-1", firstName: "Léo", lastName: "Martin" },
+        },
+      ]);
+      supplyListsService.getSupplyListBadgeCount.mockResolvedValue(1);
+
+      const user = makeUser();
+      const result = await service.getUnreadSummary(user, "school-1");
+
+      expect(supplyListsService.getSupplyListBadgeCount).toHaveBeenCalledWith(
+        "school-1",
+        "user-1",
+        "student-1",
+      );
+      expect(result.children[0].suppliesAvailable).toBe(1);
+      expect(result.total).toBe(1);
+    });
+
+    it("n'interroge jamais le badge fournitures pour un compte STUDENT consultant sa propre fiche", async () => {
+      prisma.parentStudent.findMany.mockResolvedValue([]);
+      prisma.student.findUnique.mockResolvedValue({
+        id: "student-self",
+        firstName: "Sam",
+        lastName: "Dupont",
+      });
+
+      const user = makeUser({
+        memberships: [{ schoolId: "school-1", role: "STUDENT" }],
+      });
+      const result = await service.getUnreadSummary(user, "school-1");
+
+      expect(supplyListsService.getSupplyListBadgeCount).not.toHaveBeenCalled();
+      expect(result.children[0].suppliesAvailable).toBe(0);
     });
 
     it("returns zeroed summary when the user has no children, tickets or classes", async () => {
@@ -286,6 +330,7 @@ describe("BadgesService", () => {
           homeworkPending: 0,
           notesUnread: 0,
           disciplineUnread: 0,
+          suppliesAvailable: 0,
         },
       ]);
     });

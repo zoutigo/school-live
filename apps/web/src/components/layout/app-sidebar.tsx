@@ -553,11 +553,11 @@ function buildRoleItems(
 
   // STUDENT: doit rester le miroir exact du menu mobile (nav-config.ts#STUDENT_NAV)
   // — Accueil, Fil, Notes, Devoirs, Emploi du temps, Discipline, Vie de classe,
-  // Ressources, Messagerie, Documents, Mon compte. Aucune situation financière
-  // ni paiement en ligne côté élève (ça n'existe pas sur mobile), et la page
-  // `/student-grades` (formulaire de saisie admin, table brute non liée aux
-  // évaluations réelles) n'est pas une vue élève : elle ne doit jamais
-  // apparaître ici.
+  // Fournitures scolaires, Ressources, Messagerie, Documents, Mon compte.
+  // Aucune situation financière ni paiement en ligne côté élève (ça n'existe
+  // pas sur mobile), et la page `/student-grades` (formulaire de saisie
+  // admin, table brute non liée aux évaluations réelles) n'est pas une vue
+  // élève : elle ne doit jamais apparaître ici.
   return [
     {
       label: t("sidebar.nav.home"),
@@ -607,6 +607,12 @@ function buildRoleItems(
       href: `${schoolBase}/moi/vie-de-classe`,
       icon: Users,
       matchPrefix: `${schoolBase}/moi/vie-de-classe`,
+    },
+    {
+      label: t("sidebar.nav.supplyLists"),
+      href: `${schoolBase}/moi/fournitures`,
+      icon: ShoppingBag,
+      matchPrefix: `${schoolBase}/moi/fournitures`,
     },
     {
       label: t("sidebar.nav.resources"),
@@ -703,6 +709,13 @@ function buildParentChildItems(
       href: `${base}/cursus`,
       icon: GraduationCap,
       matchPrefix: `${base}/cursus`,
+    },
+    {
+      label: t("sidebar.nav.supplyLists"),
+      href: `${base}/fournitures`,
+      icon: ShoppingBag,
+      matchPrefix: `${base}/fournitures`,
+      unread: toUnread(childBadge?.suppliesAvailable),
     },
   ];
 }

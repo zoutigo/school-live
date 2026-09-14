@@ -14,6 +14,7 @@ import {
   PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT,
   PUSH_JOB_SEND_STUDENT_HEALTH_REPORT,
   PUSH_JOB_SEND_STUDENT_LIFE_EVENT,
+  PUSH_JOB_SEND_SUPPLY_LIST_AVAILABLE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
   type GradePublishedPushPayload,
@@ -25,6 +26,7 @@ import {
   type StudentHealthCareEventPushPayload,
   type StudentHealthReportPushPayload,
   type StudentLifeEventPushPayload,
+  type SupplyListAvailablePushPayload,
   type TimetableChangePushPayload,
 } from "./push.types.js";
 
@@ -244,6 +246,28 @@ export class PushService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.pushPort.sendPromotionDecisionNotification(payload);
+    }
+  }
+
+  async sendSupplyListAvailableNotification(
+    payload: SupplyListAvailablePushPayload,
+  ) {
+    if (payload.tokens.length === 0) {
+      return;
+    }
+
+    try {
+      await this.queue.add(
+        PUSH_QUEUE_NAME,
+        PUSH_JOB_SEND_SUPPLY_LIST_AVAILABLE,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous push sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.pushPort.sendSupplyListAvailableNotification(payload);
     }
   }
 }

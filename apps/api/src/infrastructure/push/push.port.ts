@@ -8,6 +8,7 @@ import type {
   StudentHealthCareEventPushPayload,
   StudentHealthReportPushPayload,
   StudentLifeEventPushPayload,
+  SupplyListAvailablePushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
 
@@ -43,5 +44,8 @@ export type PushPort = {
   ): Promise<void>;
   sendPromotionDecisionNotification(
     payload: PromotionDecisionPushPayload,
+  ): Promise<void>;
+  sendSupplyListAvailableNotification(
+    payload: SupplyListAvailablePushPayload,
   ): Promise<void>;
 };

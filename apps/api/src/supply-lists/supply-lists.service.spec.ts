@@ -26,6 +26,7 @@ const DECISION = {
 
 const makePrismaMock = () => {
   const prisma: any = {
+    student: { findFirst: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
     schoolYear: {
       findFirst: jest
         .fn()
@@ -40,6 +41,10 @@ const makePrismaMock = () => {
       delete: jest.fn(),
     },
     supplyItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+    supplyListView: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue({ id: "view-1" }),
+    },
     parentStudent: {
       findFirst: jest.fn().mockResolvedValue({ id: "link-1" }),
     },
@@ -143,7 +148,7 @@ describe("SupplyListsService", () => {
     it("refuse si l'eleve n'est pas rattache a ce parent", async () => {
       prisma.parentStudent.findFirst.mockResolvedValue(null);
       await expect(
-        service.getMyChildSupplyList(SCHOOL_ID, "parent-1", STUDENT_ID),
+        service.getMyChildSupplyList(SCHOOL_ID, "parent-1", "PARENT", STUDENT_ID),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -152,12 +157,13 @@ describe("SupplyListsService", () => {
       const result = await service.getMyChildSupplyList(
         SCHOOL_ID,
         "parent-1",
+        "PARENT",
         STUDENT_ID,
       );
       expect(result).toEqual({ targetSchoolYearId: null, items: [] });
     });
 
-    it("retourne les articles de la liste scopee au niveau CIBLE de la decision, pas au niveau actuel", async () => {
+    it("retourne les articles de la liste scopee au niveau CIBLE de la decision, pas au niveau actuel, et seen:false si jamais consultee", async () => {
       prisma.supplyList.findFirst.mockResolvedValue({
         id: "list-1",
         items: [{ id: "item-1", rank: 1, label: "Cahier", quantity: 3 }],
@@ -165,6 +171,7 @@ describe("SupplyListsService", () => {
       const result = await service.getMyChildSupplyList(
         SCHOOL_ID,
         "parent-1",
+        "PARENT",
         STUDENT_ID,
       );
       expect(prisma.supplyList.findFirst).toHaveBeenCalledWith(
@@ -177,6 +184,167 @@ describe("SupplyListsService", () => {
       );
       expect(result.items).toHaveLength(1);
       expect(result.targetSchoolYearId).toBe(TARGET_YEAR_ID);
+      expect(result.seen).toBe(false);
+    });
+
+    it("retourne seen:true si le parent a deja consulte cette liste pour cette annee", async () => {
+      prisma.supplyListView.findUnique.mockResolvedValue({
+        seenAt: new Date("2026-06-01"),
+      });
+      const result = await service.getMyChildSupplyList(
+        SCHOOL_ID,
+        "parent-1",
+        "PARENT",
+        STUDENT_ID,
+      );
+      expect(result.seen).toBe(true);
+    });
+
+    it("un eleve peut consulter sa propre liste sans lien ParentStudent, sans jamais interroger celui-ci", async () => {
+      prisma.student.findFirst.mockResolvedValue({ id: STUDENT_ID });
+      prisma.supplyList.findFirst.mockResolvedValue({
+        id: "list-1",
+        items: [{ id: "item-1", rank: 1, label: "Cahier", quantity: 3 }],
+      });
+      const result = await service.getMyChildSupplyList(
+        SCHOOL_ID,
+        "student-user-1",
+        "STUDENT",
+        STUDENT_ID,
+      );
+      expect(prisma.student.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: STUDENT_ID,
+            schoolId: SCHOOL_ID,
+            userId: "student-user-1",
+          },
+        }),
+      );
+      expect(prisma.parentStudent.findFirst).not.toHaveBeenCalled();
+      expect(result.seen).toBe(true);
+      expect(prisma.supplyListView.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("refuse si l'eleve consulte la fiche d'un autre eleve", async () => {
+      prisma.student.findFirst.mockResolvedValue(null);
+      await expect(
+        service.getMyChildSupplyList(
+          SCHOOL_ID,
+          "student-user-1",
+          "STUDENT",
+          "other-student",
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("markMyChildSupplyListSeen", () => {
+    it("refuse si l'eleve n'est pas rattache a ce parent", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue(null);
+      await expect(
+        service.markMyChildSupplyListSeen(SCHOOL_ID, "parent-1", "PARENT", STUDENT_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("ne fait rien si aucune annee suivante n'est encore ouverte", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue(null);
+      const result = await service.markMyChildSupplyListSeen(
+        SCHOOL_ID,
+        "parent-1",
+        "PARENT",
+        STUDENT_ID,
+      );
+      expect(result).toEqual({ targetSchoolYearId: null });
+      expect(prisma.supplyListView.upsert).not.toHaveBeenCalled();
+    });
+
+    it("enregistre la consultation pour le couple (parent, eleve, annee cible)", async () => {
+      const result = await service.markMyChildSupplyListSeen(
+        SCHOOL_ID,
+        "parent-1",
+        "PARENT",
+        STUDENT_ID,
+      );
+      expect(prisma.supplyListView.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            parentUserId_studentId_schoolYearId: {
+              parentUserId: "parent-1",
+              studentId: STUDENT_ID,
+              schoolYearId: TARGET_YEAR_ID,
+            },
+          },
+          create: expect.objectContaining({
+            schoolId: SCHOOL_ID,
+            parentUserId: "parent-1",
+            studentId: STUDENT_ID,
+            schoolYearId: TARGET_YEAR_ID,
+          }),
+        }),
+      );
+      expect(result).toEqual({ targetSchoolYearId: TARGET_YEAR_ID });
+    });
+  });
+
+  describe("getSupplyListBadgeCount", () => {
+    it("retourne 0 si aucune decision de conseil n'existe encore", async () => {
+      enrollmentsService.getConfirmedDecisionOrThrow.mockRejectedValue(
+        new BadRequestException("Aucune decision"),
+      );
+      const result = await service.getSupplyListBadgeCount(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+      );
+      expect(result).toBe(0);
+    });
+
+    it("retourne 0 si aucune annee suivante n'est encore ouverte", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue(null);
+      const result = await service.getSupplyListBadgeCount(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+      );
+      expect(result).toBe(0);
+    });
+
+    it("retourne 0 si la liste cible est vide", async () => {
+      prisma.supplyList.findFirst.mockResolvedValue({ items: [] });
+      const result = await service.getSupplyListBadgeCount(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+      );
+      expect(result).toBe(0);
+    });
+
+    it("retourne 0 si la liste a deja ete consultee par ce parent", async () => {
+      prisma.supplyList.findFirst.mockResolvedValue({
+        items: [{ id: "item-1" }],
+      });
+      prisma.supplyListView.findUnique.mockResolvedValue({
+        seenAt: new Date("2026-06-01"),
+      });
+      const result = await service.getSupplyListBadgeCount(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+      );
+      expect(result).toBe(0);
+    });
+
+    it("retourne 1 si une liste non vide n'a jamais ete consultee", async () => {
+      prisma.supplyList.findFirst.mockResolvedValue({
+        items: [{ id: "item-1" }],
+      });
+      const result = await service.getSupplyListBadgeCount(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+      );
+      expect(result).toBe(1);
     });
   });
 });

@@ -14,6 +14,8 @@ import { PromotionDecisionNotificationsProjectionService } from "./promotion-dec
 import { PushService } from "./push.service.js";
 import { RoomStatusChangeNotificationsService } from "./room-status-change-notifications.service.js";
 import { RoomStatusChangeProjectionService } from "./room-status-change-projection.service.js";
+import { SupplyListAvailableNotificationsService } from "./supply-list-available-notifications.service.js";
+import { SupplyListAvailableNotificationsProjectionService } from "./supply-list-available-notifications-projection.service.js";
 import { TimetableChangeNotificationsService } from "./timetable-change-notifications.service.js";
 import { TimetableChangeProjectionService } from "./timetable-change-projection.service.js";
 
@@ -38,6 +40,8 @@ import { TimetableChangeProjectionService } from "./timetable-change-projection.
     RoomStatusChangeProjectionService,
     PromotionDecisionNotificationsService,
     PromotionDecisionNotificationsProjectionService,
+    SupplyListAvailableNotificationsService,
+    SupplyListAvailableNotificationsProjectionService,
   ],
   exports: [
     MobilePushTokensService,
@@ -52,6 +56,8 @@ import { TimetableChangeProjectionService } from "./timetable-change-projection.
     RoomStatusChangeProjectionService,
     PromotionDecisionNotificationsService,
     PromotionDecisionNotificationsProjectionService,
+    SupplyListAvailableNotificationsService,
+    SupplyListAvailableNotificationsProjectionService,
   ],
 })
 export class NotificationsModule {}

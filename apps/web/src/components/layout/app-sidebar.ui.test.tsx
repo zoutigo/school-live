@@ -761,10 +761,11 @@ describe("AppSidebar badges", () => {
             homeworkPending: 3,
             notesUnread: 4,
             disciplineUnread: 1,
+            suppliesAvailable: 1,
           },
         ],
         teacherClasses: [],
-        total: 8,
+        total: 9,
       },
       {
         linkedStudents: [
@@ -787,6 +788,15 @@ describe("AppSidebar badges", () => {
 
     const cahierLink = screen.getByRole("link", { name: /Cahier de texte/ });
     await waitFor(() => expect(cahierLink).toHaveTextContent("3"));
+
+    const suppliesLink = screen.getByRole("link", {
+      name: /Fournitures scolaires/,
+    });
+    await waitFor(() => expect(suppliesLink).toHaveTextContent("1"));
+    expect(suppliesLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/child-1/fournitures",
+    );
   });
 
   it("shows the evaluations-to-grade badge per class for a teacher", async () => {
@@ -1139,6 +1149,18 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
       name: "Fil d'actualite",
     });
     expect(feedLink).toHaveAttribute("href", "/schools/college-vogt/fil");
+  });
+
+  it("expose un lien Fournitures scolaires vers /moi/fournitures (visible sans etre liee a la reinscription)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const suppliesLink = await screen.findByRole("link", {
+      name: "Fournitures scolaires",
+    });
+    expect(suppliesLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/fournitures",
+    );
   });
 });
 
