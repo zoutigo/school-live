@@ -59,7 +59,8 @@ export class SupplyListsController {
 }
 
 @Controller("schools/:schoolSlug/me/supply-lists")
-@UseGuards(JwtAuthGuard, SchoolScopeGuard)
+@UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+@Roles("PARENT", "STUDENT")
 export class ParentSupplyListsController {
   constructor(private readonly supplyListsService: SupplyListsService) {}
 
@@ -72,6 +73,21 @@ export class ParentSupplyListsController {
     return this.supplyListsService.getMyChildSupplyList(
       schoolId,
       user.id,
+      user.activeRole,
+      studentId,
+    );
+  }
+
+  @Post("students/:studentId/seen")
+  markMyChildSupplyListSeen(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+  ) {
+    return this.supplyListsService.markMyChildSupplyListSeen(
+      schoolId,
+      user.id,
+      user.activeRole,
       studentId,
     );
   }

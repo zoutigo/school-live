@@ -127,10 +127,19 @@ function ChapterCard({
 
       <div className="mt-auto flex w-full items-center justify-between pt-2">
         <span className="text-xs font-medium text-text-secondary">
-          {t("trainingQuiz.list.missionsCount").replace(
-            "{count}",
-            String(chapter.totalQuestions),
-          )}
+          {chapter.currentStage
+            ? t("trainingQuiz.list.currentStageMissionsCount")
+                .replace(
+                  "{stage}",
+                  t(
+                    `trainingQuiz.chapter.stage.${chapter.currentStage.stage.toLowerCase()}`,
+                  ),
+                )
+                .replace("{count}", String(chapter.currentStage.totalQuestions))
+            : t("trainingQuiz.list.missionsCount").replace(
+                "{count}",
+                String(chapter.totalQuestions),
+              )}
         </span>
         <span className="font-heading text-sm font-semibold text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none">
           {cta}

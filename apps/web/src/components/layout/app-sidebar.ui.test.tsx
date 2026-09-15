@@ -761,10 +761,11 @@ describe("AppSidebar badges", () => {
             homeworkPending: 3,
             notesUnread: 4,
             disciplineUnread: 1,
+            suppliesAvailable: 1,
           },
         ],
         teacherClasses: [],
-        total: 8,
+        total: 9,
       },
       {
         linkedStudents: [
@@ -785,8 +786,17 @@ describe("AppSidebar badges", () => {
     const notesLink = screen.getByRole("link", { name: /Notes/ });
     await waitFor(() => expect(notesLink).toHaveTextContent("4"));
 
-    const cahierLink = screen.getByRole("link", { name: /Cahier de texte/ });
+    const cahierLink = screen.getByRole("link", { name: /Devoirs/ });
     await waitFor(() => expect(cahierLink).toHaveTextContent("3"));
+
+    const suppliesLink = screen.getByRole("link", {
+      name: /Fournitures scolaires/,
+    });
+    await waitFor(() => expect(suppliesLink).toHaveTextContent("1"));
+    expect(suppliesLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/child-1/fournitures",
+    );
   });
 
   it("shows the evaluations-to-grade badge per class for a teacher", async () => {
@@ -1042,9 +1052,10 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
       "/schools/college-vogt/moi/vie-de-classe",
     );
 
-    expect(
-      screen.getByRole("link", { name: "Cahier de texte" }),
-    ).toHaveAttribute("href", "/schools/college-vogt/moi/cahier-de-texte");
+    expect(screen.getByRole("link", { name: "Devoirs" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/cahier-de-texte",
+    );
   });
 
   it("n'expose aucun lien Santé (exclusion volontaire)", async () => {
@@ -1139,6 +1150,18 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
       name: "Fil d'actualite",
     });
     expect(feedLink).toHaveAttribute("href", "/schools/college-vogt/fil");
+  });
+
+  it("expose un lien Fournitures scolaires vers /moi/fournitures (visible sans etre liee a la reinscription)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const suppliesLink = await screen.findByRole("link", {
+      name: "Fournitures scolaires",
+    });
+    expect(suppliesLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/fournitures",
+    );
   });
 });
 

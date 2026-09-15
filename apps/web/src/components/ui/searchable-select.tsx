@@ -24,6 +24,12 @@ type Props = {
   "data-testid"?: string;
   className?: string;
   ariaLabel?: string;
+  /**
+   * Quand fourni, la recherche est deleguee au parent (ex: appel API) plutot
+   * que filtree localement : le champ de recherche reste toujours visible et
+   * `options` est affiche tel quel (deja filtre par l'appelant).
+   */
+  onSearchChange?: (query: string) => void;
 };
 
 /**
@@ -46,16 +52,21 @@ export function SearchableSelect({
   "data-testid": testId,
   className = "",
   ariaLabel,
+  onSearchChange,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const isAsync = typeof onSearchChange === "function";
   const selected = options.find((option) => option.value === value) ?? null;
-  const searchable = options.length > SEARCH_THRESHOLD;
+  const searchable = isAsync || options.length > SEARCH_THRESHOLD;
 
   const filteredOptions = useMemo(() => {
+    if (isAsync) {
+      return options;
+    }
     const needle = normalizeForSearch(search);
     if (!searchable || !needle) {
       return options;
@@ -63,7 +74,7 @@ export function SearchableSelect({
     return options.filter((option) =>
       normalizeForSearch(option.label).includes(needle),
     );
-  }, [options, search, searchable]);
+  }, [options, search, searchable, isAsync]);
 
   useEffect(() => {
     if (!open) {
@@ -77,6 +88,7 @@ export function SearchableSelect({
       ) {
         setOpen(false);
         setSearch("");
+        onSearchChange?.("");
       }
     }
 
@@ -84,6 +96,7 @@ export function SearchableSelect({
       if (event.key === "Escape") {
         setOpen(false);
         setSearch("");
+        onSearchChange?.("");
       }
     }
 
@@ -108,6 +121,7 @@ export function SearchableSelect({
     if (open) {
       setOpen(false);
       setSearch("");
+      onSearchChange?.("");
     } else {
       setOpen(true);
     }
@@ -117,6 +131,7 @@ export function SearchableSelect({
     onChange(optionValue);
     setOpen(false);
     setSearch("");
+    onSearchChange?.("");
   }
 
   return (
@@ -172,7 +187,11 @@ export function SearchableSelect({
                 ref={searchInputRef}
                 type="text"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSearch(next);
+                  onSearchChange?.(next);
+                }}
                 placeholder={searchPlaceholder}
                 autoComplete="off"
                 data-testid={testId ? `${testId}-search` : undefined}

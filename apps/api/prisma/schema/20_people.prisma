@@ -23,6 +23,7 @@ model Student {
   healthAccessLogs  StudentHealthAccessLog[]
   payments          StudentPayment[]
   walletAllocations WalletTransaction[]
+  supplyListViews   SupplyListView[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])

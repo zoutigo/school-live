@@ -397,7 +397,7 @@ const FAQ_DEFINITIONS = [
       },
       {
         title: "Organisation de classe",
-        description: "Cahier de texte, emploi du temps et suivi de classe.",
+        description: "Devoirs, emploi du temps et suivi de classe.",
         items: [
           {
             question: "Comment publier le travail à faire ?",

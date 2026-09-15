@@ -20,6 +20,7 @@ const SUMMARY: UnreadSummary = {
       homeworkPending: 1,
       notesUnread: 3,
       disciplineUnread: 0,
+      suppliesAvailable: 0,
     },
   ],
   teacherClasses: [],

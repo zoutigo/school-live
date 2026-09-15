@@ -117,9 +117,8 @@ describe("ChildReenrollmentCard (web, shared)", () => {
     expect(screen.getAllByText("Deja reinscrit(e)").length).toBeGreaterThan(0);
   });
 
-  it("n'affiche le lien vers les fournitures que si onViewSupplies est fourni", () => {
-    const onViewSupplies = vi.fn();
-    const { rerender } = render(
+  it("affiche un lien vers la page fournitures dediee de l'enfant une fois reinscrit", () => {
+    render(
       <ChildReenrollmentCard
         schoolSlug="college-vogt"
         child={{ ...BASE_CHILD, status: "ALREADY_REINSCRIBED" }}
@@ -128,22 +127,11 @@ describe("ChildReenrollmentCard (web, shared)", () => {
         onPayAndReinscribe={vi.fn()}
       />,
     );
-    expect(
-      screen.queryByTestId("view-supplies-student-1"),
-    ).not.toBeInTheDocument();
-
-    rerender(
-      <ChildReenrollmentCard
-        schoolSlug="college-vogt"
-        child={{ ...BASE_CHILD, status: "ALREADY_REINSCRIBED" }}
-        walletBalance={0}
-        submitting={false}
-        onPayAndReinscribe={vi.fn()}
-        onViewSupplies={onViewSupplies}
-      />,
+    const suppliesLink = screen.getByTestId("view-supplies-student-1");
+    expect(suppliesLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/student-1/fournitures",
     );
-    fireEvent.click(screen.getByTestId("view-supplies-student-1"));
-    expect(onViewSupplies).toHaveBeenCalledTimes(1);
   });
 
   it("n'affiche l'echeancier detaille que si showInstallmentBreakdown est actif", () => {

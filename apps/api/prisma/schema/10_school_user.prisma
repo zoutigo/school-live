@@ -79,6 +79,7 @@ model School {
   reinscriptionDeadlines ReinscriptionDeadline[]
   supplyLists        SupplyList[]
   supplyItems        SupplyItem[]
+  supplyListViews    SupplyListView[]
   wallets            Wallet[]
   walletTransactions WalletTransaction[]
   studentPayments    StudentPayment[]
@@ -199,6 +200,7 @@ model User {
   wallets                     Wallet[]
   walletTransactionsRecorded  WalletTransaction[]  @relation("WalletTransactionRecordedBy")
   paymentsRecorded            StudentPayment[]     @relation("StudentPaymentRecordedBy")
+  supplyListViews             SupplyListView[]     @relation("SupplyListViewParent")
 
   @@index([activeSchoolId])
 }

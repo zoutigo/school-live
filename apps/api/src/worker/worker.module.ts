@@ -8,6 +8,7 @@ import { MailJobsWorker } from "./mail-jobs.worker.js";
 import { PromotionDecisionNotificationJobsWorker } from "./promotion-decision-notification-jobs.worker.js";
 import { PushJobsWorker } from "./push-jobs.worker.js";
 import { RoomStatusChangeJobsWorker } from "./room-status-change-jobs.worker.js";
+import { SupplyListAvailableNotificationJobsWorker } from "./supply-list-available-notification-jobs.worker.js";
 import { TimetableChangeJobsWorker } from "./timetable-change-jobs.worker.js";
 
 @Module({
@@ -27,6 +28,7 @@ import { TimetableChangeJobsWorker } from "./timetable-change-jobs.worker.js";
     GradePublishedNotificationJobsWorker,
     RoomStatusChangeJobsWorker,
     PromotionDecisionNotificationJobsWorker,
+    SupplyListAvailableNotificationJobsWorker,
   ],
 })
 export class WorkerModule {}

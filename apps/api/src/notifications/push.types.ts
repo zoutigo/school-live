@@ -134,3 +134,18 @@ export type PromotionDecisionPushPayload = {
     decision: "PROMOTED" | "REPEATED" | "LEFT";
   };
 };
+
+export const PUSH_JOB_SEND_SUPPLY_LIST_AVAILABLE =
+  "send-supply-list-available-push";
+
+export type SupplyListAvailablePushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "SUPPLY_LIST_AVAILABLE";
+    schoolSlug: string;
+    studentId: string;
+    schoolYearId: string;
+  };
+};

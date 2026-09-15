@@ -120,6 +120,7 @@ export class TrainingQuizService {
           where: { isActive: true },
           select: {
             id: true,
+            stage: true,
             progress: {
               where: { userId: user.id, solved: true },
               select: { id: true },
@@ -129,20 +130,46 @@ export class TrainingQuizService {
       },
     });
 
-    return chapters.map((chapter) => ({
-      id: chapter.id,
-      moduleKey: chapter.moduleKey,
-      order: chapter.order,
-      icon: chapter.icon,
-      colorFrom: chapter.colorFrom,
-      colorTo: chapter.colorTo,
-      title: locale === "EN" ? chapter.titleEn : chapter.titleFr,
-      description:
-        locale === "EN" ? chapter.descriptionEn : chapter.descriptionFr,
-      totalQuestions: chapter.questions.length,
-      solvedQuestions: chapter.questions.filter((q) => q.progress.length > 0)
-        .length,
-    }));
+    return chapters.map((chapter) => {
+      const levels = this.computeLevels(
+        chapter.questions.map((question) => ({
+          stage: question.stage,
+          solved: question.progress.length > 0,
+        })),
+      );
+      // The stage the learner would land on if they opened this chapter now
+      // — shown on the chapter card so the mission count feels like "the
+      // next 10 steps" rather than the whole chapter's total.
+      const currentLevel =
+        levels.find(
+          (level) =>
+            level.unlocked &&
+            level.totalQuestions > 0 &&
+            level.solvedQuestions < level.totalQuestions,
+        ) ?? levels.find((level) => level.totalQuestions > 0);
+
+      return {
+        id: chapter.id,
+        moduleKey: chapter.moduleKey,
+        order: chapter.order,
+        icon: chapter.icon,
+        colorFrom: chapter.colorFrom,
+        colorTo: chapter.colorTo,
+        title: locale === "EN" ? chapter.titleEn : chapter.titleFr,
+        description:
+          locale === "EN" ? chapter.descriptionEn : chapter.descriptionFr,
+        totalQuestions: chapter.questions.length,
+        solvedQuestions: chapter.questions.filter((q) => q.progress.length > 0)
+          .length,
+        currentStage: currentLevel
+          ? {
+              stage: currentLevel.stage,
+              totalQuestions: currentLevel.totalQuestions,
+              solvedQuestions: currentLevel.solvedQuestions,
+            }
+          : null,
+      };
+    });
   }
 
   async getChapter(
@@ -201,6 +228,13 @@ export class TrainingQuizService {
     const unlockedStages = new Set(
       levels.filter((level) => level.unlocked).map((level) => level.stage),
     );
+    const currentLevel =
+      levels.find(
+        (level) =>
+          level.unlocked &&
+          level.totalQuestions > 0 &&
+          level.solvedQuestions < level.totalQuestions,
+      ) ?? levels.find((level) => level.totalQuestions > 0);
 
     return {
       id: chapter.id,
@@ -215,6 +249,13 @@ export class TrainingQuizService {
       totalQuestions: chapter.questions.length,
       solvedQuestions: chapter.questions.filter((q) => q.progress[0]?.solved)
         .length,
+      currentStage: currentLevel
+        ? {
+            stage: currentLevel.stage,
+            totalQuestions: currentLevel.totalQuestions,
+            solvedQuestions: currentLevel.solvedQuestions,
+          }
+        : null,
       levels,
       questions: chapter.questions.map((question) => ({
         id: question.id,

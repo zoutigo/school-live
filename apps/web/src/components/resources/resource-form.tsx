@@ -127,13 +127,10 @@ export function ResourceForm(props: {
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(
-      buildSchema(
-        t,
-        kind,
-        levelIdsWithTracks.has(editingResource?.academicLevelId ?? ""),
-      ),
-    ),
+    resolver: (values, context, options) =>
+      zodResolver(
+        buildSchema(t, kind, levelIdsWithTracks.has(values.academicLevelId)),
+      )(values, context, options),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: {
@@ -156,7 +153,6 @@ export function ResourceForm(props: {
   const selectedTrackId = watch("trackId");
 
   const [schoolResults, setSchoolResults] = useState<SchoolSearchOption[]>([]);
-  const [schoolQuery, setSchoolQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -166,8 +162,7 @@ export function ResourceForm(props: {
       .catch(() => {});
   }, [requiresSchool]);
 
-  function handleSchoolQueryChange(query: string) {
-    setSchoolQuery(query);
+  function handleSchoolSearchChange(query: string) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       void searchSchools(query || undefined)
@@ -272,6 +267,7 @@ export function ResourceForm(props: {
           {...register("title")}
           invalid={!!errors.title}
           placeholder={t("resourcesMine.form.titlePlaceholder")}
+          className="w-full"
           data-testid="resources-mine-form-title"
         />
         {errors.title?.message && (
@@ -286,20 +282,14 @@ export function ResourceForm(props: {
           <label className="mb-1 block text-sm font-semibold text-text-primary">
             {t("resourcesMine.form.schoolLabel")}
           </label>
-          <FormTextInput
-            value={schoolQuery}
-            onChange={(e) => handleSchoolQueryChange(e.target.value)}
-            placeholder={t("resourcesMine.form.schoolSearchPlaceholder")}
-            className="mb-2"
-            data-testid="resources-mine-form-school-search"
-          />
           <SearchableSelect
             ariaLabel={t("resourcesMine.form.schoolLabel")}
             value={watch("schoolId") ?? ""}
             onChange={(value) => setValue("schoolId", value)}
+            onSearchChange={handleSchoolSearchChange}
             invalid={!!errors.schoolId}
             placeholder={t("resourcesMine.form.schoolPlaceholder")}
-            searchPlaceholder={t("settings.form.searchPlaceholder")}
+            searchPlaceholder={t("resourcesMine.form.schoolSearchPlaceholder")}
             noResultsLabel={t("settings.form.noResults")}
             data-testid="resources-mine-form-school"
             options={schoolPool.map((s) => ({

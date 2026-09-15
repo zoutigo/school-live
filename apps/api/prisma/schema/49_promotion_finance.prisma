@@ -97,6 +97,26 @@ model SupplyItem {
   @@index([supplyListId])
 }
 
+// Marque la consultation, par un parent, de la liste de fournitures d'un
+// enfant pour une annee scolaire donnee. Sert uniquement au badge "non lu"
+// affiche dans le menu eleve (meme principe que InternalMessageRecipient.readAt).
+model SupplyListView {
+  id           String     @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  studentId    String
+  schoolYearId String
+  seenAt       DateTime   @default(now())
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentUser   User       @relation("SupplyListViewParent", fields: [parentUserId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, studentId, schoolYearId])
+  @@index([schoolId])
+  @@index([studentId, schoolYearId])
+}
+
 model Wallet {
   id           String              @id @default(cuid())
   schoolId     String

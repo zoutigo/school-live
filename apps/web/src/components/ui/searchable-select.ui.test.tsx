@@ -25,10 +25,12 @@ function ControlledSelect({
   options,
   initialValue = "",
   onChange,
+  onSearchChange,
 }: {
   options: SearchableSelectOption[];
   initialValue?: string;
   onChange?: (value: string) => void;
+  onSearchChange?: (query: string) => void;
 }) {
   const [value, setValue] = useState(initialValue);
   return (
@@ -39,6 +41,7 @@ function ControlledSelect({
         setValue(next);
         onChange?.(next);
       }}
+      onSearchChange={onSearchChange}
       data-testid="test-select"
       placeholder="Choisir..."
     />
@@ -162,6 +165,87 @@ describe("SearchableSelect", () => {
     fireEvent.click(screen.getByTestId("test-select"));
 
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("mode async : affiche toujours le champ de recherche meme avec peu d'options", () => {
+    render(<ControlledSelect options={FEW_OPTIONS} onSearchChange={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("test-select"));
+
+    expect(screen.getByTestId("test-select-search")).toBeInTheDocument();
+  });
+
+  it("mode async : ne filtre pas localement, delegue chaque frappe a onSearchChange", () => {
+    const onSearchChange = vi.fn();
+    render(
+      <ControlledSelect
+        options={MANY_OPTIONS}
+        onSearchChange={onSearchChange}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("test-select"));
+
+    fireEvent.change(screen.getByTestId("test-select-search"), {
+      target: { value: "college" },
+    });
+
+    // Le parent pilote le contenu de `options` ; le composant ne filtre pas
+    // lui-meme, donc la liste complete reste affichee tant que le parent ne
+    // renvoie pas de nouvelles options.
+    expect(screen.getByText("Ecole Alpha")).toBeInTheDocument();
+    expect(screen.getByText("College Gamma")).toBeInTheDocument();
+    expect(onSearchChange).toHaveBeenCalledWith("college");
+  });
+
+  it("mode async : reflete les nouvelles options fournies par le parent apres une recherche", () => {
+    const onSearchChange = vi.fn();
+    const { rerender } = render(
+      <SearchableSelect
+        options={MANY_OPTIONS}
+        value=""
+        onChange={vi.fn()}
+        onSearchChange={onSearchChange}
+        data-testid="test-select"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("test-select"));
+    fireEvent.change(screen.getByTestId("test-select-search"), {
+      target: { value: "college" },
+    });
+
+    const collegeOnly = MANY_OPTIONS.filter((o) =>
+      o.label.toLowerCase().includes("college"),
+    );
+    rerender(
+      <SearchableSelect
+        options={collegeOnly}
+        value=""
+        onChange={vi.fn()}
+        onSearchChange={onSearchChange}
+        data-testid="test-select"
+      />,
+    );
+
+    expect(screen.getByText("College Gamma")).toBeInTheDocument();
+    expect(screen.getByText("College Zeta")).toBeInTheDocument();
+    expect(screen.queryByText("Ecole Alpha")).not.toBeInTheDocument();
+  });
+
+  it("mode async : reinitialise la recherche a la fermeture (selection, echap, clic exterieur)", () => {
+    const onSearchChange = vi.fn();
+    render(
+      <ControlledSelect
+        options={MANY_OPTIONS}
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("test-select"));
+    fireEvent.change(screen.getByTestId("test-select-search"), {
+      target: { value: "college" },
+    });
+    fireEvent.click(screen.getByTestId("test-select-option-school-3"));
+
+    expect(onSearchChange).toHaveBeenLastCalledWith("");
   });
 
   it("expose aria-invalid selon la prop invalid", () => {

@@ -246,8 +246,10 @@ describe("Reinscription (parent) page", () => {
       screen.queryByTestId("pay-and-reinscribe-student-1"),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId("view-supplies-student-1"));
-    expect(await screen.findByText(/Cahier 100 pages/)).toBeInTheDocument();
+    expect(screen.getByTestId("view-supplies-student-1")).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/student-1/fournitures",
+    );
   });
 
   it("affiche le solde du porte-monnaie avec un lien vers Situation financiere pour le recharger", async () => {
@@ -304,16 +306,6 @@ describe("Reinscription (parent) page", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Payee")).toBeInTheDocument();
     expect(screen.getByText("A venir")).toBeInTheDocument();
-  });
-
-  it("charge et affiche la liste de fournitures dans l'onglet dedie", async () => {
-    mockFetch(WALLET_ONE_CHILD_READY);
-    render(<ReinscriptionPage />);
-    await screen.findByText("Remi Ntamack");
-
-    fireEvent.click(screen.getByTestId("reinscription-tab-fournitures"));
-
-    expect(await screen.findByText(/Cahier 100 pages/)).toBeInTheDocument();
   });
 
   it("demarre le tour d'aide guidee quand onboardingHelpEnabled est actif", async () => {

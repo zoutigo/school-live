@@ -6,7 +6,6 @@ export const REINSCRIPTION_PARENT_TOUR_TARGETS = {
   wallet: "reinscription-parent-tour-wallet",
   children: "reinscription-parent-tour-children",
   reinscribe: "reinscription-parent-tour-reinscribe",
-  suppliesTab: "reinscription-parent-tour-supplies-tab",
 } as const;
 
 export const REINSCRIPTION_PARENT_TOUR_STEPS: OnboardingTourStep[] = [
@@ -24,10 +23,5 @@ export const REINSCRIPTION_PARENT_TOUR_STEPS: OnboardingTourStep[] = [
     targetKey: REINSCRIPTION_PARENT_TOUR_TARGETS.reinscribe,
     titleKey: "onboardingTour.reinscriptionParent.reinscribeTitle",
     bodyKey: "onboardingTour.reinscriptionParent.reinscribeBody",
-  },
-  {
-    targetKey: REINSCRIPTION_PARENT_TOUR_TARGETS.suppliesTab,
-    titleKey: "onboardingTour.reinscriptionParent.suppliesTabTitle",
-    bodyKey: "onboardingTour.reinscriptionParent.suppliesTabBody",
   },
 ];

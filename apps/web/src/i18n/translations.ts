@@ -2264,13 +2264,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.summary.late": "En retard",
 
     "homework.sidebar.devoirs": "Devoirs",
-    "homework.sidebar.cahierDeTexte": "Cahier de texte",
+    "homework.sidebar.cahierDeTexte": "Devoirs",
 
     "homework.dashboard.title": "Devoirs en cours",
     "homework.dashboard.noHomework": "Aucun devoir en cours",
     "homework.dashboard.viewAll": "Voir tout",
 
-    "homework.cahierDeTexte.title": "Cahier de texte",
+    "homework.cahierDeTexte.title": "Devoirs",
     "homework.cahierDeTexte.subtitle": "Travail a faire",
     "homework.cahierDeTexte.summary":
       "Consultez les devoirs et consignes de travail de votre enfant.",
@@ -3392,12 +3392,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.payment.request": "Demander une modification",
 
     "reinscriptionWeb.title": "Reinscription",
-    "reinscriptionWeb.subtitle":
-      "{fullName} - reinscription et fournitures scolaires",
+    "reinscriptionWeb.subtitle": "{fullName} - reinscription",
     "reinscriptionWeb.errors.load": "Impossible de charger le porte-monnaie.",
     "reinscriptionWeb.errors.network": "Erreur reseau.",
-    "reinscriptionWeb.tabs.paiement": "Paiement",
-    "reinscriptionWeb.tabs.fournitures": "Fournitures",
     "reinscriptionWeb.wallet.balance": "Solde du porte-monnaie",
     "reinscriptionWeb.wallet.topUpLink": "Recharger",
     "reinscriptionWeb.wallet.errors.reinscribe": "Reinscription impossible.",
@@ -3435,22 +3432,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.installments.status.PARTIAL": "Partielle",
     "reinscriptionWeb.installments.status.UPCOMING": "A venir",
     "reinscriptionWeb.installments.status.OVERDUE": "En retard",
-    "reinscriptionWeb.supplies.emptyList":
-      "Aucun enfant eligible pour le moment.",
-    "reinscriptionWeb.supplies.notOpenYet":
-      "La prochaine annee scolaire n'est pas encore ouverte.",
-    "reinscriptionWeb.supplies.empty":
-      "Aucune liste de fournitures definie pour ce niveau pour le moment.",
     "reinscriptionWeb.help.title": "Aide - Reinscription",
     "reinscriptionWeb.help.section1Title": "A quoi sert cette page",
     "reinscriptionWeb.help.section1Body":
-      "Cette page centralise la reinscription de vos enfants promus : paiement du seuil de reinscription et consultation de la liste de fournitures scolaires pour la rentree prochaine.",
+      "Cette page centralise la reinscription de vos enfants promus : paiement du seuil de reinscription.",
     "reinscriptionWeb.help.section2Title": "Payer et reinscrire",
     "reinscriptionWeb.help.section2Body":
       "Creditez votre porte-monnaie, puis touchez « Je paie et je reinscris » pour chaque enfant pret. Ce bouton debite le montant exact du seuil de reinscription (defini par l'ecole) et confirme la reinscription en un seul geste. Vous pouvez aussi consulter l'echeancier detaille (paye/restant par tranche) de chaque enfant.",
     "reinscriptionWeb.help.section3Title": "Fournitures scolaires",
     "reinscriptionWeb.help.section3Body":
-      "L'onglet Fournitures affiche, pour chaque enfant, la liste des fournitures a prevoir pour son futur niveau, definie par l'ecole.",
+      "Une fois votre enfant reinscrit, la liste des fournitures a prevoir pour son futur niveau devient disponible dans son propre menu (rubrique Fournitures scolaires), definie par l'ecole.",
 
     "shop.title": "Boutique en ligne",
     "shop.subtitle": "{fullName} - achats scolaires et reglements rapides",
@@ -3527,12 +3518,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.quickLink.classFeed.hint": "Fil et actualites de classe",
     "childAccueil.quickLink.timetable.label": "Emploi du temps",
     "childAccueil.quickLink.timetable.hint": "Cours et prochains creneaux",
-    "childAccueil.quickLink.homework.label": "Cahier de texte",
+    "childAccueil.quickLink.homework.label": "Devoirs",
     "childAccueil.quickLink.homework.hint": "Travail et consignes",
     "childAccueil.panel.supplies.title": "Fournitures scolaires",
-    "childAccueil.panel.supplies.action": "Voir la reinscription",
+    "childAccueil.panel.supplies.action": "Voir la liste complete",
     "childAccueil.panel.supplies.empty":
       "Aucune liste de fournitures definie pour le moment.",
+    "supplyList.page.title": "Fournitures scolaires",
+    "supplyList.page.subtitle": "Liste des fournitures pour l'annee a venir",
+    "supplyList.page.loading": "Chargement de la liste de fournitures...",
+    "supplyList.page.error":
+      "Impossible de charger la liste de fournitures pour le moment.",
+    "supplyList.page.notReady":
+      "La liste de fournitures sera disponible une fois la decision du conseil de classe rendue et l'annee suivante ouverte.",
+    "supplyList.page.empty":
+      "Aucune liste de fournitures n'a encore ete publiee par l'ecole pour cette annee.",
+    "supplyList.page.yearLabel": "Annee scolaire {year}",
+    "supplyList.page.quantity": "x{quantity}",
+    "supplyList.page.note": "Note : {note}",
     "childAccueil.panel.classFeed.title": "Vie de classe",
     "childAccueil.panel.classFeed.action": "Voir la vie de classe",
 
@@ -5349,10 +5352,6 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Je paie et je reinscris",
     "onboardingTour.reinscriptionParent.reinscribeBody":
       "Ce bouton debite votre porte-monnaie du montant exact du seuil de reinscription de CET enfant et confirme sa reinscription en un seul geste.",
-    "onboardingTour.reinscriptionParent.suppliesTabTitle":
-      "Fournitures scolaires",
-    "onboardingTour.reinscriptionParent.suppliesTabBody":
-      "Cet onglet affiche la liste des fournitures a prevoir pour la rentree de votre enfant, definie par l'ecole pour son futur niveau.",
     "onboardingTour.healthSchool.tabsTitle": "3 onglets pour s'y retrouver",
     "onboardingTour.healthSchool.tabsBody":
       "Synthèse regroupe les statistiques de l'école ou d'une classe. Événements hors école liste les signalements des parents, du plus récent au plus ancien. Élèves permet de retrouver la fiche santé de chaque élève.",
@@ -5428,6 +5427,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.list.empty":
       "Aucun chapitre de formation n'est disponible pour votre rôle pour le moment.",
     "trainingQuiz.list.missionsCount": "{count} missions",
+    "trainingQuiz.list.currentStageMissionsCount": "{stage} : {count} missions",
     "trainingQuiz.list.startCta": "Commencer",
     "trainingQuiz.list.continueCta": "Continuer",
     "trainingQuiz.list.completeCta": "Revoir",
@@ -7687,13 +7687,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.summary.late": "Late",
 
     "homework.sidebar.devoirs": "Homework",
-    "homework.sidebar.cahierDeTexte": "Homework notebook",
+    "homework.sidebar.cahierDeTexte": "Homework",
 
     "homework.dashboard.title": "Ongoing homework",
     "homework.dashboard.noHomework": "No homework in progress",
     "homework.dashboard.viewAll": "View all",
 
-    "homework.cahierDeTexte.title": "Homework notebook",
+    "homework.cahierDeTexte.title": "Homework",
     "homework.cahierDeTexte.subtitle": "Work to do",
     "homework.cahierDeTexte.summary":
       "View your child's homework and instructions.",
@@ -8742,12 +8742,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.payment.request": "Request a change",
 
     "reinscriptionWeb.title": "Re-enrollment",
-    "reinscriptionWeb.subtitle":
-      "{fullName} - re-enrollment and school supplies",
+    "reinscriptionWeb.subtitle": "{fullName} - re-enrollment",
     "reinscriptionWeb.errors.load": "Unable to load the wallet.",
     "reinscriptionWeb.errors.network": "Network error.",
-    "reinscriptionWeb.tabs.paiement": "Payment",
-    "reinscriptionWeb.tabs.fournitures": "Supplies",
     "reinscriptionWeb.wallet.balance": "Wallet balance",
     "reinscriptionWeb.wallet.topUpLink": "Top up",
     "reinscriptionWeb.wallet.errors.reinscribe": "Unable to re-enroll.",
@@ -8783,21 +8780,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.installments.status.PARTIAL": "Partial",
     "reinscriptionWeb.installments.status.UPCOMING": "Upcoming",
     "reinscriptionWeb.installments.status.OVERDUE": "Overdue",
-    "reinscriptionWeb.supplies.emptyList": "No eligible child yet.",
-    "reinscriptionWeb.supplies.notOpenYet":
-      "The next school year is not open yet.",
-    "reinscriptionWeb.supplies.empty":
-      "No supply list defined for this level yet.",
     "reinscriptionWeb.help.title": "Help - Re-enrollment",
     "reinscriptionWeb.help.section1Title": "What this page is for",
     "reinscriptionWeb.help.section1Body":
-      "This page centralizes the re-enrollment of your promoted children: paying the re-enrollment threshold and viewing the school supply list for the upcoming school year.",
+      "This page centralizes the re-enrollment of your promoted children: paying the re-enrollment threshold.",
     "reinscriptionWeb.help.section2Title": "Pay and re-enroll",
     "reinscriptionWeb.help.section2Body":
       'Top up your wallet, then tap "Pay and re-enroll" for each ready child. This button debits the exact re-enrollment threshold amount (set by the school) and confirms re-enrollment in one step. You can also view each child\'s detailed schedule (paid/remaining per installment).',
     "reinscriptionWeb.help.section3Title": "School supplies",
     "reinscriptionWeb.help.section3Body":
-      "The Supplies tab shows, for each child, the list of supplies to prepare for their upcoming level, defined by the school.",
+      "Once your child is re-enrolled, the list of supplies to prepare for their upcoming level becomes available in their own menu (School supplies section), defined by the school.",
 
     "shop.title": "Online shop",
     "shop.subtitle": "{fullName} - school purchases and quick payments",
@@ -8872,11 +8864,22 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.quickLink.classFeed.hint": "Class feed and news",
     "childAccueil.quickLink.timetable.label": "Timetable",
     "childAccueil.quickLink.timetable.hint": "Classes and upcoming slots",
-    "childAccueil.quickLink.homework.label": "Homework diary",
+    "childAccueil.quickLink.homework.label": "Homework",
     "childAccueil.quickLink.homework.hint": "Work and instructions",
     "childAccueil.panel.supplies.title": "School supplies",
-    "childAccueil.panel.supplies.action": "View re-enrollment",
+    "childAccueil.panel.supplies.action": "View full list",
     "childAccueil.panel.supplies.empty": "No supply list defined yet.",
+    "supplyList.page.title": "School supplies",
+    "supplyList.page.subtitle": "Supply list for the upcoming school year",
+    "supplyList.page.loading": "Loading the supply list...",
+    "supplyList.page.error": "Unable to load the supply list right now.",
+    "supplyList.page.notReady":
+      "The supply list will be available once the class council decision is made and next year is open.",
+    "supplyList.page.empty":
+      "The school hasn't published a supply list for this year yet.",
+    "supplyList.page.yearLabel": "School year {year}",
+    "supplyList.page.quantity": "x{quantity}",
+    "supplyList.page.note": "Note: {note}",
     "childAccueil.panel.classFeed.title": "Class life",
     "childAccueil.panel.classFeed.action": "View class life",
 
@@ -10628,9 +10631,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.reinscriptionParent.reinscribeTitle": "Pay and re-enroll",
     "onboardingTour.reinscriptionParent.reinscribeBody":
       "This button debits your wallet for the exact amount of THIS child's re-enrollment threshold and confirms their re-enrollment in one step.",
-    "onboardingTour.reinscriptionParent.suppliesTabTitle": "School supplies",
-    "onboardingTour.reinscriptionParent.suppliesTabBody":
-      "This tab shows the list of supplies to prepare for your child's new school year, defined by the school for their upcoming level.",
     "onboardingTour.healthSchool.tabsTitle": "3 tabs to find things easily",
     "onboardingTour.healthSchool.tabsBody":
       "Summary groups the school's or a class's statistics. Events outside school lists parent reports, from most recent to oldest. Students lets you find each student's health profile.",
@@ -10705,6 +10705,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "trainingQuiz.list.empty":
       "No training chapter is available for your role yet.",
     "trainingQuiz.list.missionsCount": "{count} missions",
+    "trainingQuiz.list.currentStageMissionsCount": "{stage}: {count} missions",
     "trainingQuiz.list.startCta": "Start",
     "trainingQuiz.list.continueCta": "Continue",
     "trainingQuiz.list.completeCta": "Review",

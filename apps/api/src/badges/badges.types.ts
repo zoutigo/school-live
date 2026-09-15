@@ -5,6 +5,7 @@ export interface ChildBadgeSummary {
   homeworkPending: number;
   notesUnread: number;
   disciplineUnread: number;
+  suppliesAvailable: number;
 }
 
 export interface TeacherClassBadgeSummary {

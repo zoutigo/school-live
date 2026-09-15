@@ -131,7 +131,7 @@ describe("ChildAccueilPage — bloc fournitures scolaires", () => {
     ).toBeInTheDocument();
   });
 
-  it("propose un lien vers l'ecran Reinscription", async () => {
+  it("propose un lien vers la page dediee Fournitures scolaires du menu eleve", async () => {
     mockFetch({
       targetSchoolYearId: "sy-2026",
       targetSchoolYearLabel: "2026-2027",
@@ -148,8 +148,11 @@ describe("ChildAccueilPage — bloc fournitures scolaires", () => {
     render(<ChildAccueilPage />);
 
     const link = await screen.findByRole("link", {
-      name: "Voir la reinscription",
+      name: "Voir la liste complete",
     });
-    expect(link).toHaveAttribute("href", "/schools/college-vogt/reinscription");
+    expect(link).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/child-1/fournitures",
+    );
   });
 });

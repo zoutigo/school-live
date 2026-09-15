@@ -11,6 +11,7 @@ import type {
   StudentHealthCareEventPushPayload,
   StudentHealthReportPushPayload,
   StudentLifeEventPushPayload,
+  SupplyListAvailablePushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
 
@@ -129,6 +130,17 @@ export class ExpoPushAdapter implements PushPort {
 
   async sendPromotionDecisionNotification(
     payload: PromotionDecisionPushPayload,
+  ): Promise<void> {
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  async sendSupplyListAvailableNotification(
+    payload: SupplyListAvailablePushPayload,
   ): Promise<void> {
     await this.dispatch(
       payload.tokens,

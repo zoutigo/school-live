@@ -35,6 +35,7 @@ const CHAPTER = {
   description: "Découvrez le suivi disciplinaire.",
   totalQuestions: 6,
   solvedQuestions: 2,
+  currentStage: { stage: "PRACTICE", totalQuestions: 2, solvedQuestions: 0 },
 };
 
 const SCORE = {
@@ -97,6 +98,23 @@ describe("TrainingQuizPage", () => {
 
     fireEvent.click(screen.getByText("Discipline").closest("button")!);
     expect(pushMock).toHaveBeenCalledWith("/training-quiz/chapter-1");
+  });
+
+  it("shows the current stage's mission count rather than the chapter total", async () => {
+    mockFetch();
+    render(<TrainingQuizPage />);
+
+    await screen.findByText("Discipline");
+    expect(screen.getByText("Pratique : 2 missions")).toBeInTheDocument();
+    expect(screen.queryByText("6 missions")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the chapter total when no currentStage is provided", async () => {
+    mockFetch({ chapters: [{ ...CHAPTER, currentStage: null }] });
+    render(<TrainingQuizPage />);
+
+    await screen.findByText("Discipline");
+    expect(screen.getByText("6 missions")).toBeInTheDocument();
   });
 
   it("shows an empty state when the role has no chapters", async () => {

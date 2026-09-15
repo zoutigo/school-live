@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { EnrollmentsService } from "../enrollments/enrollments.service.js";
+import { SupplyListAvailableNotificationsService } from "../notifications/supply-list-available-notifications.service.js";
 import type { UpsertFeeScheduleDto } from "./dto/upsert-fee-schedule.dto.js";
 import type { RecordDirectPaymentDto } from "./dto/record-direct-payment.dto.js";
 import type { ListFeeSchedulesQueryDto } from "./dto/list-fee-schedules-query.dto.js";
@@ -17,6 +18,7 @@ export class FinanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly enrollmentsService: EnrollmentsService,
+    private readonly supplyListAvailableNotificationsService: SupplyListAvailableNotificationsService,
   ) {}
 
   async getFinanceSettings(schoolId: string) {
@@ -471,6 +473,13 @@ export class FinanceService {
       decision.nextTrackId,
     );
 
+    const priorPaymentsCount = await this.prisma.studentPayment.count({
+      where: {
+        studentId: payload.studentId,
+        schoolYearId: payload.schoolYearId,
+      },
+    });
+
     const payment = await this.prisma.studentPayment.create({
       data: {
         schoolId,
@@ -483,6 +492,14 @@ export class FinanceService {
         note: payload.note,
       },
     });
+
+    if (priorPaymentsCount === 0) {
+      await this.supplyListAvailableNotificationsService.enqueue({
+        schoolId,
+        studentId: payload.studentId,
+        schoolYearId: payload.schoolYearId,
+      });
+    }
 
     const totalPaid = await this.getTotalPaid(
       payload.studentId,
@@ -835,6 +852,14 @@ export class FinanceService {
         },
       });
     });
+
+    if (alreadyPaid === 0) {
+      await this.supplyListAvailableNotificationsService.enqueue({
+        schoolId,
+        studentId,
+        schoolYearId,
+      });
+    }
 
     await this.enrollmentsService.confirmReinscription(
       schoolId,

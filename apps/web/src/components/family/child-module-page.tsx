@@ -69,7 +69,7 @@ const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
   { key: "vie-de-classe", label: "Vie de classe" },
   { key: "notes", label: "Notes" },
   { key: "messagerie", label: "Messagerie" },
-  { key: "cahier-de-texte", label: "Cahier de texte" },
+  { key: "cahier-de-texte", label: "Devoirs" },
   { key: "manuels-ressources", label: "Manuels & resources" },
   { key: "formulaires-sondages", label: "Formulaires & sondages" },
 ];
