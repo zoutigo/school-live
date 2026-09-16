@@ -481,12 +481,6 @@ function buildRoleItems(
         icon: Trophy,
         matchPrefix: "/training-quiz",
       },
-      {
-        label: t("sidebar.nav.settings"),
-        href: "/settings",
-        icon: Settings,
-        matchPrefix: "/settings",
-      },
     ];
   }
 
@@ -1019,15 +1013,6 @@ export function AppSidebar({
     }));
   }, [teacherClasses, schoolSlug, t, badgeSummary, userId]);
 
-  const teacherGeneralItems = useMemo(
-    () => items.filter((item) => item.href !== "/settings"),
-    [items],
-  );
-  const teacherSettingsItem = useMemo(
-    () => items.find((item) => item.href === "/settings") ?? null,
-    [items],
-  );
-
   useEffect(() => {
     if (role !== "PARENT") {
       return;
@@ -1170,7 +1155,7 @@ export function AppSidebar({
                   className="mt-2 grid gap-1"
                   aria-label={t("sidebar.ariaTeacherGeneralMenu")}
                 >
-                  {teacherGeneralItems.map((item) => {
+                  {items.map((item) => {
                     const active = item.matchPrefix
                       ? pathname.startsWith(item.matchPrefix)
                       : pathname === item.href;
@@ -1286,28 +1271,6 @@ export function AppSidebar({
                 </div>
               );
             })}
-
-            {teacherSettingsItem ? (
-              <Link
-                href={teacherSettingsItem.href}
-                onClick={onNavigate}
-                className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
-                )}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                    pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
-                  )}`}
-                >
-                  <Settings className="h-4 w-4" />
-                </span>
-                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                  {teacherSettingsItem.label}
-                </span>
-              </Link>
-            ) : null}
           </div>
         ) : role !== "PARENT" ? (
           <nav
