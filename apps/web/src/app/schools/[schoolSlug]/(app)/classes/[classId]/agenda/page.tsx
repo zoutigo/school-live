@@ -2066,11 +2066,11 @@ export default function TeacherClassAgendaPage() {
             {context.schoolYears.length > 0 ? (
               <div className="rounded-card border border-border bg-background p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-text-secondary">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="shrink-0 text-text-secondary">
                       {t("timetable.agenda.schoolYear.label")}
                     </span>
-                    <div className="inline-flex w-full items-center justify-between gap-2 rounded-card border border-border bg-surface px-2 py-1 sm:w-auto sm:min-w-[320px] sm:max-w-[360px]">
+                    <div className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-card border border-border bg-surface px-2 py-1 sm:flex-none sm:min-w-[320px] sm:max-w-[360px]">
                       <Button
                         type="button"
                         variant="ghost"
@@ -2209,10 +2209,21 @@ export default function TeacherClassAgendaPage() {
                 <section className="rounded-card border border-border bg-background p-4">
                   {showSlotCreateForm ? (
                     <form
-                      className="grid gap-3 rounded-card border border-border bg-background p-4"
+                      className="grid gap-4 rounded-card border border-accent-teal/30 bg-surface p-4 shadow-card"
                       onSubmit={slotForm.handleSubmit(onSubmitSlot)}
                       noValidate
                     >
+                      <div>
+                        <h3 className="font-heading text-base font-semibold text-text-primary">
+                          {editingSlotId
+                            ? t("timetable.agenda.slotForm.editTitle")
+                            : t("timetable.agenda.slotForm.createTitle")}
+                        </h3>
+                        <p className="text-sm text-text-secondary">
+                          {t("timetable.agenda.slotForm.createSubtitle")}
+                        </p>
+                      </div>
+
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <FormField
                           label={t("timetable.agenda.slotForm.weekday")}
@@ -2381,58 +2392,23 @@ export default function TeacherClassAgendaPage() {
                             ]}
                           />
                         </FormField>
+                      </div>
 
-                        <FormField
-                          label={t("timetable.agenda.slotForm.activeFromDate")}
-                        >
-                          <DateInput
-                            value={slotValues.activeFromDate}
-                            onChange={(event) =>
-                              slotForm.setValue(
-                                "activeFromDate",
-                                event.target.value,
-                                {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                },
-                              )
-                            }
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                          />
-                        </FormField>
-
-                        <FormField
-                          label={t("timetable.agenda.slotForm.activeToDate")}
-                        >
-                          <DateInput
-                            value={slotValues.activeToDate}
-                            onChange={(event) =>
-                              slotForm.setValue(
-                                "activeToDate",
-                                event.target.value,
-                                {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                },
-                              )
-                            }
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                          />
-                        </FormField>
-
-                        {editingSlotId ? (
+                      <div>
+                        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                          {t("timetable.agenda.slotForm.validitySectionTitle")}
+                        </h4>
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                           <FormField
                             label={t(
-                              "timetable.agenda.slotForm.effectiveFromDate",
+                              "timetable.agenda.slotForm.activeFromDate",
                             )}
                           >
                             <DateInput
-                              value={slotValues.effectiveFromDate}
+                              value={slotValues.activeFromDate}
                               onChange={(event) =>
                                 slotForm.setValue(
-                                  "effectiveFromDate",
+                                  "activeFromDate",
                                   event.target.value,
                                   {
                                     shouldDirty: true,
@@ -2444,7 +2420,51 @@ export default function TeacherClassAgendaPage() {
                               className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                             />
                           </FormField>
-                        ) : null}
+
+                          <FormField
+                            label={t("timetable.agenda.slotForm.activeToDate")}
+                          >
+                            <DateInput
+                              value={slotValues.activeToDate}
+                              onChange={(event) =>
+                                slotForm.setValue(
+                                  "activeToDate",
+                                  event.target.value,
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                )
+                              }
+                              className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                            />
+                          </FormField>
+
+                          {editingSlotId ? (
+                            <FormField
+                              label={t(
+                                "timetable.agenda.slotForm.effectiveFromDate",
+                              )}
+                            >
+                              <DateInput
+                                value={slotValues.effectiveFromDate}
+                                onChange={(event) =>
+                                  slotForm.setValue(
+                                    "effectiveFromDate",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  )
+                                }
+                                className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                              />
+                            </FormField>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap gap-2">
@@ -2464,7 +2484,7 @@ export default function TeacherClassAgendaPage() {
                             }
                             iconLeft={<Plus size={14} />}
                           >
-                            Ajouter a la liste
+                            {t("timetable.agenda.slotForm.addToList")}
                           </Button>
                         ) : null}
                         <Button

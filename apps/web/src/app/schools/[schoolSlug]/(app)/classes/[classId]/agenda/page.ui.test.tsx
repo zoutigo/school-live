@@ -191,7 +191,7 @@ describe("Agenda page forms", () => {
     fireEvent.click(await screen.findByTitle("Ajouter"));
 
     const submitButton = await screen.findByRole("button", {
-      name: "Ajouter le creneau",
+      name: "Ajouter le créneau",
     });
     expect(submitButton).toBeEnabled();
 
