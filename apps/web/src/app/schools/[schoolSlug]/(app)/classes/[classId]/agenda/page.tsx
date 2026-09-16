@@ -311,6 +311,7 @@ function createOccurrenceFormSchema(t: TranslateFn) {
       start: z.string(),
       end: z.string(),
       room: z.string(),
+      reason: z.string(),
     })
     .superRefine((value, context) => {
       if (
@@ -321,6 +322,17 @@ function createOccurrenceFormSchema(t: TranslateFn) {
           code: z.ZodIssueCode.custom,
           path: ["occurrenceDateInput"],
           message: t("timetable.agenda.validation.selectOccurrenceDate"),
+        });
+      }
+
+      if (
+        value.actionType === "DELETE_OCCURRENCE" &&
+        value.reason.trim().length === 0
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["reason"],
+          message: t("timetable.agenda.validation.enterCancelReason"),
         });
       }
 
@@ -685,6 +697,7 @@ export default function TeacherClassAgendaPage() {
       start: "08:45",
       end: "09:40",
       room: "",
+      reason: "",
     },
   });
 
@@ -1057,6 +1070,7 @@ export default function TeacherClassAgendaPage() {
       subjectId: slot.subject.id,
       teacherUserId: slot.teacherUser.id,
       room: slot.room ?? "",
+      reason: "",
     });
     setOccurrenceModalStep("action");
     setError(null);
@@ -1552,8 +1566,11 @@ export default function TeacherClassAgendaPage() {
     try {
       if (values.actionType === "DELETE_OCCURRENCE") {
         if (occurrenceModalSlot.oneOffSlotId) {
+          const reasonQuery = values.reason.trim()
+            ? `?reason=${encodeURIComponent(values.reason.trim())}`
+            : "";
           const response = await fetch(
-            `${API_URL}/schools/${schoolSlug}/timetable/one-off-slots/${occurrenceModalSlot.oneOffSlotId}`,
+            `${API_URL}/schools/${schoolSlug}/timetable/one-off-slots/${occurrenceModalSlot.oneOffSlotId}${reasonQuery}`,
             {
               method: "DELETE",
               credentials: "include",
@@ -1583,6 +1600,7 @@ export default function TeacherClassAgendaPage() {
               body: JSON.stringify({
                 occurrenceDate: values.occurrenceDateInput,
                 type: "CANCEL",
+                reason: values.reason.trim() || undefined,
               }),
             },
           );
@@ -3044,6 +3062,36 @@ export default function TeacherClassAgendaPage() {
                             </div>
                           ) : null}
                         </article>
+                        {occurrenceActionType === "DELETE_OCCURRENCE" ? (
+                          <FormField
+                            label={t(
+                              "timetable.agenda.occurrenceModal.cancelReasonLabel",
+                            )}
+                            error={
+                              occurrenceForm.formState.errors.reason?.message
+                            }
+                          >
+                            <textarea
+                              value={occurrenceValues.reason}
+                              onChange={(event) =>
+                                occurrenceForm.setValue(
+                                  "reason",
+                                  event.target.value,
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                )
+                              }
+                              rows={2}
+                              placeholder={t(
+                                "timetable.agenda.occurrenceModal.cancelReasonPlaceholder",
+                              )}
+                              className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                            />
+                          </FormField>
+                        ) : null}
                       </div>
                     );
                   })()

@@ -2462,6 +2462,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "L'heure de debut doit etre avant l'heure de fin.",
     "timetable.agenda.validation.selectOccurrenceDate":
       "Selectionnez la date d'occurrence.",
+    "timetable.agenda.validation.enterCancelReason":
+      "Indiquez le motif de l'annulation.",
 
     "timetable.agenda.schoolYear.label": "Annee scolaire",
     "timetable.agenda.schoolYear.previousAria": "Annee precedente",
@@ -2546,6 +2548,10 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Voulez-vous vraiment supprimer toute la serie ?",
     "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
       "Voulez-vous vraiment supprimer cette occurrence ?",
+    "timetable.agenda.occurrenceModal.cancelReasonLabel":
+      "Motif de l'annulation",
+    "timetable.agenda.occurrenceModal.cancelReasonPlaceholder":
+      "Ex. : absence, formation, rendez-vous medical...",
     "timetable.agenda.occurrenceModal.cancelledSuffix": " · Annule",
     "timetable.agenda.occurrenceModal.roomPrefix": "Salle",
     "timetable.agenda.occurrenceModal.seriesStart": "Debut de serie :",
@@ -7874,6 +7880,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "The start time must be before the end time.",
     "timetable.agenda.validation.selectOccurrenceDate":
       "Select the occurrence date.",
+    "timetable.agenda.validation.enterCancelReason":
+      "Enter the cancellation reason.",
 
     "timetable.agenda.schoolYear.label": "School year",
     "timetable.agenda.schoolYear.previousAria": "Previous year",
@@ -7954,6 +7962,9 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Are you sure you want to delete the whole series?",
     "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
       "Are you sure you want to delete this occurrence?",
+    "timetable.agenda.occurrenceModal.cancelReasonLabel": "Cancellation reason",
+    "timetable.agenda.occurrenceModal.cancelReasonPlaceholder":
+      "E.g.: absence, training, medical appointment...",
     "timetable.agenda.occurrenceModal.cancelledSuffix": " · Cancelled",
     "timetable.agenda.occurrenceModal.roomPrefix": "Room",
     "timetable.agenda.occurrenceModal.seriesStart": "Series start:",
