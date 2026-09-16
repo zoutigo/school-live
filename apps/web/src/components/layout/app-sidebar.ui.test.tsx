@@ -109,6 +109,47 @@ describe("AppSidebar teacher class links", () => {
     );
   });
 
+  it("shows an Eleves (roll call) link per class section for teacher", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return new Response(
+          JSON.stringify({
+            assignments: [
+              {
+                classId: "class-1",
+                className: "6eC",
+                schoolYearId: "sy-1",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="TEACHER" schoolSlug="college-vogt" />);
+
+    const classButton = await screen.findByRole("button", { name: "6eC" });
+    fireEvent.click(classButton);
+
+    const attendanceLink = await screen.findByRole("link", {
+      name: "Élèves",
+    });
+    expect(attendanceLink.getAttribute("href")).toBe(
+      "/schools/college-vogt/classes/class-1/eleves",
+    );
+  });
+
   it("renders a logout action and delegates to the shell handler", () => {
     const onLogoutClick = vi.fn();
 

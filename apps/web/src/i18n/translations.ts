@@ -976,6 +976,47 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.teacherDiscipline.step3Body":
       "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
 
+    "onboardingTour.teacherAttendance.step1Title": "Choisir la date",
+    "onboardingTour.teacherAttendance.step1Body":
+      "Naviguez vers la veille ou le lendemain, ou choisissez une date précise, pour faire l'appel du jour souhaité.",
+    "onboardingTour.teacherAttendance.step2Title": "Cocher les absents",
+    "onboardingTour.teacherAttendance.step2Body":
+      "Chaque élève est présent par défaut : basculez sur Absent pour les élèves manquants ce jour-là.",
+    "onboardingTour.teacherAttendance.step3Title":
+      "Une aide toujours disponible",
+    "onboardingTour.teacherAttendance.step3Body":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour un rappel du fonctionnement de l'appel.",
+
+    "attendance.sidebar.attendance": "Élèves",
+    "attendance.page.titlePrefix": "Appel",
+    "attendance.page.defaultClassName": "Classe",
+    "attendance.page.subtitle":
+      "Cochez les élèves absents pour la date sélectionnée.",
+    "attendance.page.dateLabel": "Date",
+    "attendance.page.previousDayAria": "Jour précédent",
+    "attendance.page.nextDayAria": "Jour suivant",
+    "attendance.page.presentLabel": "Présent",
+    "attendance.page.absentLabel": "Absent",
+    "attendance.page.summary": "{present}/{total} présents",
+    "attendance.page.saveButton": "Enregistrer l'appel",
+    "attendance.page.saving": "Enregistrement...",
+    "attendance.page.emptyState": "Aucun élève inscrit dans cette classe.",
+    "attendance.page.classNotAccessible": "Classe non accessible.",
+    "attendance.common.loading": "Chargement...",
+    "attendance.common.networkError":
+      "Une erreur réseau est survenue. Réessayez.",
+    "attendance.common.csrfInvalid":
+      "Session invalide, merci de vous reconnecter.",
+    "attendance.errors.loadClass": "Impossible de charger la classe.",
+    "attendance.errors.loadRoster":
+      "Impossible de charger la liste des élèves.",
+    "attendance.errors.saveFailed": "Impossible d'enregistrer l'appel.",
+    "attendance.success.saved": "Appel enregistré.",
+    "attendance.pageHelp.title": "Comment utiliser l'appel",
+    "attendance.pageHelp.section1Title": "Faire l'appel du jour",
+    "attendance.pageHelp.section1Body":
+      "Choisissez une date puis basculez chaque élève sur Absent si besoin ; tous les élèves sont présents par défaut. Cliquez sur Enregistrer l'appel pour sauvegarder.",
+
     "discipline.help.summary":
       "ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees.",
     "discipline.help.record.name": "Saisir",
@@ -6456,6 +6497,43 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.teacherDiscipline.step3Title": "Help is always available",
     "onboardingTour.teacherDiscipline.step3Body":
       'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
+
+    "onboardingTour.teacherAttendance.step1Title": "Pick the date",
+    "onboardingTour.teacherAttendance.step1Body":
+      "Move to the previous or next day, or pick a specific date, to take roll call for that day.",
+    "onboardingTour.teacherAttendance.step2Title": "Mark absentees",
+    "onboardingTour.teacherAttendance.step2Body":
+      "Every student is present by default: switch a student to Absent if they are missing that day.",
+    "onboardingTour.teacherAttendance.step3Title": "Help is always available",
+    "onboardingTour.teacherAttendance.step3Body":
+      'Open this menu at any time, then "Help", for a reminder of how roll call works.',
+
+    "attendance.sidebar.attendance": "Students",
+    "attendance.page.titlePrefix": "Roll call",
+    "attendance.page.defaultClassName": "Class",
+    "attendance.page.subtitle":
+      "Check the students who are absent for the selected date.",
+    "attendance.page.dateLabel": "Date",
+    "attendance.page.previousDayAria": "Previous day",
+    "attendance.page.nextDayAria": "Next day",
+    "attendance.page.presentLabel": "Present",
+    "attendance.page.absentLabel": "Absent",
+    "attendance.page.summary": "{present}/{total} present",
+    "attendance.page.saveButton": "Save roll call",
+    "attendance.page.saving": "Saving...",
+    "attendance.page.emptyState": "No student enrolled in this class.",
+    "attendance.page.classNotAccessible": "Class not accessible.",
+    "attendance.common.loading": "Loading...",
+    "attendance.common.networkError": "A network error occurred. Try again.",
+    "attendance.common.csrfInvalid": "Invalid session, please sign in again.",
+    "attendance.errors.loadClass": "Unable to load the class.",
+    "attendance.errors.loadRoster": "Unable to load the student list.",
+    "attendance.errors.saveFailed": "Unable to save the roll call.",
+    "attendance.success.saved": "Roll call saved.",
+    "attendance.pageHelp.title": "How to use roll call",
+    "attendance.pageHelp.section1Title": "Take today's roll call",
+    "attendance.pageHelp.section1Body":
+      "Pick a date, then switch a student to Absent if needed; every student is present by default. Click Save roll call to store it.",
 
     "discipline.help.summary":
       "this module lets the teacher record absences, lateness, sanctions and punishments for their assigned classes.",

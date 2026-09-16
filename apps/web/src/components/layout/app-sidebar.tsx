@@ -738,6 +738,12 @@ function buildTeacherClassItems(
       matchPrefix: `${base}/fil`,
     },
     {
+      label: t("attendance.sidebar.attendance"),
+      href: `${base}/eleves`,
+      icon: Users,
+      matchPrefix: `${base}/eleves`,
+    },
+    {
       label: t("sidebar.nav.grades"),
       href: `${base}/notes`,
       icon: BookOpen,
