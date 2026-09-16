@@ -274,17 +274,22 @@ function mockFetch({
   chapterAfterAnswer,
   answerResult,
   linkedStudents = [{ id: "child-1" }],
+  teacherAssignments,
 }: {
   chapter?: unknown;
   chapterAfterAnswer?: unknown;
   answerResult?: unknown;
   linkedStudents?: Array<{ id: string }>;
+  teacherAssignments?: Array<{ classId: string }>;
 } = {}) {
   let answered = false;
   global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/schools/ecole-test/me")) {
       return jsonResponse({ linkedStudents });
+    }
+    if (url.endsWith("/schools/ecole-test/student-grades/context")) {
+      return jsonResponse({ assignments: teacherAssignments ?? [] });
     }
     if (url.endsWith("/me")) return jsonResponse({ schoolSlug: "ecole-test" });
     if (url.endsWith("/training-quiz/chapters/chapter-1")) {
@@ -496,6 +501,42 @@ describe("TrainingQuizChapterPage", () => {
 
     expect(pushMock).toHaveBeenCalledWith(
       "/schools/ecole-test/children/child-1/discipline",
+    );
+  });
+
+  it("resolves a {classId} deep link from the teacher's grades context", async () => {
+    const CLASS_CHAPTER = {
+      ...DISCOVERY_CHAPTER,
+      questions: [
+        {
+          ...DISCOVERY_CHAPTER.questions[0],
+          deepLinkRoute: "/classes/{classId}/notes",
+        },
+        DISCOVERY_CHAPTER.questions[1],
+      ],
+    };
+    mockFetch({
+      chapter: CLASS_CHAPTER,
+      teacherAssignments: [{ classId: "class-6a" }],
+      answerResult: {
+        correct: false,
+        alreadySolved: false,
+        explanation: "Pas exactement.",
+        correctOptionIds: [],
+        attemptsCount: 1,
+      },
+    });
+    render(<TrainingQuizChapterPage />);
+
+    await screen.findByText("Onglet Discipline");
+    fireEvent.click(screen.getByText("Messagerie"));
+    fireEvent.click(screen.getByText("Valider"));
+
+    await screen.findByText("Voir dans l'application");
+    fireEvent.click(screen.getByText("Voir dans l'application"));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/schools/ecole-test/classes/class-6a/notes",
     );
   });
 

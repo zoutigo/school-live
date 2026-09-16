@@ -194,6 +194,11 @@ describe("AppSidebar teacher class links", () => {
     });
     expect(resourcesLink.getAttribute("href")).toBe("/resources");
 
+    const trainingQuizLink = await screen.findByRole("link", {
+      name: "Quiz de formation",
+    });
+    expect(trainingQuizLink.getAttribute("href")).toBe("/training-quiz");
+
     expect(
       screen.queryByRole("link", { name: "Cahier de notes" }),
     ).not.toBeInTheDocument();
