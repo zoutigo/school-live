@@ -157,7 +157,9 @@ describe("Teacher class attendance page", () => {
     const absentButtons = screen.getAllByRole("button", { name: "Absent" });
     fireEvent.click(absentButtons[0]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Enregistrer l'appel" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Enregistrer l'appel" }),
+    );
 
     await screen.findByText("Appel enregistré.");
 
@@ -193,7 +195,9 @@ describe("Teacher class attendance page", () => {
     render(<TeacherClassAttendancePage />);
 
     await screen.findByText("Ateba Alice");
-    fireEvent.click(screen.getByRole("button", { name: "Enregistrer l'appel" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Enregistrer l'appel" }),
+    );
 
     await waitFor(() =>
       expect(replaceMock).toHaveBeenCalledWith("/schools/college-vogt/login"),
