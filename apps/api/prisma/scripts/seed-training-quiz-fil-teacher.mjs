@@ -38,8 +38,8 @@ const QUESTIONS = [
     textFr:
       "En tant qu'enseignant, quels fils d'actualité pouvez-vous consulter ?",
     textEn: "As a teacher, which news feeds can you view?",
-    hintFr: "Il n'existe pas de fil \"personnel\" séparé.",
-    hintEn: "There is no separate \"personal\" feed.",
+    hintFr: 'Il n\'existe pas de fil "personnel" séparé.',
+    hintEn: 'There is no separate "personal" feed.',
     explanationFr:
       "Le fil général de l'école et le fil de chacune des classes où vous enseignez.",
     explanationEn:
@@ -50,9 +50,21 @@ const QUESTIONS = [
         textEn: "The school's general feed and your classes' feeds",
         isCorrect: true,
       },
-      { textFr: "Uniquement un fil personnel privé", textEn: "Only a private personal feed", isCorrect: false },
-      { textFr: "Aucun, c'est réservé aux parents", textEn: "None, it's reserved to parents", isCorrect: false },
-      { textFr: "Le fil de toutes les écoles du réseau", textEn: "The feed of every school in the network", isCorrect: false },
+      {
+        textFr: "Uniquement un fil personnel privé",
+        textEn: "Only a private personal feed",
+        isCorrect: false,
+      },
+      {
+        textFr: "Aucun, c'est réservé aux parents",
+        textEn: "None, it's reserved to parents",
+        isCorrect: false,
+      },
+      {
+        textFr: "Le fil de toutes les écoles du réseau",
+        textEn: "The feed of every school in the network",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -61,18 +73,35 @@ const QUESTIONS = [
     stage: "DISCOVERY",
     image: null,
     deepLinkRoute: CLASS_DEEP_LINK,
-    textFr: "Comment accédez-vous au fil d'actualité d'une classe que vous enseignez ?",
+    textFr:
+      "Comment accédez-vous au fil d'actualité d'une classe que vous enseignez ?",
     textEn: "How do you reach the news feed of a class you teach?",
     hintFr: "C'est une entrée du menu de cette classe.",
     hintEn: "It's an entry in that class's menu.",
     explanationFr:
-      "Depuis le menu de la classe concernée, l'entrée \"Fil de classe\".",
-    explanationEn: "From that class's menu, the \"Class feed\" entry.",
+      'Depuis le menu de la classe concernée, l\'entrée "Fil de classe".',
+    explanationEn: 'From that class\'s menu, the "Class feed" entry.',
     options: [
-      { textFr: "Le menu de la classe > Fil de classe", textEn: "The class menu > Class feed", isCorrect: true },
-      { textFr: "Les paramètres du compte", textEn: "Account settings", isCorrect: false },
-      { textFr: "La messagerie privée", textEn: "Private messaging", isCorrect: false },
-      { textFr: "L'onglet Discipline", textEn: "The Discipline tab", isCorrect: false },
+      {
+        textFr: "Le menu de la classe > Fil de classe",
+        textEn: "The class menu > Class feed",
+        isCorrect: true,
+      },
+      {
+        textFr: "Les paramètres du compte",
+        textEn: "Account settings",
+        isCorrect: false,
+      },
+      {
+        textFr: "La messagerie privée",
+        textEn: "Private messaging",
+        isCorrect: false,
+      },
+      {
+        textFr: "L'onglet Discipline",
+        textEn: "The Discipline tab",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -83,18 +112,30 @@ const QUESTIONS = [
     deepLinkRoute: GENERAL_DEEP_LINK,
     textFr:
       "Quelles actions pouvez-vous réaliser sur le fil d'actualité ? (plusieurs réponses)",
-    textEn: "Which actions can you take on the news feed? (select all that apply)",
+    textEn:
+      "Which actions can you take on the news feed? (select all that apply)",
     hintFr: "Un des boutons permet aussi de créer un sondage.",
     hintEn: "One of the buttons also lets you create a poll.",
     explanationFr:
       "Publier une info, réaliser un sondage, et réagir/commenter les publications.",
-    explanationEn:
-      "Publish an update, run a poll, and react/comment on posts.",
+    explanationEn: "Publish an update, run a poll, and react/comment on posts.",
     options: [
-      { textFr: "Publier une info", textEn: "Publish an update", isCorrect: true },
+      {
+        textFr: "Publier une info",
+        textEn: "Publish an update",
+        isCorrect: true,
+      },
       { textFr: "Réaliser un sondage", textEn: "Run a poll", isCorrect: true },
-      { textFr: "Réagir et commenter une publication", textEn: "React and comment on a post", isCorrect: true },
-      { textFr: "Modifier les notes d'un élève", textEn: "Edit a student's grades", isCorrect: false },
+      {
+        textFr: "Réagir et commenter une publication",
+        textEn: "React and comment on a post",
+        isCorrect: true,
+      },
+      {
+        textFr: "Modifier les notes d'un élève",
+        textEn: "Edit a student's grades",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -105,7 +146,8 @@ const QUESTIONS = [
     deepLinkRoute: CLASS_DEEP_LINK,
     textFr:
       "Sur le fil d'une classe précise, vous devez choisir l'audience à chaque publication.",
-    textEn: "On a specific class's feed, you must choose the audience for every post.",
+    textEn:
+      "On a specific class's feed, you must choose the audience for every post.",
     hintFr: "Le fil de classe cible déjà une audience évidente.",
     hintEn: "The class feed already targets an obvious audience.",
     explanationFr:
@@ -139,9 +181,21 @@ const QUESTIONS = [
         textEn: "School parents and students, a class, or the internal team",
         isCorrect: true,
       },
-      { textFr: "Uniquement les administrateurs de la plateforme", textEn: "Only platform administrators", isCorrect: false },
-      { textFr: "Uniquement vos propres enfants", textEn: "Only your own children", isCorrect: false },
-      { textFr: "Toutes les écoles du réseau Scolive", textEn: "Every school in the Scolive network", isCorrect: false },
+      {
+        textFr: "Uniquement les administrateurs de la plateforme",
+        textEn: "Only platform administrators",
+        isCorrect: false,
+      },
+      {
+        textFr: "Uniquement vos propres enfants",
+        textEn: "Only your own children",
+        isCorrect: false,
+      },
+      {
+        textFr: "Toutes les écoles du réseau Scolive",
+        textEn: "Every school in the Scolive network",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -156,13 +210,25 @@ const QUESTIONS = [
       "You want to gather families' opinions on the theme of an upcoming school trip. Which tool do you use?",
     hintFr: "Ce n'est pas une simple publication texte.",
     hintEn: "It's not a simple text post.",
-    explanationFr: "Le bouton \"Réaliser un sondage\" du fil d'actualité.",
-    explanationEn: "The \"Run a poll\" button on the news feed.",
+    explanationFr: 'Le bouton "Réaliser un sondage" du fil d\'actualité.',
+    explanationEn: 'The "Run a poll" button on the news feed.',
     options: [
       { textFr: "Réaliser un sondage", textEn: "Run a poll", isCorrect: true },
-      { textFr: "Envoyer une convocation", textEn: "Send a summons", isCorrect: false },
-      { textFr: "Créer une évaluation", textEn: "Create an assessment", isCorrect: false },
-      { textFr: "Ouvrir un ticket d'assistance", textEn: "Open a support ticket", isCorrect: false },
+      {
+        textFr: "Envoyer une convocation",
+        textEn: "Send a summons",
+        isCorrect: false,
+      },
+      {
+        textFr: "Créer une évaluation",
+        textEn: "Create an assessment",
+        isCorrect: false,
+      },
+      {
+        textFr: "Ouvrir un ticket d'assistance",
+        textEn: "Open a support ticket",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -176,13 +242,31 @@ const QUESTIONS = [
     textEn: "How do you quickly find an old post in a very active class feed?",
     hintFr: "Il y a une barre dédiée juste au-dessus des publications.",
     hintEn: "There's a dedicated bar just above the posts.",
-    explanationFr: "Avec la barre de recherche \"Rechercher une publication\" (ou \"Rechercher dans le fil\").",
-    explanationEn: "With the \"Search a post\" (or \"Search the feed\") search bar.",
+    explanationFr:
+      'Avec la barre de recherche "Rechercher une publication" (ou "Rechercher dans le fil").',
+    explanationEn:
+      'With the "Search a post" (or "Search the feed") search bar.',
     options: [
-      { textFr: "La barre de recherche du fil", textEn: "The feed's search bar", isCorrect: true },
-      { textFr: "En appelant l'administration", textEn: "By calling the front office", isCorrect: false },
-      { textFr: "En parcourant tous les messages privés", textEn: "By browsing all private messages", isCorrect: false },
-      { textFr: "Ce n'est pas possible", textEn: "It isn't possible", isCorrect: false },
+      {
+        textFr: "La barre de recherche du fil",
+        textEn: "The feed's search bar",
+        isCorrect: true,
+      },
+      {
+        textFr: "En appelant l'administration",
+        textEn: "By calling the front office",
+        isCorrect: false,
+      },
+      {
+        textFr: "En parcourant tous les messages privés",
+        textEn: "By browsing all private messages",
+        isCorrect: false,
+      },
+      {
+        textFr: "Ce n'est pas possible",
+        textEn: "It isn't possible",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -207,9 +291,21 @@ const QUESTIONS = [
         textEn: "Access is denied, you aren't assigned to that class",
         isCorrect: true,
       },
-      { textFr: "Vous pouvez consulter mais pas publier", textEn: "You can view but not post", isCorrect: false },
-      { textFr: "Vous pouvez tout faire comme dans vos classes", textEn: "You can do everything like in your classes", isCorrect: false },
-      { textFr: "Une demande est envoyée au référent", textEn: "A request is sent to the referent", isCorrect: false },
+      {
+        textFr: "Vous pouvez consulter mais pas publier",
+        textEn: "You can view but not post",
+        isCorrect: false,
+      },
+      {
+        textFr: "Vous pouvez tout faire comme dans vos classes",
+        textEn: "You can do everything like in your classes",
+        isCorrect: false,
+      },
+      {
+        textFr: "Une demande est envoyée au référent",
+        textEn: "A request is sent to the referent",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -220,13 +316,14 @@ const QUESTIONS = [
     deepLinkRoute: GENERAL_DEEP_LINK,
     textFr:
       "En tant qu'enseignant, vous pouvez publier une information réservée uniquement aux parents (sans les élèves).",
-    textEn: "As a teacher, you can publish an update reserved only to parents (without students).",
+    textEn:
+      "As a teacher, you can publish an update reserved only to parents (without students).",
     hintFr: "Cette audience précise n'existe pas côté enseignant.",
     hintEn: "That precise audience doesn't exist on the teacher side.",
     explanationFr:
-      "Faux : l'audience \"Parents uniquement\" n'est pas proposée aux enseignants, seulement \"Parents et élèves de l'école\".",
+      'Faux : l\'audience "Parents uniquement" n\'est pas proposée aux enseignants, seulement "Parents et élèves de l\'école".',
     explanationEn:
-      "False: the \"Parents only\" audience isn't offered to teachers, only \"School parents and students\".",
+      'False: the "Parents only" audience isn\'t offered to teachers, only "School parents and students".',
     options: [
       { textFr: "Vrai", textEn: "True", isCorrect: false },
       { textFr: "Faux", textEn: "False", isCorrect: true },
