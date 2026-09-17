@@ -37,13 +37,14 @@ const QUESTIONS = [
     deepLinkRoute: GENERAL_DEEP_LINK,
     textFr: "Où consultez-vous le fil d'actualité général de l'école ?",
     textEn: "Where do you check the school's general news feed?",
-    hintFr: "C'est une entrée de votre menu principal, pas du sous-menu d'un enfant.",
+    hintFr:
+      "C'est une entrée de votre menu principal, pas du sous-menu d'un enfant.",
     hintEn: "It's an entry in your main menu, not a child's submenu.",
-    explanationFr: 'L\'entrée "Fil d\'actualité" de votre menu principal.',
+    explanationFr: "L'entrée \"Fil d'actualité\" de votre menu principal.",
     explanationEn: 'The "News feed" entry of your main menu.',
     options: [
       {
-        textFr: "Le menu \"Fil d'actualité\"",
+        textFr: 'Le menu "Fil d\'actualité"',
         textEn: 'The "News feed" menu',
         isCorrect: true,
       },
@@ -93,12 +94,14 @@ const QUESTIONS = [
     stage: "DISCOVERY",
     image: null,
     deepLinkRoute: GENERAL_DEEP_LINK,
-    textFr: "Quelle audience un parent peut-il choisir en publiant sur le fil général ?",
-    textEn: "Which audience can a parent pick when publishing on the general feed?",
+    textFr:
+      "Quelle audience un parent peut-il choisir en publiant sur le fil général ?",
+    textEn:
+      "Which audience can a parent pick when publishing on the general feed?",
     hintFr: "Contrairement au personnel de l'école, vous n'avez pas de choix.",
     hintEn: "Unlike school staff, you don't get a choice.",
     explanationFr:
-      "Une seule option, fixe : \"Parents uniquement\". Seul le personnel choisit une audience plus large.",
+      'Une seule option, fixe : "Parents uniquement". Seul le personnel choisit une audience plus large.',
     explanationEn:
       'A single, fixed option: "Parents only". Only staff can pick a broader audience.',
     options: [
@@ -131,11 +134,13 @@ const QUESTIONS = [
     image: null,
     deepLinkRoute: CHILD_DEEP_LINK,
     textFr:
-      "Le fil \"Vie de classe\" accessible depuis la fiche d'un enfant permet de commenter et réagir, comme le fil général.",
+      'Le fil "Vie de classe" accessible depuis la fiche d\'un enfant permet de commenter et réagir, comme le fil général.',
     textEn:
-      "The \"Class life\" feed accessible from a child's page lets you comment and react, just like the general feed.",
-    hintFr: "Ce fil sert uniquement à vous informer de ce qui se passe dans la classe.",
-    hintEn: "This feed is only there to keep you informed of what happens in class.",
+      'The "Class life" feed accessible from a child\'s page lets you comment and react, just like the general feed.',
+    hintFr:
+      "Ce fil sert uniquement à vous informer de ce qui se passe dans la classe.",
+    hintEn:
+      "This feed is only there to keep you informed of what happens in class.",
     explanationFr:
       "Faux : ce fil est en lecture seule pour le parent, sans publication, commentaire ni réaction possibles.",
     explanationEn:
@@ -151,8 +156,8 @@ const QUESTIONS = [
     stage: "DISCOVERY",
     image: null,
     deepLinkRoute: CHILD_DEEP_LINK,
-    textFr: "Le fil \"Vie de classe\" d'un enfant particulier montre :",
-    textEn: "A specific child's \"Class life\" feed shows:",
+    textFr: 'Le fil "Vie de classe" d\'un enfant particulier montre :',
+    textEn: 'A specific child\'s "Class life" feed shows:',
     hintFr: "Il ne s'agit pas du fil général de l'école.",
     hintEn: "It isn't the school's general feed.",
     explanationFr:
@@ -187,17 +192,19 @@ const QUESTIONS = [
     stage: "PRACTICE",
     image: null,
     deepLinkRoute: GENERAL_DEEP_LINK,
-    textFr: "Comment créez-vous un sondage plutôt qu'une publication classique ?",
+    textFr:
+      "Comment créez-vous un sondage plutôt qu'une publication classique ?",
     textEn: "How do you create a poll instead of a regular post?",
     hintFr: "Le choix se fait au tout début, avant de rédiger le contenu.",
-    hintEn: "The choice is made right at the start, before writing the content.",
+    hintEn:
+      "The choice is made right at the start, before writing the content.",
     explanationFr:
-      "En sélectionnant \"Sondage\" dans le composeur, puis en renseignant la question et les options de réponse.",
+      'En sélectionnant "Sondage" dans le composeur, puis en renseignant la question et les options de réponse.',
     explanationEn:
       'By selecting "Poll" in the composer, then filling in the question and answer options.',
     options: [
       {
-        textFr: "En choisissant \"Sondage\" dans le composeur",
+        textFr: 'En choisissant "Sondage" dans le composeur',
         textEn: 'By choosing "Poll" in the composer',
         isCorrect: true,
       },
@@ -255,11 +262,13 @@ const QUESTIONS = [
     stage: "PRACTICE",
     image: null,
     deepLinkRoute: GENERAL_DEEP_LINK,
-    textFr: "Comment réagissez-vous (\"j'aime\") à une publication du fil général ?",
-    textEn: "How do you react (\"like\") to a post on the general feed?",
+    textFr:
+      'Comment réagissez-vous ("j\'aime") à une publication du fil général ?',
+    textEn: 'How do you react ("like") to a post on the general feed?',
     hintFr: "L'icône se trouve directement sous la publication.",
     hintEn: "The icon sits directly under the post.",
-    explanationFr: "En touchant l'icône de réaction affichée sous la publication.",
+    explanationFr:
+      "En touchant l'icône de réaction affichée sous la publication.",
     explanationEn: "By tapping the reaction icon shown under the post.",
     options: [
       {
@@ -290,10 +299,13 @@ const QUESTIONS = [
     stage: "PRACTICE",
     image: null,
     deepLinkRoute: GENERAL_DEEP_LINK,
-    textFr: "Comment ajoutez-vous un commentaire sur une publication du fil général ?",
+    textFr:
+      "Comment ajoutez-vous un commentaire sur une publication du fil général ?",
     textEn: "How do you add a comment to a post on the general feed?",
-    hintFr: "Une icône dédiée, distincte de la réaction, ouvre la zone de saisie.",
-    hintEn: "A dedicated icon, separate from the reaction, opens the input area.",
+    hintFr:
+      "Une icône dédiée, distincte de la réaction, ouvre la zone de saisie.",
+    hintEn:
+      "A dedicated icon, separate from the reaction, opens the input area.",
     explanationFr:
       "En touchant l'icône commentaire de la publication, puis en saisissant votre message.",
     explanationEn:
@@ -327,7 +339,8 @@ const QUESTIONS = [
     stage: "MASTERY",
     image: null,
     deepLinkRoute: GENERAL_DEEP_LINK,
-    textFr: "Une fois publiée, vous pouvez modifier ou supprimer votre propre publication.",
+    textFr:
+      "Une fois publiée, vous pouvez modifier ou supprimer votre propre publication.",
     textEn: "Once published, you can edit or delete your own post.",
     hintFr: "Les actions apparaissent directement sur votre publication.",
     hintEn: "The actions appear directly on your own post.",
@@ -354,8 +367,7 @@ const QUESTIONS = [
     hintEn: "This option only appears in staff's composer.",
     explanationFr:
       "Non : seul le personnel de l'école peut épingler une publication pour une durée donnée.",
-    explanationEn:
-      "No: only school staff can pin a post for a given duration.",
+    explanationEn: "No: only school staff can pin a post for a given duration.",
     options: [
       {
         textFr: "Non, c'est réservé au personnel de l'école",

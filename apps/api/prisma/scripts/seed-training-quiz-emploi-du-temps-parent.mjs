@@ -42,7 +42,7 @@ const QUESTIONS = [
     explanationFr:
       'Depuis la fiche de votre enfant, l\'entrée "Emploi du temps" ouvre son planning.',
     explanationEn:
-      "From your child's page, the \"Schedule\" entry opens their timetable.",
+      'From your child\'s page, the "Schedule" entry opens their timetable.',
     options: [
       {
         textFr: "Dans le sous-menu de l'enfant concerné",
@@ -54,7 +54,11 @@ const QUESTIONS = [
         textEn: "In the general news feed",
         isCorrect: false,
       },
-      { textFr: "Dans la messagerie", textEn: "In messaging", isCorrect: false },
+      {
+        textFr: "Dans la messagerie",
+        textEn: "In messaging",
+        isCorrect: false,
+      },
       {
         textFr: "Dans la situation financière",
         textEn: "In the financial overview",
@@ -75,7 +79,11 @@ const QUESTIONS = [
     explanationFr: "Jour, Semaine et Mois.",
     explanationEn: "Day, Week and Month.",
     options: [
-      { textFr: "Jour, Semaine, Mois", textEn: "Day, Week, Month", isCorrect: true },
+      {
+        textFr: "Jour, Semaine, Mois",
+        textEn: "Day, Week, Month",
+        isCorrect: true,
+      },
       {
         textFr: "Matin, Après-midi, Soir",
         textEn: "Morning, Afternoon, Evening",
@@ -86,7 +94,11 @@ const QUESTIONS = [
         textEn: "Term 1, 2, 3",
         isCorrect: false,
       },
-      { textFr: "Classe, École, Ville", textEn: "Class, School, City", isCorrect: false },
+      {
+        textFr: "Classe, École, Ville",
+        textEn: "Class, School, City",
+        isCorrect: false,
+      },
     ],
   },
   {
@@ -124,7 +136,11 @@ const QUESTIONS = [
     explanationFr: "L'horaire, la matière, l'enseignant et la salle.",
     explanationEn: "The time slot, the subject, the teacher and the room.",
     options: [
-      { textFr: "L'horaire du cours", textEn: "The class time", isCorrect: true },
+      {
+        textFr: "L'horaire du cours",
+        textEn: "The class time",
+        isCorrect: true,
+      },
       { textFr: "La matière", textEn: "The subject", isCorrect: true },
       {
         textFr: "L'enseignant et la salle",
@@ -186,9 +202,12 @@ const QUESTIONS = [
     textEn:
       "You want to see your child's whole week at a glance. Which mode do you pick?",
     hintFr: "Ce n'est ni le plus détaillé ni le plus large des trois modes.",
-    hintEn: "It's neither the most detailed nor the broadest of the three modes.",
-    explanationFr: "Le mode Semaine, entre le détail du Jour et la vue globale du Mois.",
-    explanationEn: "Week mode, between the detail of Day and the overview of Month.",
+    hintEn:
+      "It's neither the most detailed nor the broadest of the three modes.",
+    explanationFr:
+      "Le mode Semaine, entre le détail du Jour et la vue globale du Mois.",
+    explanationEn:
+      "Week mode, between the detail of Day and the overview of Month.",
     options: [
       { textFr: "Semaine", textEn: "Week", isCorrect: true },
       { textFr: "Jour", textEn: "Day", isCorrect: false },
@@ -202,12 +221,15 @@ const QUESTIONS = [
     stage: "PRACTICE",
     image: null,
     deepLinkRoute: DEEP_LINK,
-    textFr: "Comment revenez-vous directement à aujourd'hui après avoir navigué loin dans le temps ?",
+    textFr:
+      "Comment revenez-vous directement à aujourd'hui après avoir navigué loin dans le temps ?",
     textEn: "How do you jump straight back to today after navigating far away?",
     hintFr: "Il n'est pas nécessaire d'utiliser les flèches plusieurs fois.",
     hintEn: "You don't need to tap the arrows repeatedly.",
-    explanationFr: "En touchant le libellé de la période affichée, au centre de la barre de navigation.",
-    explanationEn: "By tapping the displayed period's label, in the middle of the navigation bar.",
+    explanationFr:
+      "En touchant le libellé de la période affichée, au centre de la barre de navigation.",
+    explanationEn:
+      "By tapping the displayed period's label, in the middle of the navigation bar.",
     options: [
       {
         textFr: "En touchant le libellé de la période",
@@ -237,11 +259,13 @@ const QUESTIONS = [
     stage: "PRACTICE",
     image: null,
     deepLinkRoute: DEEP_LINK,
-    textFr: "Comment vous déplacez-vous d'une semaine à l'autre en vue Semaine ?",
+    textFr:
+      "Comment vous déplacez-vous d'une semaine à l'autre en vue Semaine ?",
     textEn: "How do you move from one week to the next in Week view?",
     hintFr: "Elles se trouvent de part et d'autre du libellé de la période.",
     hintEn: "They sit on either side of the period's label.",
-    explanationFr: "Avec les flèches précédent/suivant de la barre de navigation.",
+    explanationFr:
+      "Avec les flèches précédent/suivant de la barre de navigation.",
     explanationEn: "With the previous/next arrows on the navigation bar.",
     options: [
       {
@@ -332,7 +356,8 @@ const QUESTIONS = [
     deepLinkRoute: DEEP_LINK,
     textFr:
       "Où retrouvez-vous le motif si une séance a été annulée par l'enseignant ?",
-    textEn: "Where do you find the reason if a class was cancelled by the teacher?",
+    textEn:
+      "Where do you find the reason if a class was cancelled by the teacher?",
     hintFr: "Ce n'est pas dans l'emploi du temps lui-même.",
     hintEn: "It isn't in the schedule itself.",
     explanationFr:

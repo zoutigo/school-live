@@ -51,7 +51,11 @@ const QUESTIONS = [
         textEn: "In the general news feed",
         isCorrect: false,
       },
-      { textFr: "Dans la messagerie", textEn: "In messaging", isCorrect: false },
+      {
+        textFr: "Dans la messagerie",
+        textEn: "In messaging",
+        isCorrect: false,
+      },
       {
         textFr: "Dans l'emploi du temps",
         textEn: "In the schedule",
@@ -100,15 +104,15 @@ const QUESTIONS = [
     stage: "DISCOVERY",
     image: null,
     deepLinkRoute: DEEP_LINK,
-    textFr:
-      "Que regroupe l'onglet \"Conditions\" ? (plusieurs réponses)",
-    textEn: "What does the \"Conditions\" tab group? (select all that apply)",
+    textFr: 'Que regroupe l\'onglet "Conditions" ? (plusieurs réponses)',
+    textEn: 'What does the "Conditions" tab group? (select all that apply)',
     hintFr: "Ce sont des informations durables, pas des événements ponctuels.",
-    hintEn: "These are long-standing pieces of information, not one-off events.",
+    hintEn:
+      "These are long-standing pieces of information, not one-off events.",
     explanationFr:
-      "Les allergies, pathologies, traitements et consignes durables (et \"Autre\").",
+      'Les allergies, pathologies, traitements et consignes durables (et "Autre").',
     explanationEn:
-      "Allergies, pathologies, treatments and long-standing instructions (and \"Other\").",
+      'Allergies, pathologies, treatments and long-standing instructions (and "Other").',
     options: [
       { textFr: "Les allergies", textEn: "Allergies", isCorrect: true },
       {
@@ -134,8 +138,8 @@ const QUESTIONS = [
     stage: "DISCOVERY",
     image: null,
     deepLinkRoute: DEEP_LINK,
-    textFr: "Que regroupe l'onglet \"Historique\" ?",
-    textEn: "What does the \"History\" tab group?",
+    textFr: 'Que regroupe l\'onglet "Historique" ?',
+    textEn: 'What does the "History" tab group?',
     hintFr: "Contrairement à Conditions, tout y est daté.",
     hintEn: "Unlike Conditions, everything here has a date.",
     explanationFr:
@@ -173,8 +177,7 @@ const QUESTIONS = [
     deepLinkRoute: DEEP_LINK,
     textFr:
       "Combien de niveaux d'alerte peuvent qualifier une condition ou un événement ?",
-    textEn:
-      "How many alert levels can qualify a condition or an event?",
+    textEn: "How many alert levels can qualify a condition or an event?",
     hintFr: "Le plus grave porte un nom qui appelle à agir vite.",
     hintEn: "The most severe one has a name that calls for quick action.",
     explanationFr: "Trois : Info, Attention et Urgent.",
@@ -200,10 +203,10 @@ const QUESTIONS = [
     textEn: "Which button do you use to add health information?",
     hintFr: "C'est un bouton flottant, visible en bas de l'écran.",
     hintEn: "It's a floating button, visible at the bottom of the screen.",
-    explanationFr: "Le bouton \"+\".",
+    explanationFr: 'Le bouton "+".',
     explanationEn: 'The "+" button.',
     options: [
-      { textFr: "Le bouton \"+\"", textEn: 'The "+" button', isCorrect: true },
+      { textFr: 'Le bouton "+"', textEn: 'The "+" button', isCorrect: true },
       {
         textFr: "Le menu Paramètres",
         textEn: "The Settings menu",
@@ -226,7 +229,7 @@ const QUESTIONS = [
     textFr:
       "Sur quel onglet le bouton \"+\" ouvre-t-il le formulaire d'ajout d'une nouvelle condition (allergie, pathologie...) ?",
     textEn:
-      "On which tab does the \"+\" button open the form to add a new condition (allergy, pathology...)?",
+      'On which tab does the "+" button open the form to add a new condition (allergy, pathology...)?',
     hintFr: "C'est l'onglet des informations durables.",
     hintEn: "It's the tab for long-standing information.",
     explanationFr: "Sur l'onglet Conditions.",
@@ -253,9 +256,9 @@ const QUESTIONS = [
     image: null,
     deepLinkRoute: DEEP_LINK,
     textFr:
-      "Sur quel onglet le bouton \"+\" permet-il de signaler un événement survenu hors école ?",
+      'Sur quel onglet le bouton "+" permet-il de signaler un événement survenu hors école ?',
     textEn:
-      "On which tab does the \"+\" button let you report an event that happened outside school?",
+      'On which tab does the "+" button let you report an event that happened outside school?',
     hintFr: "C'est l'onglet trié par date.",
     hintEn: "It's the tab sorted by date.",
     explanationFr: "Sur l'onglet Historique.",
@@ -349,8 +352,10 @@ const QUESTIONS = [
       "Lorsque vous signalez un événement de santé survenu hors école, l'enseignant référent de la classe de votre enfant en est automatiquement informé.",
     textEn:
       "When you report a health event that happened outside school, your child's class referent teacher is automatically notified.",
-    hintFr: "Ce lien avec le référent est ce qui distingue un signalement d'une simple note personnelle.",
-    hintEn: "This link with the referent is what sets a report apart from a simple personal note.",
+    hintFr:
+      "Ce lien avec le référent est ce qui distingue un signalement d'une simple note personnelle.",
+    hintEn:
+      "This link with the referent is what sets a report apart from a simple personal note.",
     explanationFr:
       "Vrai : le signalement déclenche une notification automatique vers l'enseignant référent.",
     explanationEn:
@@ -388,7 +393,8 @@ const QUESTIONS = [
     stage: "MASTERY",
     image: null,
     deepLinkRoute: DEEP_LINK,
-    textFr: "Les événements de santé que vous signalez apparaissent dans l'onglet Conditions.",
+    textFr:
+      "Les événements de santé que vous signalez apparaissent dans l'onglet Conditions.",
     textEn: "The health events you report appear in the Conditions tab.",
     hintFr: "Un signalement a toujours une date précise.",
     hintEn: "A report always has a precise date.",
