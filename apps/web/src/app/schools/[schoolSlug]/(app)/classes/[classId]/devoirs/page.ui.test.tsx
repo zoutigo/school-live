@@ -4,6 +4,7 @@ import {
   waitFor,
   fireEvent,
   act,
+  within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassHomeworkPage from "./page";
@@ -223,16 +224,33 @@ describe("Teacher class homework page", () => {
     expect(screen.getByText("Voir")).toBeInTheDocument();
     expect(screen.getByText("Aide")).toBeInTheDocument();
 
-    expect(screen.getByText("Titre")).toBeInTheDocument();
-    expect(screen.getByText("Matiere")).toBeInTheDocument();
-    expect(screen.getByText("Echeance")).toBeInTheDocument();
-    expect(screen.getByText("Statut")).toBeInTheDocument();
+    const table = screen.getByTestId("homework-list-table");
+    expect(within(table).getByText("Titre")).toBeInTheDocument();
+    expect(within(table).getByText("Matiere")).toBeInTheDocument();
+    expect(within(table).getByText("Echeance")).toBeInTheDocument();
+    expect(within(table).getByText("Statut")).toBeInTheDocument();
 
-    expect(screen.getByText("A faire")).toBeInTheDocument();
-    expect(screen.getByText("En retard")).toBeInTheDocument();
+    expect(within(table).getByText("A faire")).toBeInTheDocument();
+    expect(within(table).getByText("En retard")).toBeInTheDocument();
 
-    expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
-    expect(screen.getByText("Grammaire (en retard)")).toBeInTheDocument();
+    expect(
+      within(table).getByText("Conjugaison chapitre 3"),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByText("Grammaire (en retard)"),
+    ).toBeInTheDocument();
+
+    // Vue mobile (cards) : mêmes devoirs, mêmes statuts, accessibles sans
+    // scroll horizontal.
+    const cards = screen.getByTestId("homework-list-cards");
+    expect(within(cards).getByText("A faire")).toBeInTheDocument();
+    expect(within(cards).getByText("En retard")).toBeInTheDocument();
+    expect(
+      within(cards).getByText("Conjugaison chapitre 3"),
+    ).toBeInTheDocument();
+    expect(
+      within(cards).getByText("Grammaire (en retard)"),
+    ).toBeInTheDocument();
   });
 
   it("traduit les onglets, le tableau et les statuts en anglais", async () => {
@@ -249,13 +267,14 @@ describe("Teacher class homework page", () => {
     expect(screen.getByText("View")).toBeInTheDocument();
     expect(screen.getByText("Help")).toBeInTheDocument();
 
-    expect(screen.getByText("Title")).toBeInTheDocument();
-    expect(screen.getByText("Subject")).toBeInTheDocument();
-    expect(screen.getByText("Due date")).toBeInTheDocument();
-    expect(screen.getByText("Status")).toBeInTheDocument();
+    const table = screen.getByTestId("homework-list-table");
+    expect(within(table).getByText("Title")).toBeInTheDocument();
+    expect(within(table).getByText("Subject")).toBeInTheDocument();
+    expect(within(table).getByText("Due date")).toBeInTheDocument();
+    expect(within(table).getByText("Status")).toBeInTheDocument();
 
-    expect(screen.getByText("To do")).toBeInTheDocument();
-    expect(screen.getByText("Late")).toBeInTheDocument();
+    expect(within(table).getByText("To do")).toBeInTheDocument();
+    expect(within(table).getByText("Late")).toBeInTheDocument();
   });
 
   it("affiche le bouton Nouveau devoir pour un enseignant", async () => {
@@ -312,7 +331,7 @@ describe("Teacher class homework page", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
+      expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId("homework-row-hw-1"));
@@ -390,7 +409,7 @@ describe("Teacher class homework page", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
+      expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId("homework-row-hw-1"));
@@ -399,6 +418,39 @@ describe("Teacher class homework page", () => {
       expect(screen.getByTestId("homework-detail-edit")).toBeInTheDocument();
       expect(screen.getByTestId("homework-detail-delete")).toBeInTheDocument();
     });
+  });
+
+  it("liste mobile en cartes : ouvre le detail, modifier et supprimer fonctionnent comme sur la table desktop", async () => {
+    mockFetch({ role: "TEACHER" });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-card-hw-1")).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId("homework-card-hw-1");
+    expect(
+      within(card).getByText("Conjugaison chapitre 3"),
+    ).toBeInTheDocument();
+    expect(within(card).getByText("Anglais")).toBeInTheDocument();
+
+    // Ouverture du detail depuis la carte (pas depuis la ligne du tableau).
+    fireEvent.click(within(card).getByText("Conjugaison chapitre 3"));
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-detail-edit")).toBeInTheDocument();
+    });
+
+    // Modifier depuis la carte ouvre bien le formulaire d'edition.
+    fireEvent.click(screen.getByTestId("homework-card-edit-hw-1"));
+    expect(screen.getByTestId("homework-form-title")).toBeInTheDocument();
+    expect(screen.getByTestId("homework-form-title")).toHaveValue(
+      "Conjugaison chapitre 3",
+    );
+
+    // Supprimer depuis la carte ouvre la confirmation de suppression.
+    fireEvent.click(screen.getByTestId("homework-card-delete-hw-1"));
+    expect(screen.getByTestId("homework-delete-confirm")).toBeInTheDocument();
   });
 
   it("affiche le formulaire de creation au clic sur Nouveau devoir", async () => {
@@ -418,6 +470,27 @@ describe("Teacher class homework page", () => {
     expect(screen.getByTestId("homework-form-submit")).toBeInTheDocument();
   });
 
+  it("le formulaire de creation, ajoute apres la liste des devoirs, scrolle vers lui-meme a l'ouverture (evite qu'il reste hors champ)", async () => {
+    mockFetch({ role: "TEACHER" });
+    const scrollIntoViewMock = vi.fn();
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-add-button")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("homework-add-button"));
+
+    expect(screen.getByTestId("homework-form-subject")).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" }),
+    );
+  });
+
   it("affiche les pièces jointes telechargeable dans le detail", async () => {
     const detailWithAttachments = {
       ...mockDetail,
@@ -435,7 +508,7 @@ describe("Teacher class homework page", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
+      expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId("homework-row-hw-1"));

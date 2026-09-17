@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -274,6 +274,15 @@ export default function TeacherClassNotesPage() {
   const [evaluationPanelMode, setEvaluationPanelMode] = useState<
     "details" | "create" | "edit"
   >("details");
+  // En dessous de xl, la liste d'évaluations et le panneau formulaire
+  // s'empilent verticalement : sans ce scroll, le formulaire ouvert depuis
+  // une liste longue apparaît hors champ (mobile et tablette).
+  const scrollEvaluationPanelIntoView = useCallback(
+    (el: HTMLElement | null) => {
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [],
+  );
   const [attachments, setAttachments] = useState<AttachmentDraft[]>([]);
   const [descriptionEditorInitialHtml, setDescriptionEditorInitialHtml] =
     useState("");
@@ -1795,7 +1804,7 @@ export default function TeacherClassNotesPage() {
             <section className="content-panel min-w-0 p-4 sm:p-5">
               {evaluationPanelMode === "create" ||
               evaluationPanelMode === "edit" ? (
-                <div className="grid gap-4">
+                <div ref={scrollEvaluationPanelIntoView} className="grid gap-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-heading text-xl font-semibold text-text-primary">

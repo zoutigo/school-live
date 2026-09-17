@@ -315,6 +315,26 @@ describe("Child sante page (vue parent)", () => {
     });
   });
 
+  it("l'ouverture du formulaire d'ajout de condition scrolle vers le formulaire (évite qu'il reste hors champ sur mobile)", async () => {
+    mockFetchDefault({});
+    const scrollIntoViewMock = vi.fn();
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
+
+    render(<ChildSantePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId("sante-conditions-add")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("sante-conditions-add"));
+
+    expect(screen.getByTestId("sante-condition-form")).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" }),
+    );
+  });
+
   it("condition visible de tous les enseignants : bloque sans libellé, envoie le libellé une fois renseigné", async () => {
     let createBody: unknown = null;
     mockFetchDefault({
@@ -437,6 +457,27 @@ describe("Child sante page (vue parent)", () => {
         description: "Crise d'asthme hier soir",
       });
     });
+  });
+
+  it("onglet Historique : l'ouverture du formulaire de signalement scrolle vers le formulaire", async () => {
+    mockFetchDefault({});
+    const scrollIntoViewMock = vi.fn();
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
+
+    render(<ChildSantePage />);
+    fireEvent.click(await screen.findByTestId("sante-tab-history"));
+    await waitFor(() =>
+      expect(screen.getByTestId("sante-history-add")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("sante-history-add"));
+
+    expect(screen.getByTestId("sante-report-form")).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" }),
+    );
   });
 
   it("carte historique (soin) → détail en lecture seule", async () => {

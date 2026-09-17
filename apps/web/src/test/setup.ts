@@ -20,6 +20,14 @@ if (
   });
 }
 
+if (
+  typeof window !== "undefined" &&
+  typeof window.Element !== "undefined" &&
+  typeof window.Element.prototype.scrollIntoView !== "function"
+) {
+  window.Element.prototype.scrollIntoView = () => {};
+}
+
 if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,

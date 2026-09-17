@@ -84,6 +84,12 @@ function statusLabel(status: "done" | "late" | "todo", t: TranslateFn) {
   return t("homework.status.todo");
 }
 
+function statusStripe(status: "done" | "late" | "todo") {
+  if (status === "done") return "bg-emerald-500";
+  if (status === "late") return "bg-rose-500";
+  return "bg-sky-500";
+}
+
 function formatDate(isoString: string) {
   try {
     return new Intl.DateTimeFormat("fr-FR", {
@@ -133,6 +139,12 @@ export default function TeacherClassHomeworkPage() {
   );
   const [detailLoading, setDetailLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  // Le formulaire est ajouté après la liste des devoirs dans le flux de la
+  // page : sur mobile (ou une longue liste), il peut apparaître hors champ
+  // sans ce scroll automatique vers le haut du formulaire.
+  const scrollFormIntoView = useCallback((el: HTMLElement | null) => {
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const [editingHomework, setEditingHomework] = useState<HomeworkRow | null>(
     null,
   );
@@ -565,83 +577,151 @@ export default function TeacherClassHomeworkPage() {
                 {t("homework.list.empty")}
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.title")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.subject")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.dueDate")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.status")}
-                      </th>
-                      <th className="px-3 py-2 font-medium"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {listItems.map((hw) => (
-                      <tr
-                        key={hw.id}
-                        className="border-b border-border hover:bg-background cursor-pointer"
+              <>
+                <div
+                  className="grid gap-2 md:hidden"
+                  data-testid="homework-list-cards"
+                >
+                  {listItems.map((hw) => (
+                    <article
+                      key={hw.id}
+                      className="relative overflow-hidden rounded-[14px] border border-border bg-surface p-3 shadow-card"
+                      data-testid={`homework-card-${hw.id}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`absolute inset-y-0 left-0 w-1 ${statusStripe(hw.status)}`}
+                      />
+                      <button
+                        type="button"
                         onClick={() => void openDetail(hw)}
-                        data-testid={`homework-row-${hw.id}`}
+                        className="flex w-full items-start justify-between gap-2 pl-2 text-left"
                       >
-                        <td className="px-3 py-2 font-medium text-text-primary">
-                          {hw.title}
-                        </td>
-                        <td className="px-3 py-2 text-text-secondary">
-                          {hw.subject.name}
-                        </td>
-                        <td className="px-3 py-2 text-text-secondary">
-                          {formatDate(hw.expectedAt)}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPill(hw.status)}`}
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-accent-teal-dark">
+                            {hw.subject.name}
+                          </p>
+                          <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                            {hw.title}
+                          </p>
+                          <p className="mt-1 text-xs text-text-secondary">
+                            {formatDate(hw.expectedAt)}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusPill(hw.status)}`}
+                        >
+                          {statusLabel(hw.status, t)}
+                        </span>
+                      </button>
+                      {canManage && (
+                        <div className="mt-2 flex gap-4 border-t border-border pl-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditForm(hw)}
+                            className="text-xs font-semibold text-primary"
+                            data-testid={`homework-card-edit-${hw.id}`}
                           >
-                            {statusLabel(hw.status, t)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditForm(hw);
-                              }}
-                              className="text-xs text-primary hover:underline mr-2"
-                              data-testid={`homework-edit-${hw.id}`}
-                            >
-                              {t("homework.detail.edit")}
-                            </button>
-                          )}
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPendingDelete(hw);
-                                setDeleteError(null);
-                              }}
-                              className="text-xs text-notification hover:underline"
-                              data-testid={`homework-delete-${hw.id}`}
-                            >
-                              {t("homework.detail.delete")}
-                            </button>
-                          )}
-                        </td>
+                            {t("homework.detail.edit")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingDelete(hw);
+                              setDeleteError(null);
+                            }}
+                            className="text-xs font-semibold text-notification"
+                            data-testid={`homework-card-delete-${hw.id}`}
+                          >
+                            {t("homework.detail.delete")}
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+
+                <div
+                  className="hidden overflow-x-auto md:block"
+                  data-testid="homework-list-table"
+                >
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">
+                          {t("homework.table.title")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("homework.table.subject")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("homework.table.dueDate")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("homework.table.status")}
+                        </th>
+                        <th className="px-3 py-2 font-medium"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {listItems.map((hw) => (
+                        <tr
+                          key={hw.id}
+                          className="border-b border-border hover:bg-background cursor-pointer"
+                          onClick={() => void openDetail(hw)}
+                          data-testid={`homework-row-${hw.id}`}
+                        >
+                          <td className="px-3 py-2 font-medium text-text-primary">
+                            {hw.title}
+                          </td>
+                          <td className="px-3 py-2 text-text-secondary">
+                            {hw.subject.name}
+                          </td>
+                          <td className="px-3 py-2 text-text-secondary">
+                            {formatDate(hw.expectedAt)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPill(hw.status)}`}
+                            >
+                              {statusLabel(hw.status, t)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditForm(hw);
+                                }}
+                                className="text-xs text-primary hover:underline mr-2"
+                                data-testid={`homework-edit-${hw.id}`}
+                              >
+                                {t("homework.detail.edit")}
+                              </button>
+                            )}
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPendingDelete(hw);
+                                  setDeleteError(null);
+                                }}
+                                className="text-xs text-notification hover:underline"
+                                data-testid={`homework-delete-${hw.id}`}
+                              >
+                                {t("homework.detail.delete")}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         ) : (
@@ -684,221 +764,224 @@ export default function TeacherClassHomeworkPage() {
 
       {/* ── Detail panel ─────────────────────────────────────────── */}
       {(selectedDetail || detailLoading) && (
-        <Card
-          title={t("homework.detail.title")}
-          subtitle={selectedDetail?.subject.name ?? ""}
-        >
-          {detailLoading ? (
-            <p className="text-sm text-text-secondary">
-              {t("homework.common.loading")}
-            </p>
-          ) : selectedDetail ? (
-            <div className="grid gap-6">
-              {/* Meta */}
-              <div>
-                <p className="text-lg font-bold text-text-primary">
-                  {selectedDetail.title}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {t("homework.list.duePrefix")}{" "}
-                  {formatDate(selectedDetail.expectedAt)} ·{" "}
-                  {t("homework.list.author")} {selectedDetail.authorDisplayName}
-                </p>
-              </div>
-
-              {/* Instructions */}
-              <div>
-                <p className="mb-2 text-sm font-semibold text-text-primary">
-                  {t("homework.detail.instructionsTitle")}
-                </p>
-                {selectedDetail.contentHtml ? (
-                  <div
-                    className="prose prose-sm max-w-none text-text-primary"
-                    dangerouslySetInnerHTML={{
-                      __html: selectedDetail.contentHtml,
-                    }}
-                  />
-                ) : (
-                  <p className="text-sm text-text-secondary">
-                    {t("homework.detail.noInstructions")}
+        <div ref={scrollFormIntoView}>
+          <Card
+            title={t("homework.detail.title")}
+            subtitle={selectedDetail?.subject.name ?? ""}
+          >
+            {detailLoading ? (
+              <p className="text-sm text-text-secondary">
+                {t("homework.common.loading")}
+              </p>
+            ) : selectedDetail ? (
+              <div className="grid gap-6">
+                {/* Meta */}
+                <div>
+                  <p className="text-lg font-bold text-text-primary">
+                    {selectedDetail.title}
                   </p>
-                )}
-              </div>
-
-              {/* Attachments */}
-              <div>
-                <p className="mb-2 text-sm font-semibold text-text-primary">
-                  {t("homework.detail.attachmentsTitle")}
-                </p>
-                {selectedDetail.attachments.length === 0 ? (
                   <p className="text-sm text-text-secondary">
-                    {t("homework.detail.noAttachments")}
+                    {t("homework.list.duePrefix")}{" "}
+                    {formatDate(selectedDetail.expectedAt)} ·{" "}
+                    {t("homework.list.author")}{" "}
+                    {selectedDetail.authorDisplayName}
                   </p>
-                ) : (
-                  <div className="grid gap-2">
-                    {selectedDetail.attachments.map((att, idx) => (
-                      <div
-                        key={`${att.fileName}-${idx}`}
-                        className="flex items-center justify-between rounded-card border border-border bg-background p-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-text-primary">
-                            {att.fileName}
-                          </p>
-                          <p className="text-xs text-text-secondary">
-                            {att.mimeType ?? ""}
-                            {att.sizeLabel ? ` · ${att.sizeLabel}` : ""}
-                          </p>
-                        </div>
-                        {att.fileUrl && (
-                          <a
-                            href={att.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={att.fileName}
-                            className="text-xs font-semibold text-primary hover:underline"
-                            data-testid={`homework-attachment-download-${idx}`}
-                          >
-                            ↓ Télécharger
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                </div>
 
-              {/* Students completion (teacher view) */}
-              {canManage && selectedDetail.completionStatuses.length > 0 && (
+                {/* Instructions */}
                 <div>
                   <p className="mb-2 text-sm font-semibold text-text-primary">
-                    {t("homework.detail.studentsTitle")}
-                    {selectedDetail.summary && (
-                      <span className="ml-2 text-xs font-normal text-text-secondary">
-                        {selectedDetail.summary.doneStudents}/
-                        {selectedDetail.summary.totalStudents}{" "}
-                        {t("homework.detail.summarySuffix")}
-                      </span>
-                    )}
+                    {t("homework.detail.instructionsTitle")}
                   </p>
-                  <div className="grid gap-1">
-                    {selectedDetail.completionStatuses.map((status) => (
-                      <div
-                        key={status.studentId}
-                        className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2"
-                      >
-                        <p className="text-sm text-text-primary">
-                          {status.lastName} {status.firstName}
-                        </p>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-semibold text-white ${
-                            status.doneAt ? "bg-emerald-600" : "bg-amber-500"
-                          }`}
-                        >
-                          {status.doneAt
-                            ? t("homework.status.done")
-                            : t("homework.status.todo")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {selectedDetail.contentHtml ? (
+                    <div
+                      className="prose prose-sm max-w-none text-text-primary"
+                      dangerouslySetInnerHTML={{
+                        __html: selectedDetail.contentHtml,
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm text-text-secondary">
+                      {t("homework.detail.noInstructions")}
+                    </p>
+                  )}
                 </div>
-              )}
 
-              {/* Comments */}
-              <div>
-                <p className="mb-2 text-sm font-semibold text-text-primary">
-                  {t("homework.detail.commentsTitle")}
-                </p>
-                {selectedDetail.comments.length === 0 ? (
-                  <p className="mb-3 text-sm text-text-secondary">
-                    {t("homework.comment.empty")}
+                {/* Attachments */}
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-text-primary">
+                    {t("homework.detail.attachmentsTitle")}
                   </p>
-                ) : (
-                  <div className="mb-3 grid gap-2">
-                    {selectedDetail.comments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="rounded-card border border-border bg-background p-3"
-                      >
-                        <p className="text-xs font-semibold text-text-primary">
-                          {comment.authorDisplayName}
-                        </p>
-                        <p className="mt-1 text-sm text-text-primary">
-                          {comment.body}
-                        </p>
-                        <p className="mt-1 text-xs text-text-secondary">
-                          {formatDate(comment.createdAt)}
-                        </p>
-                      </div>
-                    ))}
+                  {selectedDetail.attachments.length === 0 ? (
+                    <p className="text-sm text-text-secondary">
+                      {t("homework.detail.noAttachments")}
+                    </p>
+                  ) : (
+                    <div className="grid gap-2">
+                      {selectedDetail.attachments.map((att, idx) => (
+                        <div
+                          key={`${att.fileName}-${idx}`}
+                          className="flex items-center justify-between rounded-card border border-border bg-background p-3"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-text-primary">
+                              {att.fileName}
+                            </p>
+                            <p className="text-xs text-text-secondary">
+                              {att.mimeType ?? ""}
+                              {att.sizeLabel ? ` · ${att.sizeLabel}` : ""}
+                            </p>
+                          </div>
+                          {att.fileUrl && (
+                            <a
+                              href={att.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              download={att.fileName}
+                              className="text-xs font-semibold text-primary hover:underline"
+                              data-testid={`homework-attachment-download-${idx}`}
+                            >
+                              ↓ Télécharger
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Students completion (teacher view) */}
+                {canManage && selectedDetail.completionStatuses.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-text-primary">
+                      {t("homework.detail.studentsTitle")}
+                      {selectedDetail.summary && (
+                        <span className="ml-2 text-xs font-normal text-text-secondary">
+                          {selectedDetail.summary.doneStudents}/
+                          {selectedDetail.summary.totalStudents}{" "}
+                          {t("homework.detail.summarySuffix")}
+                        </span>
+                      )}
+                    </p>
+                    <div className="grid gap-1">
+                      {selectedDetail.completionStatuses.map((status) => (
+                        <div
+                          key={status.studentId}
+                          className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2"
+                        >
+                          <p className="text-sm text-text-primary">
+                            {status.lastName} {status.firstName}
+                          </p>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold text-white ${
+                              status.doneAt ? "bg-emerald-600" : "bg-amber-500"
+                            }`}
+                          >
+                            {status.doneAt
+                              ? t("homework.status.done")
+                              : t("homework.status.todo")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                <form
-                  onSubmit={(e) => void handleAddComment(e)}
-                  className="flex gap-2"
-                >
-                  <input
-                    {...registerComment("body")}
-                    placeholder={t("homework.comment.placeholder")}
-                    className="flex-1 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="homework-comment-input"
-                  />
-                  <button
-                    type="submit"
-                    disabled={commentSaving}
-                    className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
-                    data-testid="homework-comment-submit"
+
+                {/* Comments */}
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-text-primary">
+                    {t("homework.detail.commentsTitle")}
+                  </p>
+                  {selectedDetail.comments.length === 0 ? (
+                    <p className="mb-3 text-sm text-text-secondary">
+                      {t("homework.comment.empty")}
+                    </p>
+                  ) : (
+                    <div className="mb-3 grid gap-2">
+                      {selectedDetail.comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="rounded-card border border-border bg-background p-3"
+                        >
+                          <p className="text-xs font-semibold text-text-primary">
+                            {comment.authorDisplayName}
+                          </p>
+                          <p className="mt-1 text-sm text-text-primary">
+                            {comment.body}
+                          </p>
+                          <p className="mt-1 text-xs text-text-secondary">
+                            {formatDate(comment.createdAt)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <form
+                    onSubmit={(e) => void handleAddComment(e)}
+                    className="flex gap-2"
                   >
-                    {commentSaving ? "..." : t("homework.comment.submit")}
-                  </button>
-                </form>
-                {commentErrors.body?.message && (
-                  <p className="mt-1 text-xs text-notification">
-                    {commentErrors.body.message}
-                  </p>
-                )}
-                {commentError && (
-                  <p className="mt-1 text-xs text-notification">
-                    {commentError}
-                  </p>
+                    <input
+                      {...registerComment("body")}
+                      placeholder={t("homework.comment.placeholder")}
+                      className="flex-1 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="homework-comment-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={commentSaving}
+                      className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                      data-testid="homework-comment-submit"
+                    >
+                      {commentSaving ? "..." : t("homework.comment.submit")}
+                    </button>
+                  </form>
+                  {commentErrors.body?.message && (
+                    <p className="mt-1 text-xs text-notification">
+                      {commentErrors.body.message}
+                    </p>
+                  )}
+                  {commentError && (
+                    <p className="mt-1 text-xs text-notification">
+                      {commentError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Edit/delete actions */}
+                {canManage && (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openEditForm(selectedDetail)}
+                      className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+                      data-testid="homework-detail-edit"
+                    >
+                      {t("homework.detail.edit")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingDelete(selectedDetail);
+                        setDeleteError(null);
+                      }}
+                      className="rounded-card bg-notification px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                      data-testid="homework-detail-delete"
+                    >
+                      {t("homework.detail.delete")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDetail(null)}
+                      className="ml-auto text-sm text-text-secondary hover:underline"
+                    >
+                      {t("homework.detail.close")}
+                    </button>
+                  </div>
                 )}
               </div>
-
-              {/* Edit/delete actions */}
-              {canManage && (
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(selectedDetail)}
-                    className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
-                    data-testid="homework-detail-edit"
-                  >
-                    {t("homework.detail.edit")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPendingDelete(selectedDetail);
-                      setDeleteError(null);
-                    }}
-                    className="rounded-card bg-notification px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-                    data-testid="homework-detail-delete"
-                  >
-                    {t("homework.detail.delete")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDetail(null)}
-                    className="ml-auto text-sm text-text-secondary hover:underline"
-                  >
-                    {t("homework.detail.close")}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : null}
-        </Card>
+            ) : null}
+          </Card>
+        </div>
       )}
 
       {/* ── Create/Edit Form ────────────────────────────────────── */}
@@ -911,7 +994,11 @@ export default function TeacherClassHomeworkPage() {
           }
           subtitle={classCtx?.className ?? ""}
         >
-          <form onSubmit={(e) => void handleSave(e)} className="grid gap-5">
+          <form
+            ref={scrollFormIntoView}
+            onSubmit={(e) => void handleSave(e)}
+            className="grid gap-5"
+          >
             {/* Subject */}
             <div>
               <label className="mb-1 block text-sm font-semibold text-text-primary">
@@ -1084,7 +1171,7 @@ export default function TeacherClassHomeworkPage() {
       {/* ── Delete confirmation ──────────────────────────────────── */}
       {pendingDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-lg">
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-surface p-6 shadow-lg">
             <p className="mb-2 text-base font-bold text-text-primary">
               {t("homework.confirm.deleteTitle")}
             </p>

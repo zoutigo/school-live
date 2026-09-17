@@ -531,6 +531,35 @@ describe("FamilyFeedPage", () => {
     });
   });
 
+  it("hides the featured-days selector from a parent but shows it to staff", () => {
+    const { unmount } = render(
+      <FamilyFeedPage
+        schoolSlug="college-vogt"
+        childFullName="College Vogt"
+        viewerRole="PARENT"
+        viewScope="GENERAL"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Publier une info" }));
+    expect(
+      screen.queryByTestId("family-feed-featured-days-select"),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <FamilyFeedPage
+        schoolSlug="college-vogt"
+        childFullName="College Vogt"
+        viewerRole="TEACHER"
+        viewScope="GENERAL"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Publier une info" }));
+    expect(
+      screen.getByTestId("family-feed-featured-days-select"),
+    ).toBeInTheDocument();
+  });
+
   it("allows author to edit then delete own post", async () => {
     const fetchMock = vi.fn((input: string | URL | Request) => {
       const url = String(input);

@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { ManagementService } from "./management.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { MailService } from "../mail/mail.service.js";
@@ -116,5 +116,43 @@ describe("ManagementService.listStudentLifeEvents — self (STUDENT) access", ()
     );
 
     expect(result).toEqual([{ id: "evt-1" }]);
+  });
+
+  it("accepts limit=500 (matches the web Cursus page's scope=all&limit=500 call)", async () => {
+    const prisma = makePrismaMock({
+      student: { id: "child-1", schoolId: "school-1" },
+      parentLink: { id: "link-1" },
+      events: [{ id: "evt-1" }],
+    });
+    const service = makeService(prisma);
+    const user = makeUser("user-1", [{ schoolId: "school-1", role: "PARENT" }]);
+
+    const result = await service.listStudentLifeEvents(
+      "school-1",
+      user,
+      "child-1",
+      { scope: "all", limit: 500 },
+    );
+
+    expect(result).toEqual([{ id: "evt-1" }]);
+    expect(prisma.studentLifeEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 500 }),
+    );
+  });
+
+  it("rejects a limit above 500 with a BadRequestException", async () => {
+    const prisma = makePrismaMock({
+      student: { id: "child-1", schoolId: "school-1" },
+      parentLink: { id: "link-1" },
+    });
+    const service = makeService(prisma);
+    const user = makeUser("user-1", [{ schoolId: "school-1", role: "PARENT" }]);
+
+    await expect(
+      service.listStudentLifeEvents("school-1", user, "child-1", {
+        scope: "all",
+        limit: 501,
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

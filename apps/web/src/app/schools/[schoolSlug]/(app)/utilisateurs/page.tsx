@@ -492,7 +492,7 @@ function ModalOverlay({
         role="dialog"
         aria-modal="true"
         data-testid={testId}
-        className="relative w-full max-w-md rounded-[22px] border border-warm-border bg-[linear-gradient(160deg,#fffcfa_0%,#fff8f0_100%)] p-6 shadow-[0_24px_60px_rgba(47,36,24,0.2)]"
+        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[22px] border border-warm-border bg-[linear-gradient(160deg,#fffcfa_0%,#fff8f0_100%)] p-6 shadow-[0_24px_60px_rgba(47,36,24,0.2)]"
       >
         {children}
       </div>
@@ -1924,7 +1924,38 @@ function StaffFunctionsModal({
                   </button>
                 </div>
               ) : null}
-              <div className="overflow-x-auto">
+              <div
+                className="grid gap-2 sm:hidden"
+                data-testid="staff-functions-cards"
+              >
+                {functions.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-xl border border-warm-border bg-white p-3"
+                    data-testid={`staff-function-card-${entry.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-text-primary">
+                        {entry.name}
+                      </p>
+                      <span className="shrink-0 text-xs text-text-secondary">
+                        {t("users.staff.functions.colAssignments")}:{" "}
+                        {entry._count?.assignments ?? 0}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {entry.description || "—"}
+                    </p>
+                  </div>
+                ))}
+                {functions.length === 0 ? (
+                  <p className="text-sm text-text-secondary">
+                    {t("users.staff.functions.empty")}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="hidden overflow-x-auto sm:block">
                 <table className="min-w-full text-sm">
                   <thead className="text-left text-text-secondary">
                     <tr>
@@ -2018,7 +2049,46 @@ function StaffFunctionsModal({
                   </button>
                 </div>
               ) : null}
-              <div className="overflow-x-auto">
+              <div
+                className="grid gap-2 sm:hidden"
+                data-testid="staff-assignments-cards"
+              >
+                {assignments.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-xl border border-warm-border bg-white p-3"
+                    data-testid={`staff-assignment-card-${entry.id}`}
+                  >
+                    <p className="text-sm font-semibold text-text-primary">
+                      {entry.user.lastName} {entry.user.firstName}
+                    </p>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {entry.function.name}
+                    </p>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {entry.user.email}
+                    </p>
+                    {canWrite ? (
+                      <button
+                        type="button"
+                        data-testid={`staff-assignment-card-${entry.id}-remove`}
+                        onClick={() => void removeAssignment(entry.id)}
+                        disabled={submitting}
+                        className="mt-2 rounded-xl border border-red-200 px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40"
+                      >
+                        {t("users.staff.assignments.remove")}
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+                {assignments.length === 0 ? (
+                  <p className="text-sm text-text-secondary">
+                    {t("users.staff.assignments.empty")}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="hidden overflow-x-auto sm:block">
                 <table className="min-w-full text-sm">
                   <thead className="text-left text-text-secondary">
                     <tr>

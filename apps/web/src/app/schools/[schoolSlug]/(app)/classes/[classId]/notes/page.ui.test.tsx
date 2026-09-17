@@ -421,6 +421,27 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     ).toBeInTheDocument();
   });
 
+  it("scrolls the evaluation panel into view when the creation form opens (avoids it staying below the fold below xl breakpoint)", async () => {
+    setupFetchMock();
+    const scrollIntoViewMock = vi.fn();
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: translate("fr", "notes.teacher.list.addAria"),
+      }),
+    );
+
+    await screen.findByText(translate("fr", "notes.teacher.form.createTitle"));
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" }),
+    );
+  });
+
   it("validates the creation form on change with inline errors and a disabled submit", async () => {
     setupFetchMock();
 

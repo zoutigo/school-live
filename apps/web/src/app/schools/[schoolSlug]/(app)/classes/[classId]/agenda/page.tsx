@@ -2870,7 +2870,7 @@ export default function TeacherClassAgendaPage() {
       {occurrenceModalSlot ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B244066] px-4 py-8">
           <div
-            className="w-full max-w-2xl rounded-card border border-border bg-background p-4 shadow-xl"
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-card border border-border bg-background p-4 shadow-xl"
             data-testid="occurrence-modal"
           >
             <div className="mb-3 flex items-start justify-between gap-3">
