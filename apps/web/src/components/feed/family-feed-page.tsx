@@ -1491,24 +1491,28 @@ export function FamilyFeedPage({
             </div>
 
             <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-              <div className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                <CalendarDays className="h-4 w-4" />
-                {t("feed.composer.featuredDaysLabel")}
-                <SearchableSelect
-                  ariaLabel={t("feed.composer.featuredDaysAria")}
-                  value={String(featuredDays)}
-                  onChange={(value) => setFeaturedDays(Number(value))}
-                  className="h-8 min-w-[140px]"
-                  data-testid="family-feed-featured-days-select"
-                  options={[
-                    { value: "0", label: t("feed.composer.featuredNone") },
-                    { value: "1", label: t("feed.composer.featured1Day") },
-                    { value: "3", label: t("feed.composer.featured3Days") },
-                    { value: "5", label: t("feed.composer.featured5Days") },
-                    { value: "7", label: t("feed.composer.featured7Days") },
-                  ]}
-                />
-              </div>
+              {isStaff(viewerRole) ? (
+                <div className="inline-flex items-center gap-2 text-sm text-text-secondary">
+                  <CalendarDays className="h-4 w-4" />
+                  {t("feed.composer.featuredDaysLabel")}
+                  <SearchableSelect
+                    ariaLabel={t("feed.composer.featuredDaysAria")}
+                    value={String(featuredDays)}
+                    onChange={(value) => setFeaturedDays(Number(value))}
+                    className="h-8 min-w-[140px]"
+                    data-testid="family-feed-featured-days-select"
+                    options={[
+                      { value: "0", label: t("feed.composer.featuredNone") },
+                      { value: "1", label: t("feed.composer.featured1Day") },
+                      { value: "3", label: t("feed.composer.featured3Days") },
+                      { value: "5", label: t("feed.composer.featured5Days") },
+                      { value: "7", label: t("feed.composer.featured7Days") },
+                    ]}
+                  />
+                </div>
+              ) : (
+                <span />
+              )}
               <Button
                 onClick={publishPost}
                 iconLeft={<Send className="h-4 w-4" />}
