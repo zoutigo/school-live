@@ -1804,10 +1804,7 @@ export default function TeacherClassNotesPage() {
             <section className="content-panel min-w-0 p-4 sm:p-5">
               {evaluationPanelMode === "create" ||
               evaluationPanelMode === "edit" ? (
-                <div
-                  ref={scrollEvaluationPanelIntoView}
-                  className="grid gap-4"
-                >
+                <div ref={scrollEvaluationPanelIntoView} className="grid gap-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-heading text-xl font-semibold text-text-primary">

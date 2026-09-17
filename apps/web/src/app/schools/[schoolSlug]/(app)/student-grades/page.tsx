@@ -646,7 +646,51 @@ export default function StudentGradesPage() {
           </form>
         ) : null}
 
-        <div className="overflow-x-auto">
+        {loading ? (
+          <p className="text-sm text-text-secondary md:hidden">
+            {t("notes.admin.table.loading")}
+          </p>
+        ) : null}
+
+        <div
+          className="grid gap-2 md:hidden"
+          data-testid="student-grades-cards"
+        >
+          {!loading &&
+            studentGrades.map((grade) => (
+              <article
+                key={grade.id}
+                className="rounded-card border border-border bg-surface p-3"
+                data-testid={`student-grade-card-${grade.id}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-text-primary">
+                    {grade.student
+                      ? `${grade.student.lastName} ${grade.student.firstName}`
+                      : grade.studentId}
+                  </p>
+                  <span className="shrink-0 text-sm font-semibold text-primary">
+                    {grade.value}/{grade.maxValue}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-text-secondary">
+                  {grade.class?.name ?? grade.classId} ·{" "}
+                  {grade.subject?.name ?? grade.subjectId}
+                </p>
+                <p className="mt-1 text-xs text-text-secondary">
+                  {t("notes.admin.table.term")}: {grade.term} ·{" "}
+                  {t("notes.admin.table.weight")}: {grade.assessmentWeight ?? 1}
+                </p>
+              </article>
+            ))}
+          {!loading && studentGrades.length === 0 ? (
+            <p className="text-sm text-text-secondary">
+              {t("notes.admin.table.empty")}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-left text-text-secondary">

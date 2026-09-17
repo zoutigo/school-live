@@ -490,7 +490,38 @@ export default function ChildCursusPage() {
                     <p className="text-sm font-semibold text-text-primary">
                       {group.schoolYearLabel} - {group.className}
                     </p>
-                    <div className="mt-2 overflow-x-auto">
+                    <div
+                      className="mt-2 grid gap-2 md:hidden"
+                      data-testid={`cursus-events-cards-${group.key}`}
+                    >
+                      {group.events.map((event) => (
+                        <div
+                          key={event.id}
+                          className="rounded-card border border-border bg-surface p-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-semibold text-text-primary">
+                              {lifeEventTypeLabel(t, event.type)}
+                            </span>
+                            <span className="shrink-0 text-xs text-text-secondary">
+                              {new Date(event.occurredAt).toLocaleString(
+                                locale === "en" ? "en-GB" : "fr-FR",
+                              )}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-text-primary">
+                            {event.reason}
+                          </p>
+                          {event.comment ? (
+                            <p className="mt-1 text-xs text-text-secondary">
+                              {event.comment}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-2 hidden overflow-x-auto md:block">
                       <table className="min-w-full border-collapse text-sm">
                         <thead>
                           <tr className="border-b border-border text-left text-text-secondary">

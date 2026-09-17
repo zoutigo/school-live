@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StudentGradesPage from "./page";
 import { translate } from "../../../../../i18n/useTranslation";
@@ -122,5 +128,45 @@ describe("Student grades page form", () => {
         }),
       );
     });
+  });
+
+  it("affiche les notes en cartes (mobile) et en tableau (desktop) avec le même contenu", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.endsWith("/schools/college-vogt/student-grades")) {
+        return jsonResponse([
+          {
+            id: "grade-1",
+            value: 15.5,
+            maxValue: 20,
+            assessmentWeight: 2,
+            term: "TERM_1",
+            subjectId: "sub-1",
+            classId: "class-1",
+            studentId: "student-1",
+            subject: { id: "sub-1", name: "Anglais" },
+            class: { id: "class-1", name: "6eC" },
+            student: {
+              id: "student-1",
+              firstName: "Remi",
+              lastName: "Ntamack",
+            },
+          },
+        ]);
+      }
+
+      return jsonResponse({ message: `Unhandled GET ${url}` }, 404);
+    });
+
+    render(<StudentGradesPage />);
+
+    const cards = await screen.findByTestId("student-grades-cards");
+    expect(within(cards).getByText("Ntamack Remi")).toBeInTheDocument();
+    expect(within(cards).getByText("15.5/20")).toBeInTheDocument();
+    expect(within(cards).getByText(/6eC.*Anglais/)).toBeInTheDocument();
   });
 });

@@ -424,10 +424,9 @@ describe("TeacherClassNotesPage evaluations tab", () => {
   it("scrolls the evaluation panel into view when the creation form opens (avoids it staying below the fold below xl breakpoint)", async () => {
     setupFetchMock();
     const scrollIntoViewMock = vi.fn();
-    vi.spyOn(
-      window.Element.prototype,
-      "scrollIntoView",
-    ).mockImplementation(scrollIntoViewMock);
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
 
     render(<TeacherClassNotesPage />);
 

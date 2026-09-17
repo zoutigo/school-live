@@ -1720,6 +1720,20 @@ describe("UtilisateursPage — onglet Personnel", () => {
     );
   });
 
+  it("affiche aussi les fonctions du personnel en cartes (mobile), memes donnees", async () => {
+    mockStaffFetch({ me: SCHOOL_ADMIN_ME });
+    render(<UtilisateursPage />);
+
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
+
+    expect(
+      await screen.findByTestId("staff-function-card-fn-1"),
+    ).toHaveTextContent("Surveillant");
+    expect(screen.getByTestId("staff-function-card-fn-2")).toHaveTextContent(
+      "Infirmier",
+    );
+  });
+
   it("cree une nouvelle fonction du personnel", async () => {
     const fetchMock = mockStaffFetch({ me: SCHOOL_ADMIN_ME });
     render(<UtilisateursPage />);
@@ -1804,5 +1818,34 @@ describe("UtilisateursPage — onglet Personnel", () => {
     expect(
       screen.queryByTestId("staff-assignment-row-asg-1-remove"),
     ).not.toBeInTheDocument();
+  });
+
+  it("affiche aussi les affectations en cartes (mobile), avec le retrait pour un role habilite", async () => {
+    mockStaffFetch({
+      me: SCHOOL_ADMIN_ME,
+      assignments: [
+        {
+          id: "asg-1",
+          function: { id: "fn-1", name: "Surveillant" },
+          user: {
+            id: "u-1",
+            firstName: "Anne",
+            lastName: "Rousselet",
+            email: "a.rousselet@ecole.cm",
+          },
+        },
+      ],
+    });
+    render(<UtilisateursPage />);
+
+    fireEvent.click(await screen.findByTestId("manage-staff-functions-button"));
+
+    const card = await screen.findByTestId("staff-assignment-card-asg-1");
+    expect(card).toHaveTextContent("Rousselet Anne");
+    expect(card).toHaveTextContent("Surveillant");
+    expect(card).toHaveTextContent("a.rousselet@ecole.cm");
+    expect(
+      screen.getByTestId("staff-assignment-card-asg-1-remove"),
+    ).toBeInTheDocument();
   });
 });

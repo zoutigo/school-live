@@ -318,10 +318,9 @@ describe("Child sante page (vue parent)", () => {
   it("l'ouverture du formulaire d'ajout de condition scrolle vers le formulaire (évite qu'il reste hors champ sur mobile)", async () => {
     mockFetchDefault({});
     const scrollIntoViewMock = vi.fn();
-    vi.spyOn(
-      window.Element.prototype,
-      "scrollIntoView",
-    ).mockImplementation(scrollIntoViewMock);
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
 
     render(<ChildSantePage />);
     await waitFor(() =>
@@ -463,10 +462,9 @@ describe("Child sante page (vue parent)", () => {
   it("onglet Historique : l'ouverture du formulaire de signalement scrolle vers le formulaire", async () => {
     mockFetchDefault({});
     const scrollIntoViewMock = vi.fn();
-    vi.spyOn(
-      window.Element.prototype,
-      "scrollIntoView",
-    ).mockImplementation(scrollIntoViewMock);
+    vi.spyOn(window.Element.prototype, "scrollIntoView").mockImplementation(
+      scrollIntoViewMock,
+    );
 
     render(<ChildSantePage />);
     fireEvent.click(await screen.findByTestId("sante-tab-history"));
