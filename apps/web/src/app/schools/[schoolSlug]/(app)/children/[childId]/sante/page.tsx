@@ -274,6 +274,13 @@ export default function ChildSantePage() {
     })),
   });
 
+  // Sur mobile, la liste peut avoir été scrollée avant l'ouverture d'un
+  // panel (formulaire ou détail) : on ramène la vue en haut du panel pour
+  // qu'il ne reste pas hors champ.
+  const scrollPanelIntoView = useCallback((el: HTMLElement | null) => {
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // ── Conditions list ──────────────────────────────────────────────────────
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [conditionsPage, setConditionsPage] = useState(1);
@@ -737,6 +744,7 @@ export default function ChildSantePage() {
                   saving={saving}
                   onCancel={() => setConditionsPanel(null)}
                   onSubmit={submitCondition}
+                  scrollRef={scrollPanelIntoView}
                 />
               ) : conditionsPanel?.type === "detail" ? (
                 <ConditionDetailPanel
@@ -786,6 +794,7 @@ export default function ChildSantePage() {
                   saving={saving}
                   onCancel={() => setHistoryPanel(null)}
                   onSubmit={submitReport}
+                  scrollRef={scrollPanelIntoView}
                 />
               ) : historyPanel?.type === "detail" ? (
                 <HistoryDetailPanel
@@ -1030,10 +1039,12 @@ function ConditionFormPanel(props: {
   saving: boolean;
   onCancel: () => void;
   onSubmit: (values: ConditionFormValues) => void;
+  scrollRef: (el: HTMLElement | null) => void;
 }) {
   const { t, form } = props;
   return (
     <form
+      ref={props.scrollRef}
       className="grid gap-3 md:grid-cols-2"
       onSubmit={form.handleSubmit(props.onSubmit)}
       noValidate
@@ -1470,10 +1481,12 @@ function ReportFormPanel(props: {
   saving: boolean;
   onCancel: () => void;
   onSubmit: (values: ReportFormValues) => void;
+  scrollRef: (el: HTMLElement | null) => void;
 }) {
   const { t, form } = props;
   return (
     <form
+      ref={props.scrollRef}
       className="grid gap-3 md:grid-cols-2"
       onSubmit={form.handleSubmit(props.onSubmit)}
       noValidate

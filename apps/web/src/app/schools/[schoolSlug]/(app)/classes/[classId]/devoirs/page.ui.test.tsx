@@ -418,6 +418,28 @@ describe("Teacher class homework page", () => {
     expect(screen.getByTestId("homework-form-submit")).toBeInTheDocument();
   });
 
+  it("le formulaire de creation, ajoute apres la liste des devoirs, scrolle vers lui-meme a l'ouverture (evite qu'il reste hors champ)", async () => {
+    mockFetch({ role: "TEACHER" });
+    const scrollIntoViewMock = vi.fn();
+    vi.spyOn(
+      window.Element.prototype,
+      "scrollIntoView",
+    ).mockImplementation(scrollIntoViewMock);
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-add-button")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("homework-add-button"));
+
+    expect(screen.getByTestId("homework-form-subject")).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" }),
+    );
+  });
+
   it("affiche les pièces jointes telechargeable dans le detail", async () => {
     const detailWithAttachments = {
       ...mockDetail,

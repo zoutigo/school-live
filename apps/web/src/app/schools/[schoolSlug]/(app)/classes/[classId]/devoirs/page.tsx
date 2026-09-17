@@ -133,6 +133,12 @@ export default function TeacherClassHomeworkPage() {
   );
   const [detailLoading, setDetailLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  // Le formulaire est ajouté après la liste des devoirs dans le flux de la
+  // page : sur mobile (ou une longue liste), il peut apparaître hors champ
+  // sans ce scroll automatique vers le haut du formulaire.
+  const scrollFormIntoView = useCallback((el: HTMLElement | null) => {
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const [editingHomework, setEditingHomework] = useState<HomeworkRow | null>(
     null,
   );
@@ -911,7 +917,11 @@ export default function TeacherClassHomeworkPage() {
           }
           subtitle={classCtx?.className ?? ""}
         >
-          <form onSubmit={(e) => void handleSave(e)} className="grid gap-5">
+          <form
+            ref={scrollFormIntoView}
+            onSubmit={(e) => void handleSave(e)}
+            className="grid gap-5"
+          >
             {/* Subject */}
             <div>
               <label className="mb-1 block text-sm font-semibold text-text-primary">
