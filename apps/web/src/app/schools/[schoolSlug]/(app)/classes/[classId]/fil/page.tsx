@@ -114,7 +114,7 @@ export default function TeacherClassFeedPage() {
         );
 
         if (!hasClassAccess) {
-          router.replace(`/schools/${schoolSlug}/mes-classes`);
+          router.replace(`/schools/${schoolSlug}/dashboard`);
           return;
         }
       }

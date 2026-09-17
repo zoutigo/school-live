@@ -1829,6 +1829,7 @@ export class TimetableService {
     user: AuthenticatedUser,
     schoolId: string,
     oneOffSlotId: string,
+    reason?: string,
   ) {
     const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
@@ -1888,6 +1889,7 @@ export class TimetableService {
       actorFullName: this.userFullName(user.firstName, user.lastName),
       kind: "ONE_OFF_DELETED",
       before: beforeSnapshot,
+      reason: reason?.trim() || null,
     });
 
     return { id: existing.id, deleted: true };

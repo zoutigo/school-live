@@ -976,6 +976,47 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.teacherDiscipline.step3Body":
       "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
 
+    "onboardingTour.teacherAttendance.step1Title": "Choisir la date",
+    "onboardingTour.teacherAttendance.step1Body":
+      "Naviguez vers la veille ou le lendemain, ou choisissez une date précise, pour faire l'appel du jour souhaité.",
+    "onboardingTour.teacherAttendance.step2Title": "Cocher les absents",
+    "onboardingTour.teacherAttendance.step2Body":
+      "Chaque élève est présent par défaut : basculez sur Absent pour les élèves manquants ce jour-là.",
+    "onboardingTour.teacherAttendance.step3Title":
+      "Une aide toujours disponible",
+    "onboardingTour.teacherAttendance.step3Body":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour un rappel du fonctionnement de l'appel.",
+
+    "attendance.sidebar.attendance": "Élèves",
+    "attendance.page.titlePrefix": "Appel",
+    "attendance.page.defaultClassName": "Classe",
+    "attendance.page.subtitle":
+      "Cochez les élèves absents pour la date sélectionnée.",
+    "attendance.page.dateLabel": "Date",
+    "attendance.page.previousDayAria": "Jour précédent",
+    "attendance.page.nextDayAria": "Jour suivant",
+    "attendance.page.presentLabel": "Présent",
+    "attendance.page.absentLabel": "Absent",
+    "attendance.page.summary": "{present}/{total} présents",
+    "attendance.page.saveButton": "Enregistrer l'appel",
+    "attendance.page.saving": "Enregistrement...",
+    "attendance.page.emptyState": "Aucun élève inscrit dans cette classe.",
+    "attendance.page.classNotAccessible": "Classe non accessible.",
+    "attendance.common.loading": "Chargement...",
+    "attendance.common.networkError":
+      "Une erreur réseau est survenue. Réessayez.",
+    "attendance.common.csrfInvalid":
+      "Session invalide, merci de vous reconnecter.",
+    "attendance.errors.loadClass": "Impossible de charger la classe.",
+    "attendance.errors.loadRoster":
+      "Impossible de charger la liste des élèves.",
+    "attendance.errors.saveFailed": "Impossible d'enregistrer l'appel.",
+    "attendance.success.saved": "Appel enregistré.",
+    "attendance.pageHelp.title": "Comment utiliser l'appel",
+    "attendance.pageHelp.section1Title": "Faire l'appel du jour",
+    "attendance.pageHelp.section1Body":
+      "Choisissez une date puis basculez chaque élève sur Absent si besoin ; tous les élèves sont présents par défaut. Cliquez sur Enregistrer l'appel pour sauvegarder.",
+
     "discipline.help.summary":
       "ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees.",
     "discipline.help.record.name": "Saisir",
@@ -1514,7 +1555,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.parentsStudents": "Parents-eleves",
     "sidebar.nav.grades": "Notes",
     "sidebar.nav.dashboard": "Tableau de bord",
-    "sidebar.nav.myClasses": "Mes classes",
     "sidebar.nav.agenda": "Agenda",
     "sidebar.nav.financialSituation": "Situation financiere",
     "sidebar.nav.reinscription": "Reinscription",
@@ -2462,47 +2502,54 @@ export const translations: Record<Locale, Record<string, string>> = {
       "L'heure de debut doit etre avant l'heure de fin.",
     "timetable.agenda.validation.selectOccurrenceDate":
       "Selectionnez la date d'occurrence.",
+    "timetable.agenda.validation.enterCancelReason":
+      "Indiquez le motif de l'annulation.",
 
-    "timetable.agenda.schoolYear.label": "Annee scolaire",
-    "timetable.agenda.schoolYear.previousAria": "Annee precedente",
-    "timetable.agenda.schoolYear.nextAria": "Annee suivante",
+    "timetable.agenda.schoolYear.label": "Année scolaire",
+    "timetable.agenda.schoolYear.previousAria": "Année précédente",
+    "timetable.agenda.schoolYear.nextAria": "Année suivante",
     "timetable.agenda.schoolYear.inProgressSuffix": " (en cours)",
 
     "timetable.agenda.actions.add": "Ajouter",
 
-    "timetable.agenda.colors.title": "Couleurs des matieres (classe + annee)",
+    "timetable.agenda.colors.title": "Couleurs des matières (classe + année)",
     "timetable.agenda.colors.colorAria": "Couleur {subject}",
     "timetable.agenda.colors.saving": "...",
     "timetable.agenda.colors.save": "Sauver",
 
+    "timetable.agenda.slotForm.createTitle": "Nouveau créneau",
+    "timetable.agenda.slotForm.editTitle": "Modifier le créneau",
+    "timetable.agenda.slotForm.createSubtitle":
+      "Renseignez le jour, l'horaire et la matière, puis la période d'application si besoin.",
+    "timetable.agenda.slotForm.validitySectionTitle": "Période d'application",
     "timetable.agenda.slotForm.weekday": "Jour",
-    "timetable.agenda.slotForm.start": "Debut",
+    "timetable.agenda.slotForm.start": "Début",
     "timetable.agenda.slotForm.end": "Fin",
-    "timetable.agenda.slotForm.subject": "Matiere",
+    "timetable.agenda.slotForm.subject": "Matière",
     "timetable.agenda.slotForm.noSubjectsAvailable":
-      "Aucune matiere disponible",
+      "Aucune matière disponible",
     "timetable.agenda.slotForm.teacher": "Enseignant",
     "timetable.agenda.slotForm.noTeacherAssigned":
-      "Aucun enseignant affecte a cette matiere",
+      "Aucun enseignant affecté à cette matière",
     "timetable.agenda.slotForm.room": "Salle (optionnel)",
     "timetable.agenda.slotForm.roomNone": "Aucune salle",
     "timetable.agenda.slotForm.roomPlaceholder": "ex: B14",
-    "timetable.agenda.slotForm.activeFromDate": "Debut occurrences (optionnel)",
+    "timetable.agenda.slotForm.activeFromDate": "Début occurrences (optionnel)",
     "timetable.agenda.slotForm.activeToDate": "Fin occurrences (optionnel)",
     "timetable.agenda.slotForm.effectiveFromDate":
-      "Appliquer a partir du (optionnel)",
-    "timetable.agenda.slotForm.addToList": "Ajouter a la liste",
+      "Appliquer à partir du (optionnel)",
+    "timetable.agenda.slotForm.addToList": "Ajouter à la liste",
     "timetable.agenda.slotForm.saving": "Enregistrement...",
-    "timetable.agenda.slotForm.updating": "Mise a jour...",
-    "timetable.agenda.slotForm.update": "Mettre a jour",
-    "timetable.agenda.slotForm.addSlot": "Ajouter le creneau",
-    "timetable.agenda.slotForm.saveMultiple": "Enregistrer {count} creneaux",
+    "timetable.agenda.slotForm.updating": "Mise à jour...",
+    "timetable.agenda.slotForm.update": "Mettre à jour",
+    "timetable.agenda.slotForm.addSlot": "Ajouter le créneau",
+    "timetable.agenda.slotForm.saveMultiple": "Enregistrer {count} créneaux",
     "timetable.agenda.slotForm.cancelEdit": "Annuler la modification",
     "timetable.agenda.slotForm.clearList": "Vider la liste ({count})",
-    "timetable.agenda.slotForm.pendingSlots": "Creneaux en attente ({count})",
+    "timetable.agenda.slotForm.pendingSlots": "Créneaux en attente ({count})",
     "timetable.agenda.slotForm.remove": "Retirer",
     "timetable.agenda.slotForm.clickHint":
-      "Cliquez sur un creneau dans les vues jour, semaine ou mois pour definir un ponctuel, annuler ou modifier une occurrence.",
+      "Cliquez sur un créneau dans les vues jour, semaine ou mois pour définir un ponctuel, annuler ou modifier une occurrence.",
 
     "timetable.agenda.vacations.label": "Libelle",
     "timetable.agenda.vacations.scope": "Portee",
@@ -2546,6 +2593,10 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Voulez-vous vraiment supprimer toute la serie ?",
     "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
       "Voulez-vous vraiment supprimer cette occurrence ?",
+    "timetable.agenda.occurrenceModal.cancelReasonLabel":
+      "Motif de l'annulation",
+    "timetable.agenda.occurrenceModal.cancelReasonPlaceholder":
+      "Ex. : absence, formation, rendez-vous medical...",
     "timetable.agenda.occurrenceModal.cancelledSuffix": " · Annule",
     "timetable.agenda.occurrenceModal.roomPrefix": "Salle",
     "timetable.agenda.occurrenceModal.seriesStart": "Debut de serie :",
@@ -3288,29 +3339,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "dashboard.school.moduleValue": "Module",
     "dashboard.school.feedFollowValue": "Suivre",
     "dashboard.school.openValue": "Ouvrir",
-
-    "mesClasses.title": "Mes classes",
-    "mesClasses.subtitle": "Suivi des classes enseignees",
-    "mesClasses.tab.list": "Liste",
-    "mesClasses.tab.view": "Voir",
-    "mesClasses.tab.help": "Aide",
-    "mesClasses.error.loadFailed": "Impossible de charger vos classes.",
-    "mesClasses.error.network": "Erreur reseau.",
-    "mesClasses.schoolYear.label": "Annee scolaire",
-    "mesClasses.schoolYear.all": "Toutes",
-    "mesClasses.schoolYear.active": "(active)",
-    "mesClasses.schoolYear.unknown": "Annee non definie",
-    "mesClasses.table.class": "Classe",
-    "mesClasses.table.year": "Annee",
-    "mesClasses.table.subjects": "Matieres",
-    "mesClasses.table.students": "Eleves",
-    "mesClasses.table.empty": "Aucune classe affectee.",
-    "mesClasses.view.selectLabel": "Classe",
-    "mesClasses.view.selectPlaceholder": "Selectionner",
-    "mesClasses.view.hint": "Selectionnez une classe pour voir le detail.",
-    "mesClasses.view.subjectsTitle": "Matieres",
-    "mesClasses.view.studentsTitle": "Eleves",
-    "mesClasses.view.noStudents": "Aucun eleve dans cette classe.",
 
     "documents.title": "Documents",
     "documents.subtitle": "{fullName} - centralisez vos documents scolaires",
@@ -6451,6 +6479,43 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.teacherDiscipline.step3Body":
       'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
 
+    "onboardingTour.teacherAttendance.step1Title": "Pick the date",
+    "onboardingTour.teacherAttendance.step1Body":
+      "Move to the previous or next day, or pick a specific date, to take roll call for that day.",
+    "onboardingTour.teacherAttendance.step2Title": "Mark absentees",
+    "onboardingTour.teacherAttendance.step2Body":
+      "Every student is present by default: switch a student to Absent if they are missing that day.",
+    "onboardingTour.teacherAttendance.step3Title": "Help is always available",
+    "onboardingTour.teacherAttendance.step3Body":
+      'Open this menu at any time, then "Help", for a reminder of how roll call works.',
+
+    "attendance.sidebar.attendance": "Students",
+    "attendance.page.titlePrefix": "Roll call",
+    "attendance.page.defaultClassName": "Class",
+    "attendance.page.subtitle":
+      "Check the students who are absent for the selected date.",
+    "attendance.page.dateLabel": "Date",
+    "attendance.page.previousDayAria": "Previous day",
+    "attendance.page.nextDayAria": "Next day",
+    "attendance.page.presentLabel": "Present",
+    "attendance.page.absentLabel": "Absent",
+    "attendance.page.summary": "{present}/{total} present",
+    "attendance.page.saveButton": "Save roll call",
+    "attendance.page.saving": "Saving...",
+    "attendance.page.emptyState": "No student enrolled in this class.",
+    "attendance.page.classNotAccessible": "Class not accessible.",
+    "attendance.common.loading": "Loading...",
+    "attendance.common.networkError": "A network error occurred. Try again.",
+    "attendance.common.csrfInvalid": "Invalid session, please sign in again.",
+    "attendance.errors.loadClass": "Unable to load the class.",
+    "attendance.errors.loadRoster": "Unable to load the student list.",
+    "attendance.errors.saveFailed": "Unable to save the roll call.",
+    "attendance.success.saved": "Roll call saved.",
+    "attendance.pageHelp.title": "How to use roll call",
+    "attendance.pageHelp.section1Title": "Take today's roll call",
+    "attendance.pageHelp.section1Body":
+      "Pick a date, then switch a student to Absent if needed; every student is present by default. Click Save roll call to store it.",
+
     "discipline.help.summary":
       "this module lets the teacher record absences, lateness, sanctions and punishments for their assigned classes.",
     "discipline.help.record.name": "Record",
@@ -6964,7 +7029,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.parentsStudents": "Parents-students",
     "sidebar.nav.grades": "Grades",
     "sidebar.nav.dashboard": "Dashboard",
-    "sidebar.nav.myClasses": "My classes",
     "sidebar.nav.agenda": "Agenda",
     "sidebar.nav.financialSituation": "Financial situation",
     "sidebar.nav.reinscription": "Re-enrollment",
@@ -7874,6 +7938,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "The start time must be before the end time.",
     "timetable.agenda.validation.selectOccurrenceDate":
       "Select the occurrence date.",
+    "timetable.agenda.validation.enterCancelReason":
+      "Enter the cancellation reason.",
 
     "timetable.agenda.schoolYear.label": "School year",
     "timetable.agenda.schoolYear.previousAria": "Previous year",
@@ -7887,6 +7953,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.colors.saving": "...",
     "timetable.agenda.colors.save": "Save",
 
+    "timetable.agenda.slotForm.createTitle": "New slot",
+    "timetable.agenda.slotForm.editTitle": "Edit slot",
+    "timetable.agenda.slotForm.createSubtitle":
+      "Set the day, time and subject, then the applicable period if needed.",
+    "timetable.agenda.slotForm.validitySectionTitle": "Applicable period",
     "timetable.agenda.slotForm.weekday": "Day",
     "timetable.agenda.slotForm.start": "Start",
     "timetable.agenda.slotForm.end": "End",
@@ -7954,6 +8025,9 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Are you sure you want to delete the whole series?",
     "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
       "Are you sure you want to delete this occurrence?",
+    "timetable.agenda.occurrenceModal.cancelReasonLabel": "Cancellation reason",
+    "timetable.agenda.occurrenceModal.cancelReasonPlaceholder":
+      "E.g.: absence, training, medical appointment...",
     "timetable.agenda.occurrenceModal.cancelledSuffix": " · Cancelled",
     "timetable.agenda.occurrenceModal.roomPrefix": "Room",
     "timetable.agenda.occurrenceModal.seriesStart": "Series start:",
@@ -8641,29 +8715,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "dashboard.school.moduleValue": "Module",
     "dashboard.school.feedFollowValue": "Follow",
     "dashboard.school.openValue": "Open",
-
-    "mesClasses.title": "My classes",
-    "mesClasses.subtitle": "Tracking of taught classes",
-    "mesClasses.tab.list": "List",
-    "mesClasses.tab.view": "View",
-    "mesClasses.tab.help": "Help",
-    "mesClasses.error.loadFailed": "Unable to load your classes.",
-    "mesClasses.error.network": "Network error.",
-    "mesClasses.schoolYear.label": "School year",
-    "mesClasses.schoolYear.all": "All",
-    "mesClasses.schoolYear.active": "(active)",
-    "mesClasses.schoolYear.unknown": "Undefined year",
-    "mesClasses.table.class": "Class",
-    "mesClasses.table.year": "Year",
-    "mesClasses.table.subjects": "Subjects",
-    "mesClasses.table.students": "Students",
-    "mesClasses.table.empty": "No class assigned.",
-    "mesClasses.view.selectLabel": "Class",
-    "mesClasses.view.selectPlaceholder": "Select",
-    "mesClasses.view.hint": "Select a class to see the details.",
-    "mesClasses.view.subjectsTitle": "Subjects",
-    "mesClasses.view.studentsTitle": "Students",
-    "mesClasses.view.noStudents": "No students in this class.",
 
     "documents.title": "Documents",
     "documents.subtitle": "{fullName} - centralise your school documents",

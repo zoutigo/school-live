@@ -322,6 +322,38 @@ describe("deleteOneOffSlot — permissions", () => {
       translateTimetableError("fr", "timetable.errors.oneOffSlotNotFound"),
     );
   });
+
+  it("transmet le motif d'annulation à l'événement de notification/fil", async () => {
+    const enqueue = jest.fn().mockResolvedValue(undefined);
+    (service as any).timetableChangeNotificationsService = { enqueue };
+    const user = makeUser("teacher-albert", "TEACHER");
+
+    await service.deleteOneOffSlot(
+      user,
+      "school-1",
+      "oof-1",
+      "  Rendez-vous médical  ",
+    );
+
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "ONE_OFF_DELETED",
+        reason: "Rendez-vous médical",
+      }),
+    );
+  });
+
+  it("envoie reason: null quand aucun motif n'est fourni", async () => {
+    const enqueue = jest.fn().mockResolvedValue(undefined);
+    (service as any).timetableChangeNotificationsService = { enqueue };
+    const user = makeUser("teacher-albert", "TEACHER");
+
+    await service.deleteOneOffSlot(user, "school-1", "oof-1");
+
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "ONE_OFF_DELETED", reason: null }),
+    );
+  });
 });
 
 // ─── createSlot (série) — enseignant affecté / referent / admin ─────────────

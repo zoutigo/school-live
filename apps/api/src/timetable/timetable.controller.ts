@@ -249,8 +249,14 @@ export class TimetableController {
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
     @Param("oneOffSlotId") oneOffSlotId: string,
+    @Query("reason") reason?: string,
   ) {
-    return this.timetableService.deleteOneOffSlot(user, schoolId, oneOffSlotId);
+    return this.timetableService.deleteOneOffSlot(
+      user,
+      schoolId,
+      oneOffSlotId,
+      reason,
+    );
   }
 
   @Post("slots/:slotId/exceptions")

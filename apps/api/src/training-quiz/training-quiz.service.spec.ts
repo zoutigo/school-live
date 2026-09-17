@@ -25,6 +25,7 @@ const makePrismaMock = () => ({
     findFirst: jest.fn(),
     findUnique: jest.fn(),
   },
+  class: { count: jest.fn().mockResolvedValue(0) },
   quizQuestion: { findUnique: jest.fn() },
   quizUserQuestionProgress: {
     upsert: jest.fn(),
@@ -120,7 +121,13 @@ describe("TrainingQuizService", () => {
       const result = await service.listChapters(makeUser());
 
       expect(prisma.quizChapter.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { role: "PARENT", isActive: true } }),
+        expect.objectContaining({
+          where: {
+            role: "PARENT",
+            isActive: true,
+            requiresReferentTeacher: false,
+          },
+        }),
       );
       expect(result).toEqual([
         expect.objectContaining({
@@ -221,6 +228,57 @@ describe("TrainingQuizService", () => {
         totalQuestions: 1,
         solvedQuestions: 1,
       });
+    });
+
+    it("excludes referent-only chapters for a TEACHER who is not référent of any class", async () => {
+      prisma.quizChapter.findMany.mockResolvedValue([]);
+      prisma.class.count.mockResolvedValue(0);
+
+      await service.listChapters(
+        makeUser({
+          activeRole: "TEACHER",
+          memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+        }),
+      );
+
+      expect(prisma.class.count).toHaveBeenCalledWith({
+        where: { schoolId: "school-1", referentTeacherUserId: "user-1" },
+      });
+      expect(prisma.quizChapter.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            role: "TEACHER",
+            isActive: true,
+            requiresReferentTeacher: false,
+          },
+        }),
+      );
+    });
+
+    it("includes referent-only chapters for a TEACHER who is référent of a class", async () => {
+      prisma.quizChapter.findMany.mockResolvedValue([]);
+      prisma.class.count.mockResolvedValue(1);
+
+      await service.listChapters(
+        makeUser({
+          activeRole: "TEACHER",
+          memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+        }),
+      );
+
+      expect(prisma.quizChapter.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { role: "TEACHER", isActive: true },
+        }),
+      );
+    });
+
+    it("never checks referent status for a non-TEACHER role", async () => {
+      prisma.quizChapter.findMany.mockResolvedValue([]);
+
+      await service.listChapters(makeUser());
+
+      expect(prisma.class.count).not.toHaveBeenCalled();
     });
   });
 

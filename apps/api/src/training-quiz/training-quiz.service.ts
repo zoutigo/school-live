@@ -105,15 +105,41 @@ export class TrainingQuizService {
     return user.preferredLocale === "EN" ? "EN" : "FR";
   }
 
+  // A chapter flagged `requiresReferentTeacher` only makes sense — and only
+  // has a working deep link — for a teacher who is actually the référent of
+  // at least one class in the school tied to their resolved TEACHER
+  // membership (Class.referentTeacherUserId).
+  private async isReferentTeacher(
+    user: AuthenticatedUser,
+    role: AppRole,
+  ): Promise<boolean> {
+    if (role !== "TEACHER") {
+      return false;
+    }
+    const schoolId = user.memberships.find((m) => m.role === role)?.schoolId;
+    if (!schoolId) {
+      return false;
+    }
+    const count = await this.prisma.class.count({
+      where: { schoolId, referentTeacherUserId: user.id },
+    });
+    return count > 0;
+  }
+
   async listChapters(user: AuthenticatedUser): Promise<QuizChapterSummary[]> {
     const role = this.resolveRole(user);
     if (!role) {
       return [];
     }
     const locale = this.resolveLocale(user);
+    const isReferent = await this.isReferentTeacher(user, role);
 
     const chapters = await this.prisma.quizChapter.findMany({
-      where: { role, isActive: true },
+      where: {
+        role,
+        isActive: true,
+        ...(isReferent ? {} : { requiresReferentTeacher: false }),
+      },
       orderBy: { order: "asc" },
       include: {
         questions: {
@@ -178,9 +204,15 @@ export class TrainingQuizService {
   ): Promise<QuizChapterDetail> {
     const role = this.resolveRole(user);
     const locale = this.resolveLocale(user);
+    const isReferent = role ? await this.isReferentTeacher(user, role) : false;
 
     const chapter = await this.prisma.quizChapter.findFirst({
-      where: { id: chapterId, role: role ?? undefined, isActive: true },
+      where: {
+        id: chapterId,
+        role: role ?? undefined,
+        isActive: true,
+        ...(isReferent ? {} : { requiresReferentTeacher: false }),
+      },
       include: {
         questions: {
           where: { isActive: true },
@@ -425,8 +457,13 @@ export class TrainingQuizService {
       };
     }
 
+    const isReferent = await this.isReferentTeacher(user, role);
     const chapters = await this.prisma.quizChapter.findMany({
-      where: { role, isActive: true },
+      where: {
+        role,
+        isActive: true,
+        ...(isReferent ? {} : { requiresReferentTeacher: false }),
+      },
       orderBy: { order: "asc" },
       include: {
         questions: {

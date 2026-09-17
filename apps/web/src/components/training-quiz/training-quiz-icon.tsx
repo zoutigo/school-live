@@ -8,6 +8,7 @@ import {
   ClipboardList,
   GraduationCap,
   HeartPulse,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ const ICONS: Record<string, LucideIcon> = {
   ClipboardList,
   GraduationCap,
   HeartPulse,
+  Newspaper,
 };
 
 export function TrainingQuizIcon({

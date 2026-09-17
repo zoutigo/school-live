@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller.js";
+import { AttendanceModule } from "./attendance/attendance.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { BadgesModule } from "./badges/badges.module.js";
 import { EnrollmentsModule } from "./enrollments/enrollments.module.js";
@@ -41,6 +42,7 @@ import { TrainingQuizModule } from "./training-quiz/training-quiz.module.js";
           : ["../../docker/.env", ".env"],
     }),
     PrismaModule,
+    AttendanceModule,
     AuthModule,
     BadgesModule,
     EnrollmentsModule,

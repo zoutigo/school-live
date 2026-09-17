@@ -78,6 +78,9 @@ const STAGE_STYLES: Record<QuizStage, string> = {
 
 type GlobalMe = { schoolSlug?: string | null };
 type ParentMe = { linkedStudents?: Array<{ id: string }> };
+type TeacherGradesContext = {
+  assignments?: Array<{ classId: string }>;
+};
 
 function MissionTrail({
   questions,
@@ -186,6 +189,7 @@ export default function TrainingQuizChapterPage() {
   const [ready, setReady] = useState(false);
   const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
   const [linkedChildId, setLinkedChildId] = useState<string | null>(null);
+  const [linkedClassId, setLinkedClassId] = useState<string | null>(null);
   const [chapter, setChapter] = useState<QuizChapterDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,6 +233,22 @@ export default function TrainingQuizChapterPage() {
               )
               .then((parentMe) =>
                 setLinkedChildId(parentMe?.linkedStudents?.[0]?.id ?? null),
+              )
+              .catch(() => undefined)
+          : Promise.resolve(undefined),
+        // TEACHER-only: resolves the first class a practice-stage question
+        // can deep-link into (`{classId}` placeholder), mirroring the
+        // `{childId}` resolution above for PARENT.
+        me.schoolSlug
+          ? fetch(
+              `${API_URL}/schools/${me.schoolSlug}/student-grades/context`,
+              { credentials: "include" },
+            )
+              .then((res) =>
+                res.ok ? (res.json() as Promise<TeacherGradesContext>) : null,
+              )
+              .then((context) =>
+                setLinkedClassId(context?.assignments?.[0]?.classId ?? null),
               )
               .catch(() => undefined)
           : Promise.resolve(undefined),
@@ -300,8 +320,12 @@ export default function TrainingQuizChapterPage() {
       if (!linkedChildId) return null;
       return question.deepLinkRoute.replace("{childId}", linkedChildId);
     }
+    if (question.deepLinkRoute.includes("{classId}")) {
+      if (!linkedClassId) return null;
+      return question.deepLinkRoute.replace("{classId}", linkedClassId);
+    }
     return question.deepLinkRoute;
-  }, [question, linkedChildId]);
+  }, [question, linkedChildId, linkedClassId]);
 
   function startCooldown(seconds: number) {
     if (cooldownTimer.current) clearInterval(cooldownTimer.current);

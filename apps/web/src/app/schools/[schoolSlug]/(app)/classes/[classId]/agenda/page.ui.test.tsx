@@ -191,7 +191,7 @@ describe("Agenda page forms", () => {
     fireEvent.click(await screen.findByTitle("Ajouter"));
 
     const submitButton = await screen.findByRole("button", {
-      name: "Ajouter le creneau",
+      name: "Ajouter le créneau",
     });
     expect(submitButton).toBeEnabled();
 
@@ -407,6 +407,121 @@ describe("Agenda page forms", () => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining("/schools/college-vogt/timetable/slots/slot-1"),
         expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+  });
+
+  it("DELETE_OCCURRENCE exige un motif avant de soumettre l'annulation", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/timetable/classes/class-1/context")) {
+        return jsonResponse(contextPayload);
+      }
+      if (
+        url.includes("/timetable/classes/class-1?") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse(timetablePayload);
+      }
+      return jsonResponse({ message: `Unhandled GET ${url}` }, 404);
+    });
+
+    render(<TeacherClassAgendaPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Anglais" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Supprimer cette occurrence" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Continuer" }));
+
+    const submitButton = await screen.findByRole("button", {
+      name: "Appliquer l'action",
+    });
+
+    // Le motif est vide : le bouton de soumission reste desactive
+    // (meme comportement que les autres champs obligatoires du formulaire).
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled();
+    });
+
+    const reasonField = await screen.findByPlaceholderText(
+      "Ex. : absence, formation, rendez-vous medical...",
+    );
+    fireEvent.change(reasonField, { target: { value: "Rendez-vous" } });
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    fireEvent.change(reasonField, { target: { value: "" } });
+
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  it("DELETE_OCCURRENCE envoie le motif saisi dans l'exception CANCEL", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/schools/college-vogt/me")) {
+          return jsonResponse({ role: "TEACHER" });
+        }
+        if (url.includes("/timetable/classes/class-1/context")) {
+          return jsonResponse(contextPayload);
+        }
+        if (
+          url.includes("/timetable/classes/class-1?") &&
+          !url.includes("/context")
+        ) {
+          return jsonResponse(timetablePayload);
+        }
+        if (
+          url.endsWith(
+            "/schools/college-vogt/timetable/slots/slot-1/exceptions",
+          ) &&
+          method === "POST"
+        ) {
+          return jsonResponse({ id: "exc-1" }, 200);
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<TeacherClassAgendaPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Anglais" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Supprimer cette occurrence" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Continuer" }));
+
+    const reasonField = await screen.findByPlaceholderText(
+      "Ex. : absence, formation, rendez-vous medical...",
+    );
+    fireEvent.change(reasonField, {
+      target: { value: "Rendez-vous medical" },
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Appliquer l'action" }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "/schools/college-vogt/timetable/slots/slot-1/exceptions",
+        ),
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("Rendez-vous medical"),
+        }),
       );
     });
   });

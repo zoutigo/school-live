@@ -25,6 +25,10 @@ model QuizChapter {
   order       Int
   isActive    Boolean @default(true)
   needsReview Boolean @default(false)
+  // Restreint le chapitre aux users qui sont référent d'au moins une classe
+  // de l'école (Class.referentTeacherUserId) — ex. le chapitre "Professeur
+  // référent" côté TEACHER, sans effet pour les autres rôles.
+  requiresReferentTeacher Boolean @default(false)
 
   icon      String
   colorFrom String
