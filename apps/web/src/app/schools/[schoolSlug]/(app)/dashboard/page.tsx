@@ -1349,7 +1349,7 @@ function TeacherEvalsSection({
       iconColor={accent}
       count={dashboard?.pendingEvals.length}
       linkLabel={t("dashboard.teacher.evalsLinkLabel")}
-      linkHref={`/schools/${schoolSlug}/mes-classes`}
+      linkHref={`/schools/${schoolSlug}/emploi-du-temps`}
       testId="section-teacher-evals"
       linkTourTargetId={TEACHER_HOME_TOUR_TARGETS.evalsLink}
     >
@@ -1418,7 +1418,7 @@ function TeacherHomeworkSection({
       iconColor={accent}
       count={dashboard?.openHomework.length}
       linkLabel={t("homework.dashboard.viewAll")}
-      linkHref={`/schools/${schoolSlug}/mes-classes`}
+      linkHref={`/schools/${schoolSlug}/emploi-du-temps`}
       testId="section-teacher-homework"
     >
       {loading && !dashboard ? (

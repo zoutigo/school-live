@@ -424,11 +424,13 @@ function buildRoleItems(
   // TEACHER: doit rester le miroir exact du menu mobile
   // (nav-config.ts#TEACHER_NAV) — Tableau de bord, Fil, Agenda (vue
   // consolidée toutes classes, `/emploi-du-temps` avec la branche TEACHER
-  // déjà implémentée), Mes classes, Ressources, Messagerie, Quiz de
-  // formation, Mon compte. `/student-grades` ("Cahier de notes") a été
-  // retiré : c'est un formulaire de saisie brut sans lien avec les
-  // évaluations réelles (voir la note sur la vue STUDENT plus bas), sans
-  // équivalent côté mobile.
+  // déjà implémentée), Ressources, Messagerie, Quiz de formation, Mon
+  // compte. `/student-grades` ("Cahier de notes") a été retiré : c'est un
+  // formulaire de saisie brut sans lien avec les évaluations réelles (voir
+  // la note sur la vue STUDENT plus bas), sans équivalent côté mobile.
+  // "Mes classes" (`/mes-classes`) a été retiré : tout ce qu'un enseignant
+  // peut y faire (voir/gérer l'emploi du temps de ses classes) est déjà
+  // couvert par "Agenda" (`/emploi-du-temps`, onglet classe).
   if (role === "TEACHER") {
     return [
       {
@@ -455,12 +457,6 @@ function buildRoleItems(
         href: `${schoolBase}/emploi-du-temps`,
         icon: CalendarDays,
         matchPrefix: `${schoolBase}/emploi-du-temps`,
-      },
-      {
-        label: t("sidebar.nav.myClasses"),
-        href: `${schoolBase}/mes-classes`,
-        icon: School,
-        matchPrefix: `${schoolBase}/mes-classes`,
       },
       {
         label: t("sidebar.nav.resources"),

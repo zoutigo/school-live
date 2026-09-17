@@ -739,11 +739,13 @@ describe("DashboardPage role dashboards", () => {
     );
 
     // Les liens "Voir tout" des sections évaluations/devoirs renvoient vers
-    // la liste des classes (pas de vue agrégée toutes classes côté mobile).
+    // l'agenda (pas de vue agrégée toutes classes côté mobile) : "Mes
+    // classes" a été retiré, tout étant déjà couvert par "Agenda".
     const viewAllClassesLinks = screen
       .getAllByRole("link")
       .filter(
-        (l) => l.getAttribute("href") === "/schools/college-vogt/mes-classes",
+        (l) =>
+          l.getAttribute("href") === "/schools/college-vogt/emploi-du-temps",
       );
     expect(viewAllClassesLinks.length).toBeGreaterThanOrEqual(2);
 

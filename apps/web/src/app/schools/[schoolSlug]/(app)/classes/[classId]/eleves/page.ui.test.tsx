@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassAttendancePage from "./page";
 
 const replaceMock = vi.fn();
@@ -81,9 +81,15 @@ function rosterPayload(date: string, absentStudentIds: string[] = []) {
 describe("Teacher class attendance page", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-16T12:00:00Z"));
     replaceMock.mockReset();
     getCsrfTokenCookieMock.mockReset();
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("loads the roster with everyone present by default and toggles a student to absent", async () => {
