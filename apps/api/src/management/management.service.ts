@@ -336,7 +336,7 @@ const listStudentLifeEventsQuerySchema = z.object({
   type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]).optional(),
   schoolYearId: z.string().trim().min(1).optional(),
   classId: z.string().trim().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
 const createStudentLifeEventSchema = z.object({
