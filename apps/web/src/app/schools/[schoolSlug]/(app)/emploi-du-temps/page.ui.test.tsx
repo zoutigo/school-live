@@ -886,6 +886,29 @@ describe("StudentTimetablePage UI", () => {
       expect(screen.getByTestId("admin-schedule-empty-selection")).toBeTruthy();
     });
 
+    it("masque les filtres derriere un bouton en largeur mobile et les reaffiche au clic", async () => {
+      mockCompactViewport();
+      mockAdminFetch({
+        members: { data: [TEACHER_MEMBER], page: 1, limit: 20, total: 1 },
+      });
+
+      render(<StudentTimetablePage />);
+
+      await screen.findByTestId("admin-schedule-filters-toggle");
+      expect(screen.getByTestId("admin-schedule-filters-body")).toHaveClass(
+        "hidden",
+      );
+
+      fireEvent.click(screen.getByTestId("admin-schedule-filters-toggle"));
+
+      expect(screen.getByTestId("admin-schedule-filters-body")).not.toHaveClass(
+        "hidden",
+      );
+      expect(
+        screen.getByTestId("admin-schedule-filters-toggle"),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+
     it("selectionner un enseignant appelle /timetable/me/teacher avec son id", async () => {
       mockAdminFetch({
         members: { data: [TEACHER_MEMBER], page: 1, limit: 20, total: 1 },

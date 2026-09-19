@@ -1023,6 +1023,48 @@ describe("AppSidebar messaging link for platform roles", () => {
     );
   });
 
+  it("shows an Agenda link pointing to the school emploi-du-temps page for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", { name: "Agenda" });
+    expect(link.getAttribute("href")).toBe(
+      "/schools/college-vogt/emploi-du-temps",
+    );
+  });
+
+  it("shows a Discipline link pointing to the school discipline page for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", { name: "Discipline" });
+    expect(link.getAttribute("href")).toBe(
+      "/schools/college-vogt/discipline",
+    );
+  });
+
+  it("shows a Ressources link pointing to /resources for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", { name: "Ressources" });
+    expect(link.getAttribute("href")).toBe("/resources");
+  });
+
+  it("no longer shows the dead Parents-eleves link for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Utilisateurs" });
+    expect(
+      screen.queryByRole("link", { name: "Parents-eleves" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a Messagerie link pointing to /messagerie for SUPER_ADMIN", async () => {
     mockUnreadCount(0);
 

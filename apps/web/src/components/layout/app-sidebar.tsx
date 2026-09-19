@@ -310,6 +310,12 @@ function buildRoleItems(
         unread: feedUnread,
       },
       {
+        label: t("sidebar.nav.agenda"),
+        href: `${schoolBase}/emploi-du-temps`,
+        icon: CalendarDays,
+        matchPrefix: `${schoolBase}/emploi-du-temps`,
+      },
+      {
         label: t("sidebar.nav.classes"),
         href: "/classes",
         icon: Building2,
@@ -382,12 +388,6 @@ function buildRoleItems(
         matchPrefix: "/teachers",
       },
       {
-        label: t("sidebar.nav.parentsStudents"),
-        href: `${schoolBase}/dashboard#parents`,
-        icon: Users,
-        matchPrefix: `${schoolBase}/dashboard`,
-      },
-      {
         label: t("sidebar.nav.users"),
         href: `${schoolBase}/utilisateurs`,
         icon: Users,
@@ -398,6 +398,12 @@ function buildRoleItems(
         href: `${schoolBase}/notes`,
         icon: BookOpen,
         matchPrefix: `${schoolBase}/notes`,
+      },
+      {
+        label: t("discipline.sidebar.discipline"),
+        href: `${schoolBase}/discipline`,
+        icon: ShieldCheck,
+        matchPrefix: `${schoolBase}/discipline`,
       },
       {
         label: t("messaging.nav.title"),
@@ -411,6 +417,12 @@ function buildRoleItems(
         href: `${schoolBase}/sante`,
         icon: HeartPulse,
         matchPrefix: `${schoolBase}/sante`,
+      },
+      {
+        label: t("sidebar.nav.resources"),
+        href: "/resources",
+        icon: Library,
+        matchPrefix: "/resources",
       },
       {
         label: t("sidebar.nav.settings"),
