@@ -1040,9 +1040,7 @@ describe("AppSidebar messaging link for platform roles", () => {
     render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
 
     const link = await screen.findByRole("link", { name: "Discipline" });
-    expect(link.getAttribute("href")).toBe(
-      "/schools/college-vogt/discipline",
-    );
+    expect(link.getAttribute("href")).toBe("/schools/college-vogt/discipline");
   });
 
   it("shows a Ressources link pointing to /resources for SCHOOL_ADMIN", async () => {
