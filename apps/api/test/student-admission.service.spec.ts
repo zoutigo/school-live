@@ -94,6 +94,32 @@ describe("ManagementService — admission d'un nouvel eleve", () => {
       ).toBeUndefined();
     });
 
+    it("accepte un niveau national (schoolId null) active pour l'ecole, pas seulement un niveau propre a l'ecole", async () => {
+      // Simule un niveau du catalogue national (jamais schoolId === school-1) :
+      // seule la requete OR{schoolId, national} doit pouvoir le retrouver.
+      prisma.academicLevel.findFirst.mockImplementation(({ where }) => {
+        const matchesNational = where.OR?.some(
+          (clause: { schoolId?: string | null }) => clause.schoolId === null,
+        );
+        return Promise.resolve(
+          matchesNational ? { id: "level-national-1" } : null,
+        );
+      });
+
+      const result = await service.createStudentAdmission(
+        "school-1",
+        "registrar-1",
+        {
+          firstName: "Awa",
+          lastName: "Njoya",
+          academicLevelId: "level-national-1",
+        } as never,
+      );
+
+      expect(result.student.id).toBe("student-new");
+      expect(prisma.student.create).toHaveBeenCalled();
+    });
+
     it("refuse si le niveau academique n'existe pas pour cette ecole", async () => {
       prisma.academicLevel.findFirst.mockResolvedValue(null);
 

@@ -6407,8 +6407,13 @@ export class ManagementService {
       await this.ensureSchoolYearInSchool(payload.schoolYearId, schoolId);
     }
 
+    const nationalLevelFilter =
+      await this.getNationalCatalogFilterForSchool(schoolId);
     const academicLevel = await this.prisma.academicLevel.findFirst({
-      where: { id: payload.academicLevelId, schoolId },
+      where: {
+        id: payload.academicLevelId,
+        OR: [{ schoolId }, nationalLevelFilter],
+      },
       select: { id: true },
     });
     if (!academicLevel) {

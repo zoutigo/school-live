@@ -63,7 +63,7 @@ type EnrollmentRow = {
   class: {
     id: string;
     name: string;
-  };
+  } | null;
 };
 
 type StudentEnrollmentRow = {
@@ -1200,7 +1200,11 @@ export default function EnrollmentsPage() {
                                 {row.enrollment.schoolYear.label}
                               </td>
                               <td className="px-3 py-2">
-                                {row.enrollment.class.name}
+                                {row.enrollment.class?.name ?? (
+                                  <span className="text-text-secondary">
+                                    Non affecte (pool)
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2">
                                 <SearchableSelect

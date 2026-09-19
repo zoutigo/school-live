@@ -298,16 +298,17 @@ export class FinanceService {
       throw new NotFoundException("Eleve introuvable");
     }
 
-    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+    const target = await this.resolveEnrollmentTargetOrThrow(
       schoolId,
       studentId,
+      targetSchoolYearId,
     );
 
     const feeSchedule = await this.resolveFeeScheduleForTarget(
       schoolId,
       targetSchoolYearId,
-      decision.nextAcademicLevelId,
-      decision.nextTrackId,
+      target.academicLevelId,
+      target.trackId,
     );
 
     const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);
@@ -318,7 +319,11 @@ export class FinanceService {
 
     return {
       student,
-      decision,
+      decision: {
+        decision: target.isNewAdmission ? "NEW_ADMISSION" : "PROMOTED",
+        nextAcademicLevelId: target.academicLevelId,
+        nextTrackId: target.trackId,
+      },
       feeSchedule,
       totalPaid,
       thresholdAmount,
@@ -382,16 +387,17 @@ export class FinanceService {
       throw new NotFoundException("Eleve introuvable");
     }
 
-    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+    const target = await this.resolveEnrollmentTargetOrThrow(
       schoolId,
       studentId,
+      targetSchoolYearId,
     );
 
     const feeSchedule = await this.resolveFeeScheduleForTarget(
       schoolId,
       targetSchoolYearId,
-      decision.nextAcademicLevelId,
-      decision.nextTrackId,
+      target.academicLevelId,
+      target.trackId,
     );
 
     const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);

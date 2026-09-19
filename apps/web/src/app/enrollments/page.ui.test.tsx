@@ -273,6 +273,49 @@ describe("Enrollments page forms", () => {
     ).toBeInTheDocument();
   });
 
+  it("affiche 'Non affecte (pool)' au lieu de planter quand un enrollment n'a pas de classe (nouvel eleve en attente)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/school-years")) {
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      }
+      if (url.includes("/admin/classrooms")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/admin/students?")) {
+        return jsonResponse({
+          students: [
+            buildStudentRow({
+              firstName: "Aicha",
+              lastName: "Talla",
+              currentEnrollment: buildEnrollmentRow({
+                class: null as never,
+              }),
+              enrollments: [buildEnrollmentRow({ class: null as never })],
+            }),
+          ],
+        });
+      }
+
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<EnrollmentsPage />);
+
+    expect(await screen.findByText("Talla Aicha")).toBeInTheDocument();
+    expect(screen.getByText("Non affecte (pool)")).toBeInTheDocument();
+  });
+
   it("submits an inline status update for one enrollment", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

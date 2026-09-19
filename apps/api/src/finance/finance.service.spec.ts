@@ -764,6 +764,44 @@ describe("FinanceService", () => {
     });
   });
 
+  describe("getStudentFinanceSummary — nouvel eleve (admission)", () => {
+    it("resout le niveau depuis l'admission en attente sans exiger de decision de conseil", async () => {
+      enrollmentsService.getConfirmedDecisionOrThrow.mockRejectedValue(
+        new BadRequestException("Aucune decision"),
+      );
+      enrollmentsService.findPendingAdmission.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: LEVEL_ID,
+        trackId: null,
+        confirmedAt: null,
+      });
+
+      const summary = await service.getStudentFinanceSummary(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(summary.decision).toEqual(
+        expect.objectContaining({
+          decision: "NEW_ADMISSION",
+          nextAcademicLevelId: LEVEL_ID,
+        }),
+      );
+      expect(summary.feeSchedule).toEqual(FEE_SCHEDULE);
+    });
+
+    it("refuse toujours si ni admission ni decision n'existent pour l'eleve", async () => {
+      enrollmentsService.getConfirmedDecisionOrThrow.mockRejectedValue(
+        new BadRequestException("Aucune decision"),
+      );
+
+      await expect(
+        service.getStudentFinanceSummary(SCHOOL_ID, STUDENT_ID, TARGET_YEAR_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe("cascade d'allocation des paiements par echeance", () => {
     const PAST_DATE = new Date("2020-01-01");
     const FUTURE_DATE = new Date("2099-01-01");
