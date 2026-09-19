@@ -58,6 +58,7 @@ import { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
 import { SetActiveSchoolYearDto } from "./dto/set-active-school-year.dto.js";
 import { CreateSchoolDto } from "./dto/create-school.dto.js";
 import { CreateStudentDto } from "./dto/create-student.dto.js";
+import { CreateStudentAdmissionDto } from "./dto/create-student-admission.dto.js";
 import { CreateTeacherDto } from "./dto/create-teacher.dto.js";
 import { CreateTrackDto } from "./dto/create-track.dto.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
@@ -1258,6 +1259,41 @@ export class ManagementController {
     @Body() payload: CreateStudentDto,
   ) {
     return this.managementService.createStudent(schoolId, payload);
+  }
+
+  @Post("schools/:schoolSlug/admin/students/admissions")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "SUPER_ADMIN")
+  createStudentAdmission(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() payload: CreateStudentAdmissionDto,
+  ) {
+    return this.managementService.createStudentAdmission(
+      schoolId,
+      currentUser.id,
+      payload,
+    );
+  }
+
+  @Get("schools/:schoolSlug/admin/enrollments/pool")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "SCHOOL_ACCOUNTANT",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  listUnassignedEnrollmentPool(
+    @CurrentSchoolId() schoolId: string,
+    @Query("schoolYearId") schoolYearId?: string,
+  ) {
+    return this.managementService.listUnassignedEnrollmentPool(
+      schoolId,
+      schoolYearId,
+    );
   }
 
   @Patch("schools/:schoolSlug/admin/students/:studentId")

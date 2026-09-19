@@ -101,6 +101,8 @@ describe("FinanceService", () => {
   let enrollmentsService: {
     getConfirmedDecisionOrThrow: jest.Mock;
     confirmReinscription: jest.Mock;
+    findPendingAdmission: jest.Mock;
+    confirmNewAdmission: jest.Mock;
   };
   let supplyListAvailableNotificationsService: { enqueue: jest.Mock };
 
@@ -109,6 +111,10 @@ describe("FinanceService", () => {
     enrollmentsService = {
       getConfirmedDecisionOrThrow: jest.fn().mockResolvedValue(DECISION),
       confirmReinscription: jest.fn().mockResolvedValue({ id: "enr-1" }),
+      findPendingAdmission: jest.fn().mockResolvedValue(null),
+      confirmNewAdmission: jest
+        .fn()
+        .mockResolvedValue({ id: "enr-admission-1" }),
     };
     supplyListAvailableNotificationsService = {
       enqueue: jest.fn().mockResolvedValue(undefined),
@@ -183,6 +189,80 @@ describe("FinanceService", () => {
         "PAYMENT_THRESHOLD",
         "accountant-1",
       );
+    });
+
+    it("nouvel eleve : ignore la decision de conseil et confirme l'admission des que le seuil est atteint", async () => {
+      enrollmentsService.getConfirmedDecisionOrThrow.mockRejectedValue(
+        new BadRequestException("Aucune decision"),
+      );
+      enrollmentsService.findPendingAdmission.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: LEVEL_ID,
+        trackId: null,
+        confirmedAt: null,
+      });
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 50000 },
+      });
+
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        payload,
+        "accountant-1",
+      );
+
+      expect(result.reinscriptionConfirmed).toBe(true);
+      expect(enrollmentsService.confirmNewAdmission).toHaveBeenCalledWith(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+        "PAYMENT_THRESHOLD",
+        "accountant-1",
+      );
+      expect(enrollmentsService.confirmReinscription).not.toHaveBeenCalled();
+    });
+
+    it("nouvel eleve : n'appelle jamais confirmNewAdmission tant que le seuil n'est pas atteint", async () => {
+      enrollmentsService.findPendingAdmission.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: LEVEL_ID,
+        trackId: null,
+        confirmedAt: null,
+      });
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 20000 },
+      });
+
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        payload,
+        "accountant-1",
+      );
+
+      expect(result.reinscriptionConfirmed).toBe(false);
+      expect(enrollmentsService.confirmNewAdmission).not.toHaveBeenCalled();
+    });
+
+    it("admission deja confirmee : bascule sur le chemin reinscription classique", async () => {
+      enrollmentsService.findPendingAdmission.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: LEVEL_ID,
+        trackId: null,
+        confirmedAt: new Date("2026-01-01"),
+      });
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 50000 },
+      });
+
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        payload,
+        "accountant-1",
+      );
+
+      expect(result.reinscriptionConfirmed).toBe(true);
+      expect(enrollmentsService.confirmReinscription).toHaveBeenCalled();
+      expect(enrollmentsService.confirmNewAdmission).not.toHaveBeenCalled();
     });
 
     it("notifie la disponibilite de la liste de fournitures au tout premier paiement de l'annee", async () => {

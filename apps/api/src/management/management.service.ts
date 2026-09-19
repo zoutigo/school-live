@@ -56,6 +56,7 @@ import type { CreateSchoolStaffMemberDto } from "./dto/create-school-staff-membe
 import type { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import type { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
 import type { CreateStudentDto } from "./dto/create-student.dto.js";
+import type { CreateStudentAdmissionDto } from "./dto/create-student-admission.dto.js";
 import type { CreateTeacherAssignmentDto } from "./dto/create-teacher-assignment.dto.js";
 import type { CreateTeacherDto } from "./dto/create-teacher.dto.js";
 import type { CreateTrackDto } from "./dto/create-track.dto.js";
@@ -6380,6 +6381,112 @@ export class ManagementService {
       });
 
       return student;
+    });
+  }
+
+  /**
+   * Cree un eleve qui arrive pour la premiere fois dans l'ecole, sans
+   * l'affecter immediatement a une classe : contrairement a `createStudent`,
+   * aucun Enrollment n'est cree ici. L'eleve reste "en attente de paiement"
+   * (StudentAdmission non confirmee) jusqu'a ce que
+   * `EnrollmentsService.confirmNewAdmission` cree son Enrollment (classId
+   * null, pool en attente d'affectation) une fois le seuil de paiement
+   * atteint — voir `FinanceService`. Ne modifie jamais le flux existant de
+   * `createStudent` (rattachement direct a une classe).
+   */
+  async createStudentAdmission(
+    schoolId: string,
+    currentUserId: string,
+    payload: CreateStudentAdmissionDto,
+  ) {
+    const schoolYearId =
+      payload.schoolYearId ??
+      (await this.getActiveSchoolYearIdOrThrow(schoolId));
+
+    if (payload.schoolYearId) {
+      await this.ensureSchoolYearInSchool(payload.schoolYearId, schoolId);
+    }
+
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: { id: payload.academicLevelId, schoolId },
+      select: { id: true },
+    });
+    if (!academicLevel) {
+      throw new NotFoundException("Academic level not found");
+    }
+
+    if (payload.trackId) {
+      const track = await this.prisma.track.findFirst({
+        where: { id: payload.trackId, schoolId },
+        select: { id: true },
+      });
+      if (!track) {
+        throw new NotFoundException("Track not found");
+      }
+    }
+
+    const dateOfBirth = payload.dateOfBirth
+      ? new Date(payload.dateOfBirth)
+      : null;
+
+    return this.prisma.$transaction(async (tx) => {
+      const student = await tx.student.create({
+        data: {
+          schoolId,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          dateOfBirth,
+        },
+      });
+
+      const admission = await tx.studentAdmission.create({
+        data: {
+          schoolId,
+          studentId: student.id,
+          schoolYearId,
+          academicLevelId: payload.academicLevelId,
+          trackId: payload.trackId,
+          createdByUserId: currentUserId,
+        },
+      });
+
+      return { student, admission };
+    });
+  }
+
+  /**
+   * Liste les eleves confirmes (StudentAdmission ou reinscription) en
+   * attente d'affectation de classe pour une annee scolaire : Enrollment
+   * existant mais `classId` encore null.
+   */
+  async listUnassignedEnrollmentPool(schoolId: string, schoolYearId?: string) {
+    const effectiveSchoolYearId =
+      schoolYearId ?? (await this.getActiveSchoolYearIdOrThrow(schoolId));
+
+    if (schoolYearId) {
+      await this.ensureSchoolYearInSchool(schoolYearId, schoolId);
+    }
+
+    return this.prisma.enrollment.findMany({
+      where: {
+        schoolId,
+        schoolYearId: effectiveSchoolYearId,
+        classId: null,
+        status: "ACTIVE",
+      },
+      orderBy: [
+        { student: { lastName: "asc" } },
+        { student: { firstName: "asc" } },
+      ],
+      select: {
+        id: true,
+        studentId: true,
+        confirmedAt: true,
+        confirmationSource: true,
+        student: { select: { id: true, firstName: true, lastName: true } },
+        academicLevel: { select: { id: true, label: true, code: true } },
+        track: { select: { id: true, label: true, code: true } },
+      },
     });
   }
 

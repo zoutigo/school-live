@@ -57,7 +57,20 @@ const makePrismaMock = () => ({
     findFirst: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
   },
+  studentAdmission: {
+    findUnique: jest.fn(),
+    update: jest
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ id: "admission-1", ...data }),
+      ),
+  },
+  $transaction: jest.fn(async (fn: (tx: unknown) => unknown) =>
+    fn(prismaMockRef),
+  ),
 });
+
+let prismaMockRef: any;
 
 describe("EnrollmentsService", () => {
   let service: EnrollmentsService;
@@ -65,6 +78,7 @@ describe("EnrollmentsService", () => {
 
   beforeEach(async () => {
     prisma = makePrismaMock();
+    prismaMockRef = prisma;
     const module = await Test.createTestingModule({
       providers: [
         EnrollmentsService,
@@ -194,6 +208,125 @@ describe("EnrollmentsService", () => {
         classId: null,
         academicLevelId: NEXT_LEVEL_ID,
       });
+    });
+  });
+
+  describe("confirmNewAdmission", () => {
+    it("est idempotente : ne recree rien si une inscription existe deja pour cette annee", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue({ id: "existing-enr" });
+      const result = await service.confirmNewAdmission(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+        "PAYMENT_THRESHOLD",
+      );
+      expect(result).toEqual({ id: "existing-enr" });
+      expect(prisma.enrollment.create).not.toHaveBeenCalled();
+    });
+
+    it("leve une NotFoundException si aucune admission en attente n'existe pour cet eleve", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.studentAdmission.findUnique.mockResolvedValue(null);
+      await expect(
+        service.confirmNewAdmission(
+          SCHOOL_ID,
+          STUDENT_ID,
+          TARGET_YEAR_ID,
+          "PAYMENT_THRESHOLD",
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.enrollment.create).not.toHaveBeenCalled();
+    });
+
+    it("ne consulte jamais StudentTermReport (aucune decision de conseil requise pour un nouvel eleve)", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.studentAdmission.findUnique.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: NEXT_LEVEL_ID,
+        trackId: null,
+      });
+
+      await service.confirmNewAdmission(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+        "PAYMENT_THRESHOLD",
+        "accountant-1",
+      );
+
+      expect(prisma.studentTermReport.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("cree l'inscription en attente (classId null) avec le niveau de l'admission et marque l'admission confirmee", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.studentAdmission.findUnique.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: NEXT_LEVEL_ID,
+        trackId: null,
+      });
+
+      const result = await service.confirmNewAdmission(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+        "PAYMENT_THRESHOLD",
+        "accountant-1",
+      );
+
+      expect(prisma.enrollment.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          studentId: STUDENT_ID,
+          classId: null,
+          academicLevelId: NEXT_LEVEL_ID,
+          trackId: null,
+          confirmationSource: "PAYMENT_THRESHOLD",
+          confirmedByUserId: "accountant-1",
+        }),
+      });
+      expect(prisma.studentAdmission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "admission-1" },
+          data: expect.objectContaining({
+            confirmedByUserId: "accountant-1",
+            confirmationSource: "PAYMENT_THRESHOLD",
+          }),
+        }),
+      );
+      expect(result).toMatchObject({
+        classId: null,
+        academicLevelId: NEXT_LEVEL_ID,
+      });
+    });
+  });
+
+  describe("findPendingAdmission", () => {
+    it("delegue a studentAdmission.findUnique avec la cle composite annee/eleve", async () => {
+      prisma.studentAdmission.findUnique.mockResolvedValue({
+        id: "admission-1",
+        academicLevelId: NEXT_LEVEL_ID,
+        trackId: null,
+        confirmedAt: null,
+      });
+
+      const result = await service.findPendingAdmission(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.studentAdmission.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            schoolYearId_studentId: {
+              schoolYearId: TARGET_YEAR_ID,
+              studentId: STUDENT_ID,
+            },
+          },
+        }),
+      );
+      expect(result).toMatchObject({ id: "admission-1", confirmedAt: null });
     });
   });
 
