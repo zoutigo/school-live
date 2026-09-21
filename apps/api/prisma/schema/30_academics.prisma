@@ -39,6 +39,7 @@ model SchoolYear {
   supplyLists         SupplyList[]
   supplyListViews     SupplyListView[]
   reinscriptionDeadlines ReinscriptionDeadline[]
+  studentAdmissions   StudentAdmission[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -67,6 +68,7 @@ model AcademicLevel {
   reinscriptionDeadlines ReinscriptionDeadline[]
   enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
   schoolActivations SchoolAcademicLevel[]
+  studentAdmissionsTargetingThisLevel StudentAdmission[] @relation("StudentAdmissionAcademicLevel")
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -115,6 +117,7 @@ model Track {
   feeSchedules FeeSchedule[]
   supplyLists SupplyList[]
   enrollmentsTargetingThisTrack Enrollment[] @relation("EnrollmentTrack")
+  studentAdmissionsTargetingThisTrack StudentAdmission[] @relation("StudentAdmissionTrack")
 
   @@unique([schoolId, code])
   @@index([schoolId])

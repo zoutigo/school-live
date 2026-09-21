@@ -39,6 +39,7 @@ model School {
   studentTermReports StudentTermReport[]
   studentTermReportEntries StudentTermReportEntry[]
   enrollments        Enrollment[]
+  studentAdmissions  StudentAdmission[]
   classSubjectOverrides ClassSubjectOverride[]
   academicLevels     AcademicLevel[]
   tracks             Track[]
@@ -201,6 +202,8 @@ model User {
   walletTransactionsRecorded  WalletTransaction[]  @relation("WalletTransactionRecordedBy")
   paymentsRecorded            StudentPayment[]     @relation("StudentPaymentRecordedBy")
   supplyListViews             SupplyListView[]     @relation("SupplyListViewParent")
+  studentAdmissionsCreated    StudentAdmission[]   @relation("StudentAdmissionCreatedBy")
+  studentAdmissionsConfirmed  StudentAdmission[]   @relation("StudentAdmissionConfirmedBy")
 
   @@index([activeSchoolId])
 }

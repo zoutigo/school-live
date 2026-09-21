@@ -16,6 +16,7 @@ model Student {
   homeworkCompletions HomeworkCompletion[]
   homeworkComments HomeworkComment[]
   enrollments Enrollment[]
+  studentAdmissions StudentAdmission[]
   lifeEvents  StudentLifeEvent[]
   healthConditions  StudentHealthCondition[]
   healthCareEvents  StudentHealthCareEvent[]

@@ -174,3 +174,41 @@ model StudentPayment {
   @@index([schoolYearId])
   @@index([studentId, schoolYearId])
 }
+
+/// Admission d'un nouvel eleve (premiere arrivee dans l'ecole, sans historique
+/// de decision de conseil de classe). Distinct de la reinscription
+/// (StudentTermReport + confirmReinscription) : ici le niveau cible est
+/// choisi directement par le personnel qui saisit l'admission. Tant que
+/// confirmedAt est null, l'eleve est "en attente de paiement" et n'a aucun
+/// Enrollment. Une fois le seuil de paiement atteint, EnrollmentsService cree
+/// l'Enrollment (classId: null, pool en attente d'affectation) et renseigne
+/// confirmedAt/confirmedByUserId/confirmationSource ici.
+model StudentAdmission {
+  id                 String                        @id @default(cuid())
+  schoolId           String
+  studentId          String
+  schoolYearId       String
+  academicLevelId    String
+  trackId            String?
+  createdByUserId    String
+  createdAt          DateTime                      @default(now())
+  confirmedAt        DateTime?
+  confirmedByUserId  String?
+  confirmationSource EnrollmentConfirmationSource?
+  school             School                        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student            Student                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolYear         SchoolYear                    @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel      AcademicLevel                 @relation("StudentAdmissionAcademicLevel", fields: [academicLevelId], references: [id], onDelete: Restrict)
+  track              Track?                        @relation("StudentAdmissionTrack", fields: [trackId], references: [id], onDelete: SetNull)
+  createdByUser      User                          @relation("StudentAdmissionCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  confirmedByUser    User?                         @relation("StudentAdmissionConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([schoolYearId, studentId])
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([studentId])
+  @@index([academicLevelId])
+  @@index([trackId])
+  @@index([createdByUserId])
+  @@index([confirmedByUserId])
+}
