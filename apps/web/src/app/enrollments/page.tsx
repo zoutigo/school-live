@@ -29,7 +29,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "manage" | "help";
+type Tab = "manage" | "admissions" | "help";
 
 type MeResponse = {
   role: Role;
@@ -63,7 +63,7 @@ type EnrollmentRow = {
   class: {
     id: string;
     name: string;
-  };
+  } | null;
 };
 
 type StudentEnrollmentRow = {
@@ -79,6 +79,26 @@ type FlatEnrollmentRow = {
   studentFirstName: string;
   studentLastName: string;
   enrollment: EnrollmentRow;
+};
+
+type AcademicLevelRow = {
+  id: string;
+  code: string;
+  label: string;
+};
+
+type TrackRow = {
+  id: string;
+  code: string;
+  label: string;
+};
+
+type PoolEntry = {
+  id: string;
+  studentId: string;
+  student: { id: string; firstName: string; lastName: string };
+  academicLevel: { id: string; label: string; code: string } | null;
+  track: { id: string; label: string; code: string } | null;
 };
 
 const statusSchema = z.enum([
@@ -97,6 +117,15 @@ const filtersSchema = z.object({
 
 const bulkStatusSchema = z.object({
   status: statusSchema,
+});
+
+const admissionFormSchema = z.object({
+  firstName: z.string().trim().min(1, "Prenom requis"),
+  lastName: z.string().trim().min(1, "Nom requis"),
+  dateOfBirth: z.string().optional().default(""),
+  academicLevelId: z.string().trim().min(1, "Niveau requis"),
+  trackId: z.string().optional().default(""),
+  schoolYearId: z.string().optional().default(""),
 });
 
 export default function EnrollmentsPage() {
@@ -140,6 +169,33 @@ export default function EnrollmentsPage() {
   });
   const filterValues = filtersForm.watch();
   const bulkValues = bulkForm.watch();
+
+  const [academicLevels, setAcademicLevels] = useState<AcademicLevelRow[]>([]);
+  const [tracks, setTracks] = useState<TrackRow[]>([]);
+  const [pool, setPool] = useState<PoolEntry[]>([]);
+  const [submittingAdmission, setSubmittingAdmission] = useState(false);
+  const [admissionError, setAdmissionError] = useState<string | null>(null);
+  const [admissionSuccess, setAdmissionSuccess] = useState<string | null>(null);
+  const [assigningPoolStudentId, setAssigningPoolStudentId] = useState<
+    string | null
+  >(null);
+  const [poolAssignClassId, setPoolAssignClassId] = useState("");
+  const [savingPoolAssignmentId, setSavingPoolAssignmentId] = useState<
+    string | null
+  >(null);
+  const admissionForm = useForm<z.input<typeof admissionFormSchema>>({
+    resolver: zodResolver(admissionFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      dateOfBirth: "",
+      academicLevelId: "",
+      trackId: "",
+      schoolYearId: "",
+    },
+  });
+  const admissionValues = admissionForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -258,6 +314,7 @@ export default function EnrollmentsPage() {
       setSchoolYears(schoolYearsPayload);
       setClassrooms(classroomsPayload);
       setStudents(studentsPayload.students);
+      void loadAdmissionsSectionData(currentSchoolSlug);
 
       const latestFilters = filtersForm.getValues();
       if (!latestFilters.schoolYearId && schoolYearsPayload.length > 0) {
@@ -272,6 +329,171 @@ export default function EnrollmentsPage() {
       setError("Erreur reseau.");
     } finally {
       setLoadingData(false);
+    }
+  }
+
+  async function loadPool(currentSchoolSlug: string) {
+    try {
+      const response = await fetch(
+        buildAdminPath(currentSchoolSlug, "enrollments/pool"),
+        { credentials: "include" },
+      );
+      if (!response.ok) {
+        return;
+      }
+      const payload = (await response.json()) as PoolEntry[];
+      setPool(payload);
+    } catch {
+      // Silencieux : le pool n'est qu'une section secondaire de la page.
+    }
+  }
+
+  /**
+   * Charge les donnees propres a l'onglet "Inscriptions" (niveaux, filieres,
+   * pool en attente d'affectation), separement du chargement principal :
+   * ces endpoints ne doivent jamais bloquer l'onglet "Gestion" si l'un
+   * d'eux echoue ou n'est pas disponible.
+   */
+  async function loadAdmissionsSectionData(currentSchoolSlug: string) {
+    try {
+      const [academicLevelsResponse, tracksResponse] = await Promise.all([
+        fetch(buildAdminPath(currentSchoolSlug, "academic-levels"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "tracks"), {
+          credentials: "include",
+        }),
+      ]);
+      if (academicLevelsResponse.ok) {
+        setAcademicLevels(
+          (await academicLevelsResponse.json()) as AcademicLevelRow[],
+        );
+      }
+      if (tracksResponse.ok) {
+        setTracks((await tracksResponse.json()) as TrackRow[]);
+      }
+    } catch {
+      // Silencieux : section secondaire de la page.
+    }
+    await loadPool(currentSchoolSlug);
+  }
+
+  async function createAdmission(values: z.input<typeof admissionFormSchema>) {
+    if (!schoolSlug) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAdmissionError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingAdmission(true);
+    setAdmissionError(null);
+    setAdmissionSuccess(null);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "students/admissions"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            firstName: values.firstName,
+            lastName: values.lastName,
+            dateOfBirth: values.dateOfBirth || undefined,
+            academicLevelId: values.academicLevelId,
+            trackId: values.trackId || undefined,
+            schoolYearId: values.schoolYearId || undefined,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Enregistrement impossible.");
+        setAdmissionError(String(message));
+        return;
+      }
+
+      setAdmissionSuccess("Admission enregistree.");
+      admissionForm.reset({
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        academicLevelId: "",
+        trackId: "",
+        schoolYearId: "",
+      });
+    } catch {
+      setAdmissionError("Erreur reseau.");
+    } finally {
+      setSubmittingAdmission(false);
+    }
+  }
+
+  async function assignPoolStudent(studentId: string) {
+    if (!schoolSlug || !poolAssignClassId) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAdmissionError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingPoolAssignmentId(studentId);
+    setAdmissionError(null);
+    setAdmissionSuccess(null);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `students/${studentId}/enrollments`),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            classId: poolAssignClassId,
+            status: "ACTIVE",
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Affectation impossible.");
+        setAdmissionError(String(message));
+        return;
+      }
+
+      setAssigningPoolStudentId(null);
+      setPoolAssignClassId("");
+      setAdmissionSuccess("Eleve affecte a la classe.");
+      await loadPool(schoolSlug);
+    } catch {
+      setAdmissionError("Erreur reseau.");
+    } finally {
+      setSavingPoolAssignmentId(null);
     }
   }
 
@@ -446,6 +668,18 @@ export default function EnrollmentsPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("admissions")}
+              data-testid="enrollments-tab-admissions"
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "admissions"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Inscriptions
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("help")}
               className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
                 tab === "help"
@@ -500,6 +734,250 @@ export default function EnrollmentsPage() {
                 "Pour les cas sensibles, preferer une mise a jour ligne par ligne.",
               ]}
             />
+          ) : null}
+
+          {tab === "admissions" ? (
+            <div
+              className="grid gap-6"
+              data-testid="enrollments-admissions-tab"
+            >
+              <Card
+                title="Nouvel eleve"
+                subtitle="Cree un eleve sans historique ; il rejoint le pool en attente d'affectation de classe des que la premiere tranche est payee."
+              >
+                <form
+                  className="grid gap-3 md:grid-cols-2"
+                  onSubmit={admissionForm.handleSubmit(createAdmission)}
+                  noValidate
+                >
+                  <FormField
+                    label="Prenom"
+                    error={admissionForm.formState.errors.firstName?.message}
+                  >
+                    <FormTextInput
+                      value={admissionValues.firstName}
+                      onChange={(event) =>
+                        admissionForm.setValue(
+                          "firstName",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Nom"
+                    error={admissionForm.formState.errors.lastName?.message}
+                  >
+                    <FormTextInput
+                      value={admissionValues.lastName}
+                      onChange={(event) =>
+                        admissionForm.setValue("lastName", event.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  </FormField>
+
+                  <FormField label="Date de naissance (optionnel)">
+                    <FormTextInput
+                      type="date"
+                      value={admissionValues.dateOfBirth ?? ""}
+                      onChange={(event) =>
+                        admissionForm.setValue(
+                          "dateOfBirth",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Niveau"
+                    error={
+                      admissionForm.formState.errors.academicLevelId?.message
+                    }
+                  >
+                    <SearchableSelect
+                      ariaLabel="Niveau"
+                      value={admissionValues.academicLevelId ?? ""}
+                      onChange={(value) =>
+                        admissionForm.setValue("academicLevelId", value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="Selectionner"
+                      searchPlaceholder="Rechercher..."
+                      noResultsLabel="Aucun resultat"
+                      data-testid="admission-form-level-select"
+                      options={academicLevels.map((level) => ({
+                        value: level.id,
+                        label: level.label,
+                      }))}
+                    />
+                  </FormField>
+
+                  <FormField label="Filiere (optionnel)">
+                    <SearchableSelect
+                      ariaLabel="Filiere"
+                      value={admissionValues.trackId ?? ""}
+                      onChange={(value) =>
+                        admissionForm.setValue("trackId", value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="Aucune"
+                      searchPlaceholder="Rechercher..."
+                      noResultsLabel="Aucun resultat"
+                      data-testid="admission-form-track-select"
+                      options={tracks.map((track) => ({
+                        value: track.id,
+                        label: track.label,
+                      }))}
+                    />
+                  </FormField>
+
+                  <FormField label="Annee scolaire (optionnel, defaut : active)">
+                    <SearchableSelect
+                      ariaLabel="Annee scolaire"
+                      value={admissionValues.schoolYearId ?? ""}
+                      onChange={(value) =>
+                        admissionForm.setValue("schoolYearId", value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="Annee active"
+                      searchPlaceholder="Rechercher..."
+                      noResultsLabel="Aucun resultat"
+                      data-testid="admission-form-year-select"
+                      options={schoolYears.map((year) => ({
+                        value: year.id,
+                        label: year.label,
+                      }))}
+                    />
+                  </FormField>
+
+                  <div className="md:col-span-2">
+                    <SubmitButton
+                      disabled={submittingAdmission}
+                      data-testid="admission-form-submit"
+                    >
+                      {submittingAdmission
+                        ? "Enregistrement..."
+                        : "Enregistrer"}
+                    </SubmitButton>
+                  </div>
+                </form>
+              </Card>
+
+              <Card
+                title="En attente d'affectation de classe"
+                subtitle="Eleves confirmes (admission ou reinscription) sans classe pour l'annee active"
+              >
+                <div className="grid gap-3" data-testid="enrollments-pool-list">
+                  {pool.length === 0 ? (
+                    <p className="text-sm text-text-secondary">
+                      Aucun eleve en attente d&apos;affectation.
+                    </p>
+                  ) : (
+                    pool.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-card border border-border p-3"
+                        data-testid={`enrollments-pool-${entry.studentId}`}
+                      >
+                        <p className="text-sm font-semibold text-text-primary">
+                          {entry.student.lastName} {entry.student.firstName}
+                        </p>
+                        <p className="mb-2 text-xs text-text-secondary">
+                          {entry.academicLevel?.label ?? "-"}
+                          {entry.track ? ` - ${entry.track.label}` : ""}
+                        </p>
+
+                        {assigningPoolStudentId === entry.studentId ? (
+                          <div className="flex flex-wrap items-end gap-2">
+                            <SearchableSelect
+                              ariaLabel="Classe"
+                              value={poolAssignClassId}
+                              onChange={setPoolAssignClassId}
+                              placeholder="Choisir une classe"
+                              searchPlaceholder="Rechercher..."
+                              noResultsLabel="Aucun resultat"
+                              className="min-w-[220px]"
+                              data-testid={`enrollments-pool-${entry.studentId}-class-select`}
+                              options={classrooms.map((classroom) => ({
+                                value: classroom.id,
+                                label: `${classroom.name} (${classroom.schoolYear.label})`,
+                              }))}
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => {
+                                setAssigningPoolStudentId(null);
+                                setPoolAssignClassId("");
+                              }}
+                            >
+                              Annuler
+                            </Button>
+                            <Button
+                              type="button"
+                              disabled={
+                                !poolAssignClassId ||
+                                savingPoolAssignmentId === entry.studentId
+                              }
+                              onClick={() =>
+                                void assignPoolStudent(entry.studentId)
+                              }
+                              data-testid={`enrollments-pool-${entry.studentId}-confirm`}
+                            >
+                              Confirmer l&apos;affectation
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setAssigningPoolStudentId(entry.studentId);
+                              setPoolAssignClassId("");
+                            }}
+                            data-testid={`enrollments-pool-${entry.studentId}-assign`}
+                          >
+                            Affecter une classe
+                          </Button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+
+              {admissionError ? (
+                <p className="text-sm text-notification">{admissionError}</p>
+              ) : null}
+              {admissionSuccess ? (
+                <p className="text-sm text-primary">{admissionSuccess}</p>
+              ) : null}
+            </div>
           ) : null}
 
           {tab === "manage" ? (
@@ -722,7 +1200,11 @@ export default function EnrollmentsPage() {
                                 {row.enrollment.schoolYear.label}
                               </td>
                               <td className="px-3 py-2">
-                                {row.enrollment.class.name}
+                                {row.enrollment.class?.name ?? (
+                                  <span className="text-text-secondary">
+                                    Non affecte (pool)
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2">
                                 <SearchableSelect

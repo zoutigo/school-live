@@ -273,6 +273,49 @@ describe("Enrollments page forms", () => {
     ).toBeInTheDocument();
   });
 
+  it("affiche 'Non affecte (pool)' au lieu de planter quand un enrollment n'a pas de classe (nouvel eleve en attente)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/school-years")) {
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      }
+      if (url.includes("/admin/classrooms")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/admin/students?")) {
+        return jsonResponse({
+          students: [
+            buildStudentRow({
+              firstName: "Aicha",
+              lastName: "Talla",
+              currentEnrollment: buildEnrollmentRow({
+                class: null as never,
+              }),
+              enrollments: [buildEnrollmentRow({ class: null as never })],
+            }),
+          ],
+        });
+      }
+
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<EnrollmentsPage />);
+
+    expect(await screen.findByText("Talla Aicha")).toBeInTheDocument();
+    expect(screen.getByText("Non affecte (pool)")).toBeInTheDocument();
+  });
+
   it("submits an inline status update for one enrollment", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
@@ -402,5 +445,149 @@ describe("Enrollments page forms", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Classe")).toHaveTextContent("Toutes");
     });
+  });
+});
+
+describe("Enrollments page — onglet Inscriptions (admission nouvel eleve)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    getCsrfTokenCookieMock.mockReset();
+    getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
+  });
+
+  function mockAdmissionsRouter(poolEntries: unknown[] = []) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/school-years")) {
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      }
+      if (url.includes("/admin/classrooms")) {
+        return jsonResponse([
+          {
+            id: "class-1",
+            name: "6eC",
+            schoolYear: { id: "sy-1", label: "2025-2026" },
+          },
+        ]);
+      }
+      if (url.includes("/admin/students?")) {
+        return jsonResponse({ students: [] });
+      }
+      if (url.includes("/admin/academic-levels")) {
+        return jsonResponse([{ id: "level-1", code: "CE2", label: "CE2" }]);
+      }
+      if (url.includes("/admin/tracks")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/admin/enrollments/pool")) {
+        return jsonResponse(poolEntries);
+      }
+      if (url.endsWith("/admin/students/admissions") && method === "POST") {
+        return jsonResponse(
+          {
+            student: {
+              id: "student-new",
+              firstName: "Fouda",
+              lastName: "Kevin",
+            },
+            admission: { id: "admission-1" },
+          },
+          201,
+        );
+      }
+      if (
+        url.includes("/admin/students/student-1/enrollments") &&
+        method === "POST"
+      ) {
+        return jsonResponse({ id: "enr-assigned" }, 201);
+      }
+
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+  }
+
+  it("cree une admission depuis l'onglet Inscriptions", async () => {
+    const fetchMock = mockAdmissionsRouter();
+
+    render(<EnrollmentsPage />);
+    fireEvent.click(await screen.findByTestId("enrollments-tab-admissions"));
+
+    fireEvent.change(screen.getByLabelText("Prenom"), {
+      target: { value: "Fouda" },
+    });
+    fireEvent.change(screen.getByLabelText("Nom"), {
+      target: { value: "Kevin" },
+    });
+    await selectSearchableOption("Niveau", "CE2");
+
+    fireEvent.click(screen.getByTestId("admission-form-submit"));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/students/admissions"),
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"firstName":"Fouda"'),
+        }),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/students/admissions"),
+        expect.objectContaining({
+          body: expect.stringContaining('"academicLevelId":"level-1"'),
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByText("Admission enregistree."),
+    ).toBeInTheDocument();
+  });
+
+  it("affiche le pool en attente et affecte un eleve a une classe", async () => {
+    const fetchMock = mockAdmissionsRouter([
+      {
+        id: "enr-pool-1",
+        studentId: "student-1",
+        student: { id: "student-1", firstName: "Fouda", lastName: "Kevin" },
+        academicLevel: { id: "level-1", label: "CE2", code: "CE2" },
+        track: null,
+      },
+    ]);
+
+    render(<EnrollmentsPage />);
+    fireEvent.click(await screen.findByTestId("enrollments-tab-admissions"));
+
+    expect(
+      await screen.findByTestId("enrollments-pool-student-1"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("enrollments-pool-student-1-assign"));
+    await selectSearchableOption("Classe", "6eC (2025-2026)");
+    fireEvent.click(screen.getByTestId("enrollments-pool-student-1-confirm"));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/students/student-1/enrollments"),
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"classId":"class-1"'),
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByText("Eleve affecte a la classe."),
+    ).toBeInTheDocument();
   });
 });

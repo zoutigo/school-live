@@ -976,6 +976,30 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.teacherDiscipline.step3Body":
       "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
 
+    "onboardingTour.schoolAdminDiscipline.classSelectTitle":
+      "Choisir une classe",
+    "onboardingTour.schoolAdminDiscipline.classSelectBody":
+      "Sélectionnez une classe pour afficher et gérer la discipline de ses élèves.",
+    "onboardingTour.schoolAdminDiscipline.tabsTitle": "Deux onglets",
+    "onboardingTour.schoolAdminDiscipline.tabsBody":
+      "Passez de la saisie d'un nouvel événement à l'historique complet d'un élève.",
+    "onboardingTour.schoolAdminDiscipline.studentSelectTitle":
+      "Choisir l'élève",
+    "onboardingTour.schoolAdminDiscipline.studentSelectBody":
+      "Sélectionnez l'élève concerné avant de saisir un événement ou de consulter son historique.",
+    "onboardingTour.schoolAdminDiscipline.helpToggleTitle":
+      "Une aide toujours disponible",
+    "onboardingTour.schoolAdminDiscipline.helpToggleBody":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
+
+    "discipline.admin.pageTitle": "Discipline",
+    "discipline.admin.pageSubtitle":
+      "Choisissez une classe pour consulter ou saisir un événement de discipline.",
+    "discipline.admin.classLabel": "Classe",
+    "discipline.admin.noClassSelected":
+      "Sélectionnez une classe pour commencer.",
+    "discipline.admin.noClasses": "Aucune classe disponible pour cette école.",
+
     "onboardingTour.teacherAttendance.step1Title": "Choisir la date",
     "onboardingTour.teacherAttendance.step1Body":
       "Naviguez vers la veille ou le lendemain, ou choisissez une date précise, pour faire l'appel du jour souhaité.",
@@ -1076,6 +1100,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "discipline.empty.studentEvents": "Aucun evenement pour cet eleve.",
     "discipline.empty.eleves": "Aucun evenement de discipline.",
+    "discipline.empty.noStudents": "Aucun eleve dans cette classe.",
 
     "discipline.delete.title": "Supprimer cet evenement ?",
     "discipline.delete.message":
@@ -2719,6 +2744,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.filters.roleStudent": "Eleve",
     "timetable.adminSchedule.filters.roleStaff": "Personnel",
     "timetable.adminSchedule.filters.loadMore": "Charger plus",
+    "timetable.adminSchedule.filters.show": "Afficher les filtres",
+    "timetable.adminSchedule.filters.hide": "Masquer les filtres",
     "timetable.adminSchedule.selectionBanner.userPrefix": "Agenda de",
     "timetable.adminSchedule.selectionBanner.classPrefix": "Classe",
     "timetable.adminSchedule.selectionBanner.clear": "Effacer la sélection",
@@ -6479,6 +6506,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.teacherDiscipline.step3Body":
       'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
 
+    "onboardingTour.schoolAdminDiscipline.classSelectTitle": "Pick a class",
+    "onboardingTour.schoolAdminDiscipline.classSelectBody":
+      "Select a class to view and manage discipline for its students.",
+    "onboardingTour.schoolAdminDiscipline.tabsTitle": "Two tabs",
+    "onboardingTour.schoolAdminDiscipline.tabsBody":
+      "Switch from entering a new event to a student's full history.",
+    "onboardingTour.schoolAdminDiscipline.studentSelectTitle":
+      "Choose the student",
+    "onboardingTour.schoolAdminDiscipline.studentSelectBody":
+      "Select the student concerned before entering an event or checking their history.",
+    "onboardingTour.schoolAdminDiscipline.helpToggleTitle":
+      "Help is always available",
+    "onboardingTour.schoolAdminDiscipline.helpToggleBody":
+      'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
+
+    "discipline.admin.pageTitle": "Discipline",
+    "discipline.admin.pageSubtitle":
+      "Choose a class to view or log a discipline event.",
+    "discipline.admin.classLabel": "Class",
+    "discipline.admin.noClassSelected": "Select a class to get started.",
+    "discipline.admin.noClasses": "No classes available for this school.",
+
     "onboardingTour.teacherAttendance.step1Title": "Pick the date",
     "onboardingTour.teacherAttendance.step1Body":
       "Move to the previous or next day, or pick a specific date, to take roll call for that day.",
@@ -6571,6 +6620,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "discipline.empty.studentEvents": "No events for this student.",
     "discipline.empty.eleves": "No discipline events.",
+    "discipline.empty.noStudents": "No students in this class.",
 
     "discipline.delete.title": "Delete this event?",
     "discipline.delete.message":
@@ -8142,6 +8192,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.filters.roleStudent": "Student",
     "timetable.adminSchedule.filters.roleStaff": "Staff",
     "timetable.adminSchedule.filters.loadMore": "Load more",
+    "timetable.adminSchedule.filters.show": "Show filters",
+    "timetable.adminSchedule.filters.hide": "Hide filters",
     "timetable.adminSchedule.selectionBanner.userPrefix": "Schedule for",
     "timetable.adminSchedule.selectionBanner.classPrefix": "Class",
     "timetable.adminSchedule.selectionBanner.clear": "Clear selection",

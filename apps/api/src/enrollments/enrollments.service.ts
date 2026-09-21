@@ -449,4 +449,90 @@ export class EnrollmentsService {
       },
     });
   }
+
+  /**
+   * Recherche une admission de nouvel eleve (premiere arrivee, sans
+   * historique) non encore confirmee pour cette annee scolaire. Utilise par
+   * FinanceService pour distinguer le cas "nouvel eleve" du cas
+   * "reinscription" (StudentTermReport) au moment ou le seuil de paiement
+   * est atteint.
+   */
+  async findPendingAdmission(
+    schoolId: string,
+    studentId: string,
+    schoolYearId: string,
+  ) {
+    return this.prisma.studentAdmission.findUnique({
+      where: { schoolYearId_studentId: { schoolYearId, studentId } },
+      select: {
+        id: true,
+        academicLevelId: true,
+        trackId: true,
+        confirmedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Confirme l'admission d'un nouvel eleve une fois le seuil de paiement
+   * atteint : cree son Enrollment (classId: null — pool en attente
+   * d'affectation de classe) et marque la StudentAdmission comme confirmee.
+   * Contrairement a `confirmReinscription`, ne s'appuie jamais sur une
+   * decision de conseil de classe (StudentTermReport) : le niveau cible est
+   * celui choisi a la creation de l'admission (voir
+   * ManagementService.createStudentAdmission). Idempotente comme sa
+   * contrepartie reinscription.
+   */
+  async confirmNewAdmission(
+    schoolId: string,
+    studentId: string,
+    schoolYearId: string,
+    source: EnrollmentConfirmationSource,
+    confirmedByUserId?: string,
+  ) {
+    const existing = await this.prisma.enrollment.findUnique({
+      where: { schoolYearId_studentId: { schoolYearId, studentId } },
+      select: { id: true },
+    });
+    if (existing) {
+      return existing;
+    }
+
+    const admission = await this.prisma.studentAdmission.findUnique({
+      where: { schoolYearId_studentId: { schoolYearId, studentId } },
+    });
+    if (!admission) {
+      throw new NotFoundException(
+        "Aucune admission en attente trouvee pour cet eleve sur cette annee",
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const enrollment = await tx.enrollment.create({
+        data: {
+          schoolId,
+          schoolYearId,
+          studentId,
+          classId: null,
+          academicLevelId: admission.academicLevelId,
+          trackId: admission.trackId,
+          status: "ACTIVE",
+          confirmedAt: new Date(),
+          confirmedByUserId: confirmedByUserId ?? null,
+          confirmationSource: source,
+        },
+      });
+
+      await tx.studentAdmission.update({
+        where: { id: admission.id },
+        data: {
+          confirmedAt: new Date(),
+          confirmedByUserId: confirmedByUserId ?? null,
+          confirmationSource: source,
+        },
+      });
+
+      return enrollment;
+    });
+  }
 }

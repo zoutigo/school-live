@@ -11,6 +11,7 @@ import {
   type TimetableViewMode,
 } from "./timetable-views";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import { useViewportTier } from "../../lib/use-viewport-tier";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const SEARCH_DEBOUNCE_MS = 300;
@@ -289,16 +290,15 @@ export function AdminScheduleBrowser({ schoolSlug }: { schoolSlug: string }) {
   const today = stripTime(new Date());
   const [viewMode, setViewMode] = useState<TimetableViewMode>("day");
   const [cursorDate, setCursorDate] = useState(today);
-  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const viewportTier = useViewportTier();
+  const isCompactViewport = viewportTier !== "desktop";
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const media = window.matchMedia("(max-width: 1023px)");
-    const onChange = () => setIsCompactViewport(media.matches);
-    onChange();
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
+    if (viewportTier !== "mobile") {
+      setFiltersExpanded(false);
+    }
+  }, [viewportTier]);
 
   const activeRange = useMemo(() => {
     if (viewMode === "day") {
@@ -445,134 +445,210 @@ export function AdminScheduleBrowser({ schoolSlug }: { schoolSlug: string }) {
         <Card
           title={t("timetable.adminSchedule.filters.title")}
           data-testid="admin-schedule-filters"
+          actions={
+            viewportTier === "mobile" ? (
+              <button
+                type="button"
+                data-testid="admin-schedule-filters-toggle"
+                aria-expanded={filtersExpanded}
+                onClick={() => setFiltersExpanded((current) => !current)}
+                className="rounded-lg border border-warm-border bg-warm-surface px-2.5 py-1 text-xs font-semibold text-text-secondary"
+              >
+                {filtersExpanded
+                  ? t("timetable.adminSchedule.filters.hide")
+                  : t("timetable.adminSchedule.filters.show")}
+              </button>
+            ) : undefined
+          }
         >
           <div
-            className="mb-3 flex gap-2"
-            data-testid="admin-schedule-mode-toggle"
+            className={
+              viewportTier === "mobile" && !filtersExpanded ? "hidden" : ""
+            }
+            data-testid="admin-schedule-filters-body"
           >
-            <button
-              type="button"
-              data-testid="admin-schedule-mode-user"
-              onClick={() => switchMode("USER")}
-              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${mode === "USER" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
-            >
-              {t("timetable.adminSchedule.filters.modeUser")}
-            </button>
-            <button
-              type="button"
-              data-testid="admin-schedule-mode-class"
-              onClick={() => switchMode("CLASS")}
-              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${mode === "CLASS" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
-            >
-              {t("timetable.adminSchedule.filters.modeClass")}
-            </button>
-          </div>
-
-          <div className="relative mb-3">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
-            />
-            <input
-              data-testid="admin-schedule-search-input"
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder={
-                mode === "CLASS"
-                  ? t("timetable.adminSchedule.filters.searchClassPlaceholder")
-                  : t("timetable.adminSchedule.filters.searchUserPlaceholder")
-              }
-              className="w-full rounded-xl border border-warm-border bg-background py-2.5 pl-9 pr-9 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/60"
-            />
-            {searchInput ? (
-              <button
-                type="button"
-                data-testid="admin-schedule-search-clear"
-                aria-label={t("timetable.adminSchedule.filters.clearSearch")}
-                onClick={() => setSearchInput("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
-              >
-                <XCircle size={16} />
-              </button>
-            ) : null}
-          </div>
-
-          {mode === "CLASS" ? (
             <div
-              className="mb-3 flex flex-wrap gap-2"
-              data-testid="admin-schedule-level-chips"
+              className="mb-3 flex gap-2"
+              data-testid="admin-schedule-mode-toggle"
             >
               <button
                 type="button"
-                data-testid="admin-schedule-level-all"
-                onClick={() => setLevelId(null)}
-                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${!levelId ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+                data-testid="admin-schedule-mode-user"
+                onClick={() => switchMode("USER")}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${mode === "USER" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
               >
-                {t("timetable.adminSchedule.filters.allLevels")}
+                {t("timetable.adminSchedule.filters.modeUser")}
               </button>
-              {levels.map((level) => (
-                <button
-                  key={level.id}
-                  type="button"
-                  data-testid={`admin-schedule-level-${level.id}`}
-                  onClick={() => setLevelId(level.id)}
-                  className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${levelId === level.id ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
-                >
-                  {level.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                data-testid="admin-schedule-mode-class"
+                onClick={() => switchMode("CLASS")}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${mode === "CLASS" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+              >
+                {t("timetable.adminSchedule.filters.modeClass")}
+              </button>
             </div>
-          ) : null}
 
-          <div
-            className="max-h-80 space-y-1.5 overflow-y-auto pr-1"
-            data-testid="admin-schedule-results-list"
-          >
-            {mode === "USER" ? (
-              loadingMembers ? (
+            <div className="relative mb-3">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+              />
+              <input
+                data-testid="admin-schedule-search-input"
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder={
+                  mode === "CLASS"
+                    ? t(
+                        "timetable.adminSchedule.filters.searchClassPlaceholder",
+                      )
+                    : t("timetable.adminSchedule.filters.searchUserPlaceholder")
+                }
+                className="w-full rounded-xl border border-warm-border bg-background py-2.5 pl-9 pr-9 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/60"
+              />
+              {searchInput ? (
+                <button
+                  type="button"
+                  data-testid="admin-schedule-search-clear"
+                  aria-label={t("timetable.adminSchedule.filters.clearSearch")}
+                  onClick={() => setSearchInput("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+                >
+                  <XCircle size={16} />
+                </button>
+              ) : null}
+            </div>
+
+            {mode === "CLASS" ? (
+              <div
+                className="mb-3 flex flex-wrap gap-2"
+                data-testid="admin-schedule-level-chips"
+              >
+                <button
+                  type="button"
+                  data-testid="admin-schedule-level-all"
+                  onClick={() => setLevelId(null)}
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${!levelId ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+                >
+                  {t("timetable.adminSchedule.filters.allLevels")}
+                </button>
+                {levels.map((level) => (
+                  <button
+                    key={level.id}
+                    type="button"
+                    data-testid={`admin-schedule-level-${level.id}`}
+                    onClick={() => setLevelId(level.id)}
+                    className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${levelId === level.id ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+                  >
+                    {level.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div
+              className="max-h-80 space-y-1.5 overflow-y-auto pr-1"
+              data-testid="admin-schedule-results-list"
+            >
+              {mode === "USER" ? (
+                loadingMembers ? (
+                  <p className="py-4 text-center text-sm text-text-secondary">
+                    {t("timetable.adminSchedule.filters.loading")}
+                  </p>
+                ) : members.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-text-secondary">
+                    {t("timetable.adminSchedule.filters.noResult")}
+                  </p>
+                ) : (
+                  <>
+                    {members.map((member) => {
+                      const isSelected = selectedMember?.id === member.id;
+                      return (
+                        <button
+                          key={member.id}
+                          type="button"
+                          data-testid={`admin-schedule-user-${member.id}`}
+                          onClick={() => setSelectedMember(member)}
+                          className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
+                        >
+                          <p
+                            className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
+                          >
+                            {member.lastName} {member.firstName}
+                          </p>
+                          <p className="mt-0.5 text-xs text-text-secondary">
+                            {memberHasRole(member, "TEACHER")
+                              ? t("timetable.adminSchedule.filters.roleTeacher")
+                              : memberHasRole(member, "STUDENT")
+                                ? t(
+                                    "timetable.adminSchedule.filters.roleStudent",
+                                  )
+                                : t(
+                                    "timetable.adminSchedule.filters.roleStaff",
+                                  )}
+                          </p>
+                        </button>
+                      );
+                    })}
+                    {computeHasMore(memberMeta) ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        data-testid="admin-schedule-users-load-more"
+                        disabled={loadingMoreMembers}
+                        onClick={() =>
+                          void loadMembers((memberMeta?.page ?? 1) + 1, true)
+                        }
+                        className="w-full"
+                      >
+                        {t("timetable.adminSchedule.filters.loadMore")}
+                      </Button>
+                    ) : null}
+                  </>
+                )
+              ) : loadingClasses ? (
                 <p className="py-4 text-center text-sm text-text-secondary">
                   {t("timetable.adminSchedule.filters.loading")}
                 </p>
-              ) : members.length === 0 ? (
+              ) : classes.length === 0 ? (
                 <p className="py-4 text-center text-sm text-text-secondary">
                   {t("timetable.adminSchedule.filters.noResult")}
                 </p>
               ) : (
                 <>
-                  {members.map((member) => {
-                    const isSelected = selectedMember?.id === member.id;
+                  {classes.map((cls) => {
+                    const isSelected = selectedClass?.classId === cls.classId;
                     return (
                       <button
-                        key={member.id}
+                        key={cls.classId}
                         type="button"
-                        data-testid={`admin-schedule-user-${member.id}`}
-                        onClick={() => setSelectedMember(member)}
+                        data-testid={`admin-schedule-class-${cls.classId}`}
+                        onClick={() => setSelectedClass(cls)}
                         className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
                       >
                         <p
                           className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
                         >
-                          {member.lastName} {member.firstName}
+                          {cls.className}
                         </p>
-                        <p className="mt-0.5 text-xs text-text-secondary">
-                          {memberHasRole(member, "TEACHER")
-                            ? t("timetable.adminSchedule.filters.roleTeacher")
-                            : memberHasRole(member, "STUDENT")
-                              ? t("timetable.adminSchedule.filters.roleStudent")
-                              : t("timetable.adminSchedule.filters.roleStaff")}
-                        </p>
+                        {cls.academicLevelName ? (
+                          <p className="mt-0.5 text-xs text-text-secondary">
+                            {cls.academicLevelName}
+                          </p>
+                        ) : null}
                       </button>
                     );
                   })}
-                  {computeHasMore(memberMeta) ? (
+                  {computeHasMore(classMeta) ? (
                     <Button
                       type="button"
                       variant="secondary"
-                      data-testid="admin-schedule-users-load-more"
-                      disabled={loadingMoreMembers}
+                      data-testid="admin-schedule-classes-load-more"
+                      disabled={loadingMoreClasses}
                       onClick={() =>
-                        void loadMembers((memberMeta?.page ?? 1) + 1, true)
+                        void loadClasses((classMeta?.page ?? 1) + 1, true)
                       }
                       className="w-full"
                     >
@@ -580,56 +656,8 @@ export function AdminScheduleBrowser({ schoolSlug }: { schoolSlug: string }) {
                     </Button>
                   ) : null}
                 </>
-              )
-            ) : loadingClasses ? (
-              <p className="py-4 text-center text-sm text-text-secondary">
-                {t("timetable.adminSchedule.filters.loading")}
-              </p>
-            ) : classes.length === 0 ? (
-              <p className="py-4 text-center text-sm text-text-secondary">
-                {t("timetable.adminSchedule.filters.noResult")}
-              </p>
-            ) : (
-              <>
-                {classes.map((cls) => {
-                  const isSelected = selectedClass?.classId === cls.classId;
-                  return (
-                    <button
-                      key={cls.classId}
-                      type="button"
-                      data-testid={`admin-schedule-class-${cls.classId}`}
-                      onClick={() => setSelectedClass(cls)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
-                    >
-                      <p
-                        className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
-                      >
-                        {cls.className}
-                      </p>
-                      {cls.academicLevelName ? (
-                        <p className="mt-0.5 text-xs text-text-secondary">
-                          {cls.academicLevelName}
-                        </p>
-                      ) : null}
-                    </button>
-                  );
-                })}
-                {computeHasMore(classMeta) ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    data-testid="admin-schedule-classes-load-more"
-                    disabled={loadingMoreClasses}
-                    onClick={() =>
-                      void loadClasses((classMeta?.page ?? 1) + 1, true)
-                    }
-                    className="w-full"
-                  >
-                    {t("timetable.adminSchedule.filters.loadMore")}
-                  </Button>
-                ) : null}
-              </>
-            )}
+              )}
+            </div>
           </div>
         </Card>
       </div>

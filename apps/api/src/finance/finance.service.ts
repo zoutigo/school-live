@@ -298,16 +298,17 @@ export class FinanceService {
       throw new NotFoundException("Eleve introuvable");
     }
 
-    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+    const target = await this.resolveEnrollmentTargetOrThrow(
       schoolId,
       studentId,
+      targetSchoolYearId,
     );
 
     const feeSchedule = await this.resolveFeeScheduleForTarget(
       schoolId,
       targetSchoolYearId,
-      decision.nextAcademicLevelId,
-      decision.nextTrackId,
+      target.academicLevelId,
+      target.trackId,
     );
 
     const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);
@@ -318,7 +319,11 @@ export class FinanceService {
 
     return {
       student,
-      decision,
+      decision: {
+        decision: target.isNewAdmission ? "NEW_ADMISSION" : "PROMOTED",
+        nextAcademicLevelId: target.academicLevelId,
+        nextTrackId: target.trackId,
+      },
       feeSchedule,
       totalPaid,
       thresholdAmount,
@@ -382,16 +387,17 @@ export class FinanceService {
       throw new NotFoundException("Eleve introuvable");
     }
 
-    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+    const target = await this.resolveEnrollmentTargetOrThrow(
       schoolId,
       studentId,
+      targetSchoolYearId,
     );
 
     const feeSchedule = await this.resolveFeeScheduleForTarget(
       schoolId,
       targetSchoolYearId,
-      decision.nextAcademicLevelId,
-      decision.nextTrackId,
+      target.academicLevelId,
+      target.trackId,
     );
 
     const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);
@@ -446,6 +452,73 @@ export class FinanceService {
     return aggregate._sum.amount ?? 0;
   }
 
+  /**
+   * Determine, pour un eleve et une annee scolaire cible, si le paiement en
+   * cours releve d'une admission de nouvel eleve (StudentAdmission en
+   * attente, sans historique) ou d'une reinscription classique (decision de
+   * conseil de classe deja enregistree) — et renvoie dans les deux cas le
+   * niveau/filiere cible a utiliser pour resoudre l'echeancier de frais.
+   * Rejette (comme avant) si ni l'un ni l'autre n'existe : aucun paiement ne
+   * peut preceder une admission ou une decision.
+   */
+  private async resolveEnrollmentTargetOrThrow(
+    schoolId: string,
+    studentId: string,
+    schoolYearId: string,
+  ): Promise<{
+    isNewAdmission: boolean;
+    academicLevelId: string;
+    trackId: string | null;
+  }> {
+    const pendingAdmission = await this.enrollmentsService.findPendingAdmission(
+      schoolId,
+      studentId,
+      schoolYearId,
+    );
+    if (pendingAdmission && !pendingAdmission.confirmedAt) {
+      return {
+        isNewAdmission: true,
+        academicLevelId: pendingAdmission.academicLevelId,
+        trackId: pendingAdmission.trackId,
+      };
+    }
+
+    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+      schoolId,
+      studentId,
+    );
+    return {
+      isNewAdmission: false,
+      academicLevelId: decision.nextAcademicLevelId,
+      trackId: decision.nextTrackId,
+    };
+  }
+
+  private async confirmEnrollmentTarget(
+    isNewAdmission: boolean,
+    schoolId: string,
+    studentId: string,
+    schoolYearId: string,
+    confirmedByUserId?: string,
+  ) {
+    if (isNewAdmission) {
+      return this.enrollmentsService.confirmNewAdmission(
+        schoolId,
+        studentId,
+        schoolYearId,
+        "PAYMENT_THRESHOLD",
+        confirmedByUserId,
+      );
+    }
+    return this.enrollmentsService.confirmReinscription(
+      schoolId,
+      studentId,
+      schoolYearId,
+      "PAYMENT_THRESHOLD",
+      confirmedByUserId,
+    );
+  }
+
   async recordDirectPayment(
     schoolId: string,
     payload: RecordDirectPaymentDto,
@@ -459,18 +532,20 @@ export class FinanceService {
       throw new NotFoundException("Eleve introuvable");
     }
 
-    // Regle metier : un paiement ne peut jamais preceder la decision du conseil
-    // de classe pour cet eleve (voir EnrollmentsService.getConfirmedDecisionOrThrow).
-    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+    // Regle metier : un paiement ne peut jamais preceder une admission de
+    // nouvel eleve ou une decision du conseil de classe pour cet eleve (voir
+    // resolveEnrollmentTargetOrThrow).
+    const target = await this.resolveEnrollmentTargetOrThrow(
       schoolId,
       payload.studentId,
+      payload.schoolYearId,
     );
 
     const feeSchedule = await this.resolveFeeScheduleForTarget(
       schoolId,
       payload.schoolYearId,
-      decision.nextAcademicLevelId,
-      decision.nextTrackId,
+      target.academicLevelId,
+      target.trackId,
     );
 
     const priorPaymentsCount = await this.prisma.studentPayment.count({
@@ -512,11 +587,11 @@ export class FinanceService {
     let reinscriptionConfirmed = false;
 
     if (totalPaid >= thresholdAmount) {
-      await this.enrollmentsService.confirmReinscription(
+      await this.confirmEnrollmentTarget(
+        target.isNewAdmission,
         schoolId,
         payload.studentId,
         payload.schoolYearId,
-        "PAYMENT_THRESHOLD",
         recordedByUserId,
       );
       reinscriptionConfirmed = true;
@@ -790,17 +865,19 @@ export class FinanceService {
       );
     }
 
-    // Regle metier : pas de paiement/affectation avant la decision du conseil.
-    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+    // Regle metier : pas de paiement/affectation avant une admission de
+    // nouvel eleve ou une decision du conseil.
+    const target = await this.resolveEnrollmentTargetOrThrow(
       schoolId,
       studentId,
+      schoolYearId,
     );
 
     const feeSchedule = await this.resolveFeeScheduleForTarget(
       schoolId,
       schoolYearId,
-      decision.nextAcademicLevelId,
-      decision.nextTrackId,
+      target.academicLevelId,
+      target.trackId,
     );
     const thresholdAmount = await this.resolveReinscriptionThresholdAmount(
       schoolId,
@@ -810,11 +887,11 @@ export class FinanceService {
     const requiredAmount = thresholdAmount - alreadyPaid;
 
     if (requiredAmount <= 0) {
-      await this.enrollmentsService.confirmReinscription(
+      await this.confirmEnrollmentTarget(
+        target.isNewAdmission,
         schoolId,
         studentId,
         schoolYearId,
-        "PAYMENT_THRESHOLD",
         parentUserId,
       );
       return { requiredAmount: 0, reinscriptionConfirmed: true };
@@ -861,11 +938,11 @@ export class FinanceService {
       });
     }
 
-    await this.enrollmentsService.confirmReinscription(
+    await this.confirmEnrollmentTarget(
+      target.isNewAdmission,
       schoolId,
       studentId,
       schoolYearId,
-      "PAYMENT_THRESHOLD",
       parentUserId,
     );
 
