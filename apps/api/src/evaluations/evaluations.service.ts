@@ -1875,12 +1875,42 @@ export class EvaluationsService {
   ) {
     const map = new Map<string, number>();
     if (curriculumId) {
-      const curriculumSubjects = await this.prisma.curriculumSubject.findMany({
-        where: { schoolId, curriculumId },
-        select: { subjectId: true, coefficient: true },
-      });
-      for (const row of curriculumSubjects) {
+      // Un curriculum est soit propre a l'ecole (schoolId = cette ecole),
+      // soit national (schoolId: null, partage entre ecoles) et alors
+      // personnalise via CurriculumSubjectOverride (voir
+      // ManagementService#listCurriculumSubjects pour la logique jumelle).
+      const [ownCurriculumSubjects, nationalCurriculumSubjects, overrides] =
+        await Promise.all([
+          this.prisma.curriculumSubject.findMany({
+            where: { schoolId, curriculumId },
+            select: { subjectId: true, coefficient: true },
+          }),
+          this.prisma.curriculumSubject.findMany({
+            where: { curriculumId, schoolId: null },
+            select: { subjectId: true, coefficient: true },
+          }),
+          this.prisma.curriculumSubjectOverride.findMany({
+            where: { schoolId, curriculumId },
+            select: { subjectId: true, action: true, coefficientOverride: true },
+          }),
+        ]);
+      const overrideBySubjectId = new Map(
+        overrides.map((override) => [override.subjectId, override]),
+      );
+      for (const row of ownCurriculumSubjects) {
         map.set(row.subjectId, row.coefficient ?? 1);
+      }
+      for (const row of nationalCurriculumSubjects) {
+        const override = overrideBySubjectId.get(row.subjectId);
+        if (override?.action === "REMOVE") {
+          continue;
+        }
+        map.set(row.subjectId, override?.coefficientOverride ?? row.coefficient ?? 1);
+      }
+      for (const override of overrides) {
+        if (override.action === "ADD" && !map.has(override.subjectId)) {
+          map.set(override.subjectId, override.coefficientOverride ?? 1);
+        }
       }
     }
     if (classId) {

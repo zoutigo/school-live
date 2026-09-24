@@ -17,9 +17,15 @@ const prisma = {
   },
   curriculum: {
     findFirst: jest.fn(),
+    findUnique: jest.fn(),
     delete: jest.fn(),
   },
   curriculumSubject: {
+    findFirst: jest.fn(),
+    upsert: jest.fn(),
+    delete: jest.fn(),
+  },
+  curriculumSubjectOverride: {
     findFirst: jest.fn(),
     upsert: jest.fn(),
     delete: jest.fn(),
@@ -29,6 +35,9 @@ const prisma = {
     update: jest.fn(),
     delete: jest.fn(),
   },
+  school: {
+    findUnique: jest.fn(),
+  },
 };
 
 const mailService = {};
@@ -37,6 +46,10 @@ const service = new ManagementService(prisma as never, mailService as never);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  prisma.school.findUnique.mockResolvedValue({
+    cycle: null,
+    languageSystem: null,
+  });
 });
 
 describe("ManagementService — listSubjects", () => {
@@ -357,6 +370,7 @@ describe("ManagementService — SubjectBranch (spécialités) CRUD", () => {
 describe("ManagementService — affectation matière ↔ niveau (CurriculumSubject)", () => {
   it("affecte une matière à un curriculum (niveau)", async () => {
     prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-6e" });
+    prisma.curriculum.findUnique.mockResolvedValue({ schoolId: "school-1" });
     prisma.subject.findFirst.mockResolvedValue({ id: "subject-1" });
     prisma.curriculumSubject.upsert.mockResolvedValue({
       id: "cs-1",
@@ -393,6 +407,7 @@ describe("ManagementService — affectation matière ↔ niveau (CurriculumSubje
 
   it("retire l'affectation d'une matière à un niveau", async () => {
     prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-6e" });
+    prisma.curriculum.findUnique.mockResolvedValue({ schoolId: "school-1" });
     prisma.curriculumSubject.findFirst.mockResolvedValue({ id: "cs-1" });
     prisma.curriculumSubject.delete.mockResolvedValue({ id: "cs-1" });
 
@@ -410,6 +425,7 @@ describe("ManagementService — affectation matière ↔ niveau (CurriculumSubje
 
   it("rejette la suppression d'une affectation inexistante", async () => {
     prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-6e" });
+    prisma.curriculum.findUnique.mockResolvedValue({ schoolId: "school-1" });
     prisma.curriculumSubject.findFirst.mockResolvedValue(null);
 
     await expect(
@@ -419,6 +435,7 @@ describe("ManagementService — affectation matière ↔ niveau (CurriculumSubje
 
   it("autorise l'affectation d'une matière nationale à un curriculum local (soupape)", async () => {
     prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-6e" });
+    prisma.curriculum.findUnique.mockResolvedValue({ schoolId: "school-1" });
     prisma.subject.findFirst.mockResolvedValue({
       id: "subject-national",
       schoolId: null,
@@ -436,7 +453,10 @@ describe("ManagementService — affectation matière ↔ niveau (CurriculumSubje
     });
 
     expect(prisma.curriculum.findFirst).toHaveBeenCalledWith({
-      where: { id: "curriculum-6e", schoolId: "school-1" },
+      where: {
+        id: "curriculum-6e",
+        OR: [{ schoolId: "school-1" }, { schoolId: null }],
+      },
       select: { id: true },
     });
     expect(prisma.curriculumSubject.upsert).toHaveBeenCalled();

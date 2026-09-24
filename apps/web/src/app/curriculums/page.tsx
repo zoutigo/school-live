@@ -62,6 +62,7 @@ type AcademicLevel = {
   id: string;
   code: string;
   label: string;
+  languageSystem?: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null;
   _count?: {
     classes: number;
     curriculums: number;
@@ -72,6 +73,7 @@ type Track = {
   id: string;
   code: string;
   label: string;
+  languageSystem?: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null;
   _count?: {
     classes: number;
     curriculums: number;
@@ -103,6 +105,8 @@ type CurriculumSubject = {
   coefficient: number | null;
   weeklyHours: number | null;
   subject: Subject;
+  isNational: boolean;
+  isCustomized: boolean;
 };
 
 type NationalCycle = {
@@ -131,6 +135,7 @@ type NationalTrack = {
   id: string;
   code: string;
   label: string;
+  languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null;
   _count?: {
     classes: number;
     curriculums: number;
@@ -154,6 +159,7 @@ type NationalSubject = {
   id: string;
   code: string;
   name: string;
+  languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null;
   _count?: {
     curriculumSubjects: number;
   };
@@ -190,6 +196,15 @@ const nationalAcademicLevelFormSchema = z.object({
 const trackFormSchema = z.object({
   code: z.string().trim().min(1, "Le code est obligatoire."),
   label: z.string().trim().min(1, "Le libelle est obligatoire."),
+});
+
+const nationalTrackFormSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  label: z.string().trim().min(1, "Le libelle est obligatoire."),
+  languageSystem: z
+    .union([z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]), z.literal("")])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
 });
 
 const curriculumFormSchema = z.object({
@@ -236,6 +251,10 @@ const curriculumSubjectFormSchema = z.object({
 const nationalSubjectFormSchema = z.object({
   code: z.string().trim().min(1, "Le code est obligatoire."),
   name: z.string().trim().min(1, "Le nom est obligatoire."),
+  languageSystem: z
+    .union([z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]), z.literal("")])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
 });
 
 export default function CurriculumsPage() {
@@ -261,6 +280,9 @@ function CurriculumsPageContent() {
 
   const [academicLevels, setAcademicLevels] = useState<AcademicLevel[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [catalogLanguageFilter, setCatalogLanguageFilter] = useState<
+    "" | "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL"
+  >("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [curriculums, setCurriculums] = useState<Curriculum[]>([]);
   const [curriculumSubjects, setCurriculumSubjects] = useState<
@@ -384,15 +406,17 @@ function CurriculumsPageContent() {
     mode: "onChange",
     defaultValues: { academicLevelId: "", trackId: "" },
   });
-  const nationalTrackForm = useForm<z.input<typeof trackFormSchema>>({
-    resolver: zodResolver(trackFormSchema),
+  const nationalTrackForm = useForm<z.input<typeof nationalTrackFormSchema>>({
+    resolver: zodResolver(nationalTrackFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", label: "" },
+    defaultValues: { code: "", label: "", languageSystem: "" },
   });
-  const editNationalTrackForm = useForm<z.input<typeof trackFormSchema>>({
-    resolver: zodResolver(trackFormSchema),
+  const editNationalTrackForm = useForm<
+    z.input<typeof nationalTrackFormSchema>
+  >({
+    resolver: zodResolver(nationalTrackFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", label: "" },
+    defaultValues: { code: "", label: "", languageSystem: "" },
   });
   const curriculumSubjectForm = useForm<
     z.input<typeof curriculumSubjectFormSchema>
@@ -437,14 +461,14 @@ function CurriculumsPageContent() {
   >({
     resolver: zodResolver(nationalSubjectFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", name: "" },
+    defaultValues: { code: "", name: "", languageSystem: "" },
   });
   const editNationalSubjectForm = useForm<
     z.input<typeof nationalSubjectFormSchema>
   >({
     resolver: zodResolver(nationalSubjectFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", name: "" },
+    defaultValues: { code: "", name: "", languageSystem: "" },
   });
   const nationalCurriculumSubjectForm = useForm<
     z.input<typeof curriculumSubjectFormSchema>
@@ -972,7 +996,7 @@ function CurriculumsPageContent() {
   }
 
   async function onCreateNationalTrack(
-    values: z.output<typeof trackFormSchema>,
+    values: z.input<typeof nationalTrackFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -1007,7 +1031,7 @@ function CurriculumsPageContent() {
         return;
       }
 
-      nationalTrackForm.reset({ code: "", label: "" });
+      nationalTrackForm.reset({ code: "", label: "", languageSystem: "" });
       setSuccess(t("curriculums.success.trackCreated"));
       await loadNationalTracks();
     } catch {
@@ -1029,13 +1053,17 @@ function CurriculumsPageContent() {
 
   function startEditNationalTrack(track: NationalTrack) {
     setEditingNationalTrackId(track.id);
-    editNationalTrackForm.reset({ code: track.code, label: track.label });
+    editNationalTrackForm.reset({
+      code: track.code,
+      label: track.label,
+      languageSystem: track.languageSystem ?? "",
+    });
     void editNationalTrackForm.trigger();
   }
 
   async function saveNationalTrack(
     trackId: string,
-    values: z.output<typeof trackFormSchema>,
+    values: z.input<typeof nationalTrackFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -1467,7 +1495,7 @@ function CurriculumsPageContent() {
   }
 
   async function onCreateNationalSubject(
-    values: z.output<typeof nationalSubjectFormSchema>,
+    values: z.input<typeof nationalSubjectFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -1502,7 +1530,7 @@ function CurriculumsPageContent() {
         return;
       }
 
-      nationalSubjectForm.reset({ code: "", name: "" });
+      nationalSubjectForm.reset({ code: "", name: "", languageSystem: "" });
       setSuccess(t("curriculums.success.subjectCreated"));
       await loadNationalSubjects();
     } catch {
@@ -1524,13 +1552,17 @@ function CurriculumsPageContent() {
 
   function startEditNationalSubject(subject: NationalSubject) {
     setEditingNationalSubjectId(subject.id);
-    editNationalSubjectForm.reset({ code: subject.code, name: subject.name });
+    editNationalSubjectForm.reset({
+      code: subject.code,
+      name: subject.name,
+      languageSystem: subject.languageSystem ?? "",
+    });
     void editNationalSubjectForm.trigger();
   }
 
   async function saveNationalSubject(
     subjectId: string,
-    values: z.output<typeof nationalSubjectFormSchema>,
+    values: z.input<typeof nationalSubjectFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -2139,17 +2171,72 @@ function CurriculumsPageContent() {
     }
   }
 
+  function matchesLanguageFilter(
+    languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null | undefined,
+  ) {
+    if (!catalogLanguageFilter) return true;
+    if (!languageSystem) return true;
+    if (languageSystem === "BILINGUAL") return true;
+    return languageSystem === catalogLanguageFilter;
+  }
+
+  function languageSystemLabel(
+    languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null | undefined,
+  ) {
+    if (!languageSystem) return t("curriculums.language.unspecified");
+    return {
+      FRANCOPHONE: t("schools.form.languageSystemFrancophone"),
+      ANGLOPHONE: t("schools.form.languageSystemAnglophone"),
+      BILINGUAL: t("schools.form.languageSystemBilingual"),
+    }[languageSystem];
+  }
+
+  function LanguageBadge({
+    languageSystem,
+  }: {
+    languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null | undefined;
+  }) {
+    const colorClass = !languageSystem
+      ? "bg-text-secondary/10 text-text-secondary"
+      : languageSystem === "ANGLOPHONE"
+        ? "bg-accent-teal/10 text-accent-teal"
+        : languageSystem === "BILINGUAL"
+          ? "bg-warm-accent/10 text-warm-accent-dark"
+          : "bg-primary/10 text-primary";
+    return (
+      <span
+        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}
+      >
+        {languageSystemLabel(languageSystem)}
+      </span>
+    );
+  }
+
   const orderedCurriculums = useMemo(
-    () => [...curriculums].sort((a, b) => a.name.localeCompare(b.name)),
-    [curriculums],
+    () =>
+      [...curriculums]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((curriculum) =>
+          matchesLanguageFilter(
+            curriculum.track?.languageSystem ??
+              curriculum.academicLevel.languageSystem,
+          ),
+        ),
+    [curriculums, catalogLanguageFilter],
   );
   const orderedLevels = useMemo(
-    () => [...academicLevels].sort((a, b) => a.code.localeCompare(b.code)),
-    [academicLevels],
+    () =>
+      [...academicLevels]
+        .sort((a, b) => a.code.localeCompare(b.code))
+        .filter((level) => matchesLanguageFilter(level.languageSystem)),
+    [academicLevels, catalogLanguageFilter],
   );
   const orderedTracks = useMemo(
-    () => [...tracks].sort((a, b) => a.code.localeCompare(b.code)),
-    [tracks],
+    () =>
+      [...tracks]
+        .sort((a, b) => a.code.localeCompare(b.code))
+        .filter((track) => matchesLanguageFilter(track.languageSystem)),
+    [tracks, catalogLanguageFilter],
   );
   const orderedNationalSubjects = useMemo(
     () => [...nationalSubjects].sort((a, b) => a.name.localeCompare(b.name)),
@@ -2336,6 +2423,35 @@ function CurriculumsPageContent() {
             ) : null}
           </div>
 
+          {tab === "levels" || tab === "tracks" || tab === "curriculums" ? (
+            <div className="mb-4 flex items-center gap-2 text-sm">
+              <span className="text-text-secondary">
+                {t("curriculums.language.filterLabel")}
+              </span>
+              <select
+                aria-label={t("curriculums.language.filterLabel")}
+                className="rounded-input border border-border bg-surface px-2 py-1 text-sm"
+                value={catalogLanguageFilter}
+                onChange={(event) => {
+                  setCatalogLanguageFilter(
+                    event.target.value as typeof catalogLanguageFilter,
+                  );
+                }}
+              >
+                <option value="">{t("curriculums.language.filterAll")}</option>
+                <option value="FRANCOPHONE">
+                  {t("schools.form.languageSystemFrancophone")}
+                </option>
+                <option value="ANGLOPHONE">
+                  {t("schools.form.languageSystemAnglophone")}
+                </option>
+                <option value="BILINGUAL">
+                  {t("schools.form.languageSystemBilingual")}
+                </option>
+              </select>
+            </div>
+          ) : null}
+
           {tab === "help" ? (
             <ModuleHelpTab
               moduleName={t("curriculums.help.moduleName")}
@@ -2436,6 +2552,9 @@ function CurriculumsPageContent() {
                         {t("curriculums.level.colLabel")}
                       </th>
                       <th className="px-3 py-2 font-medium">
+                        {t("curriculums.language.colLanguage")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
                         {t("curriculums.level.colCurriculums")}
                       </th>
                       <th className="px-3 py-2 font-medium">
@@ -2451,7 +2570,7 @@ function CurriculumsPageContent() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           {t("common.loading")}
                         </td>
@@ -2465,6 +2584,11 @@ function CurriculumsPageContent() {
                           <tr className="border-b border-border text-text-primary">
                             <td className="px-3 py-2">{level.code}</td>
                             <td className="px-3 py-2">{level.label}</td>
+                            <td className="px-3 py-2">
+                              <LanguageBadge
+                                languageSystem={level.languageSystem}
+                              />
+                            </td>
                             <td className="px-3 py-2">
                               {level._count?.curriculums ?? 0}
                             </td>
@@ -2499,7 +2623,7 @@ function CurriculumsPageContent() {
                           </tr>
                           {editingAcademicLevelId === level.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={5}>
+                              <td className="px-3 py-3" colSpan={6}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
                                   <FormField
                                     label={t("curriculums.level.codeLabel")}
@@ -2599,7 +2723,7 @@ function CurriculumsPageContent() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           {t("curriculums.level.empty")}
                         </td>
@@ -2677,6 +2801,9 @@ function CurriculumsPageContent() {
                         {t("curriculums.track.colLabel")}
                       </th>
                       <th className="px-3 py-2 font-medium">
+                        {t("curriculums.language.colLanguage")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
                         {t("curriculums.track.colCurriculums")}
                       </th>
                       <th className="px-3 py-2 font-medium">
@@ -2692,7 +2819,7 @@ function CurriculumsPageContent() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           {t("common.loading")}
                         </td>
@@ -2706,6 +2833,11 @@ function CurriculumsPageContent() {
                           <tr className="border-b border-border text-text-primary">
                             <td className="px-3 py-2">{track.code}</td>
                             <td className="px-3 py-2">{track.label}</td>
+                            <td className="px-3 py-2">
+                              <LanguageBadge
+                                languageSystem={track.languageSystem}
+                              />
+                            </td>
                             <td className="px-3 py-2">
                               {track._count?.curriculums ?? 0}
                             </td>
@@ -2738,7 +2870,7 @@ function CurriculumsPageContent() {
                           </tr>
                           {editingTrackId === track.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={5}>
+                              <td className="px-3 py-3" colSpan={6}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
                                   <FormField
                                     label={t("curriculums.track.codeLabel")}
@@ -2833,7 +2965,7 @@ function CurriculumsPageContent() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           {t("curriculums.track.empty")}
                         </td>
@@ -2870,7 +3002,7 @@ function CurriculumsPageContent() {
                     searchPlaceholder={t("settings.form.searchPlaceholder")}
                     noResultsLabel={t("settings.form.noResults")}
                     data-testid="curriculum-create-level-select"
-                    options={academicLevels.map((level) => ({
+                    options={orderedLevels.map((level) => ({
                       value: level.id,
                       label: `${level.code} - ${level.label}`,
                     }))}
@@ -2897,7 +3029,7 @@ function CurriculumsPageContent() {
                         value: "",
                         label: t("curriculums.curriculum.trackNone"),
                       },
-                      ...tracks.map((track) => ({
+                      ...orderedTracks.map((track) => ({
                         value: track.id,
                         label: `${track.code} - ${track.label}`,
                       })),
@@ -2942,6 +3074,9 @@ function CurriculumsPageContent() {
                         {t("curriculums.curriculum.colTrack")}
                       </th>
                       <th className="px-3 py-2 font-medium">
+                        {t("curriculums.language.colLanguage")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
                         {t("curriculums.curriculum.colSubjects")}
                       </th>
                       <th className="px-3 py-2 font-medium">
@@ -2957,7 +3092,7 @@ function CurriculumsPageContent() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={6}
+                          colSpan={7}
                         >
                           {t("common.loading")}
                         </td>
@@ -2980,6 +3115,14 @@ function CurriculumsPageContent() {
                             {curriculum.track
                               ? `${curriculum.track.code} - ${curriculum.track.label}`
                               : "-"}
+                          </td>
+                          <td className="px-3 py-2">
+                            <LanguageBadge
+                              languageSystem={
+                                curriculum.track?.languageSystem ??
+                                curriculum.academicLevel.languageSystem
+                              }
+                            />
                           </td>
                           <td className="px-3 py-2">
                             {curriculum._count.subjects}
@@ -3024,7 +3167,7 @@ function CurriculumsPageContent() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={6}
+                          colSpan={7}
                         >
                           {t("curriculums.curriculum.empty")}
                         </td>
@@ -3723,7 +3866,7 @@ function CurriculumsPageContent() {
                   {t("curriculums.national.track.title")}
                 </h3>
                 <form
-                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"
                   onSubmit={nationalTrackForm.handleSubmit(
                     onCreateNationalTrack,
                     onInvalidCreateNationalTrack,
@@ -3767,6 +3910,26 @@ function CurriculumsPageContent() {
                       }}
                     />
                   </FormField>
+                  <FormField label={t("schools.form.fieldLanguageSystemOpt")}>
+                    <select
+                      aria-label={t("schools.form.fieldLanguageSystemOpt")}
+                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                      {...nationalTrackForm.register("languageSystem")}
+                    >
+                      <option value="">
+                        {t("schools.form.languageSystemPlaceholder")}
+                      </option>
+                      <option value="FRANCOPHONE">
+                        {t("schools.form.languageSystemFrancophone")}
+                      </option>
+                      <option value="ANGLOPHONE">
+                        {t("schools.form.languageSystemAnglophone")}
+                      </option>
+                      <option value="BILINGUAL">
+                        {t("schools.form.languageSystemBilingual")}
+                      </option>
+                    </select>
+                  </FormField>
                   <div className="self-end">
                     <SubmitButton
                       disabled={
@@ -3781,7 +3944,7 @@ function CurriculumsPageContent() {
                   </div>
                   <FormSubmitHint
                     visible={!nationalTrackForm.formState.isValid}
-                    className="md:col-span-3"
+                    className="md:col-span-4"
                   />
                 </form>
 
@@ -3796,6 +3959,9 @@ function CurriculumsPageContent() {
                           {t("curriculums.national.colLabel")}
                         </th>
                         <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colLanguageSystem")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
                           {t("curriculums.national.colActions")}
                         </th>
                       </tr>
@@ -3808,6 +3974,20 @@ function CurriculumsPageContent() {
                               {track.code}
                             </td>
                             <td className="px-3 py-2">{track.label}</td>
+                            <td className="px-3 py-2">
+                              {track.languageSystem
+                                ? t(
+                                    {
+                                      FRANCOPHONE:
+                                        "schools.form.languageSystemFrancophone",
+                                      ANGLOPHONE:
+                                        "schools.form.languageSystemAnglophone",
+                                      BILINGUAL:
+                                        "schools.form.languageSystemBilingual",
+                                    }[track.languageSystem],
+                                  )
+                                : "-"}
+                            </td>
                             <td className="px-3 py-2">
                               <div className="inline-flex gap-2">
                                 <Button
@@ -3836,8 +4016,8 @@ function CurriculumsPageContent() {
                           </tr>
                           {editingNationalTrackId === track.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={3}>
-                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
+                              <td className="px-3 py-3" colSpan={4}>
+                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
                                   <FormField
                                     label={t(
                                       "curriculums.national.track.codeEditAria",
@@ -3896,6 +4076,42 @@ function CurriculumsPageContent() {
                                       }}
                                     />
                                   </FormField>
+                                  <FormField
+                                    label={t(
+                                      "schools.form.fieldLanguageSystemOpt",
+                                    )}
+                                  >
+                                    <select
+                                      aria-label={t(
+                                        "schools.form.fieldLanguageSystemOpt",
+                                      )}
+                                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                                      {...editNationalTrackForm.register(
+                                        "languageSystem",
+                                      )}
+                                    >
+                                      <option value="">
+                                        {t(
+                                          "schools.form.languageSystemPlaceholder",
+                                        )}
+                                      </option>
+                                      <option value="FRANCOPHONE">
+                                        {t(
+                                          "schools.form.languageSystemFrancophone",
+                                        )}
+                                      </option>
+                                      <option value="ANGLOPHONE">
+                                        {t(
+                                          "schools.form.languageSystemAnglophone",
+                                        )}
+                                      </option>
+                                      <option value="BILINGUAL">
+                                        {t(
+                                          "schools.form.languageSystemBilingual",
+                                        )}
+                                      </option>
+                                    </select>
+                                  </FormField>
                                   <Button
                                     type="button"
                                     disabled={
@@ -3933,7 +4149,7 @@ function CurriculumsPageContent() {
                         <tr>
                           <td
                             className="px-3 py-6 text-text-secondary"
-                            colSpan={3}
+                            colSpan={4}
                           >
                             {t("curriculums.national.track.empty")}
                           </td>
@@ -3951,7 +4167,7 @@ function CurriculumsPageContent() {
                   {t("curriculums.national.subject.title")}
                 </h3>
                 <form
-                  className="grid gap-3 md:grid-cols-[1fr_2fr_auto]"
+                  className="grid gap-3 md:grid-cols-[1fr_2fr_1fr_auto]"
                   onSubmit={nationalSubjectForm.handleSubmit(
                     onCreateNationalSubject,
                     onInvalidCreateNationalSubject,
@@ -3999,6 +4215,26 @@ function CurriculumsPageContent() {
                       }}
                     />
                   </FormField>
+                  <FormField label={t("schools.form.fieldLanguageSystemOpt")}>
+                    <select
+                      aria-label={t("schools.form.fieldLanguageSystemOpt")}
+                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                      {...nationalSubjectForm.register("languageSystem")}
+                    >
+                      <option value="">
+                        {t("schools.form.languageSystemPlaceholder")}
+                      </option>
+                      <option value="FRANCOPHONE">
+                        {t("schools.form.languageSystemFrancophone")}
+                      </option>
+                      <option value="ANGLOPHONE">
+                        {t("schools.form.languageSystemAnglophone")}
+                      </option>
+                      <option value="BILINGUAL">
+                        {t("schools.form.languageSystemBilingual")}
+                      </option>
+                    </select>
+                  </FormField>
                   <div className="self-end">
                     <SubmitButton
                       disabled={
@@ -4013,7 +4249,7 @@ function CurriculumsPageContent() {
                   </div>
                   <FormSubmitHint
                     visible={!nationalSubjectForm.formState.isValid}
-                    className="md:col-span-3"
+                    className="md:col-span-4"
                   />
                 </form>
 
@@ -4028,6 +4264,9 @@ function CurriculumsPageContent() {
                           {t("curriculums.national.subject.nameLabel")}
                         </th>
                         <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colLanguageSystem")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
                           {t("curriculums.national.colActions")}
                         </th>
                       </tr>
@@ -4040,6 +4279,20 @@ function CurriculumsPageContent() {
                               {subject.code}
                             </td>
                             <td className="px-3 py-2">{subject.name}</td>
+                            <td className="px-3 py-2">
+                              {subject.languageSystem
+                                ? t(
+                                    {
+                                      FRANCOPHONE:
+                                        "schools.form.languageSystemFrancophone",
+                                      ANGLOPHONE:
+                                        "schools.form.languageSystemAnglophone",
+                                      BILINGUAL:
+                                        "schools.form.languageSystemBilingual",
+                                    }[subject.languageSystem],
+                                  )
+                                : "-"}
+                            </td>
                             <td className="px-3 py-2">
                               <div className="inline-flex gap-2">
                                 <Button
@@ -4070,8 +4323,8 @@ function CurriculumsPageContent() {
                           </tr>
                           {editingNationalSubjectId === subject.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={3}>
-                                <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
+                              <td className="px-3 py-3" colSpan={4}>
+                                <div className="grid gap-3 md:grid-cols-[1fr_2fr_1fr_auto_auto]">
                                   <FormField
                                     label={t(
                                       "curriculums.national.subject.codeLabel",
@@ -4132,6 +4385,42 @@ function CurriculumsPageContent() {
                                       }}
                                     />
                                   </FormField>
+                                  <FormField
+                                    label={t(
+                                      "schools.form.fieldLanguageSystemOpt",
+                                    )}
+                                  >
+                                    <select
+                                      aria-label={t(
+                                        "schools.form.fieldLanguageSystemOpt",
+                                      )}
+                                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                                      {...editNationalSubjectForm.register(
+                                        "languageSystem",
+                                      )}
+                                    >
+                                      <option value="">
+                                        {t(
+                                          "schools.form.languageSystemPlaceholder",
+                                        )}
+                                      </option>
+                                      <option value="FRANCOPHONE">
+                                        {t(
+                                          "schools.form.languageSystemFrancophone",
+                                        )}
+                                      </option>
+                                      <option value="ANGLOPHONE">
+                                        {t(
+                                          "schools.form.languageSystemAnglophone",
+                                        )}
+                                      </option>
+                                      <option value="BILINGUAL">
+                                        {t(
+                                          "schools.form.languageSystemBilingual",
+                                        )}
+                                      </option>
+                                    </select>
+                                  </FormField>
                                   <Button
                                     type="button"
                                     disabled={
@@ -4173,7 +4462,7 @@ function CurriculumsPageContent() {
                         <tr>
                           <td
                             className="px-3 py-6 text-text-secondary"
-                            colSpan={3}
+                            colSpan={4}
                           >
                             {t("curriculums.national.subject.empty")}
                           </td>
@@ -4610,6 +4899,9 @@ function CurriculumsPageContent() {
                           <th className="px-3 py-2 font-medium">
                             {t("curriculums.subject.colMandatory")}
                           </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("curriculums.subject.colOrigin")}
+                          </th>
                           <th className="px-3 py-2 font-medium text-right">
                             {t("curriculums.subject.colAction")}
                           </th>
@@ -4633,6 +4925,23 @@ function CurriculumsPageContent() {
                                 ? t("curriculums.subject.yes")
                                 : t("curriculums.subject.no")}
                             </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  entry.isNational
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-accent-teal/10 text-accent-teal"
+                                }`}
+                              >
+                                {entry.isNational
+                                  ? entry.isCustomized
+                                    ? t(
+                                        "curriculums.subject.originNationalCustomized",
+                                      )
+                                    : t("curriculums.subject.originNational")
+                                  : t("curriculums.subject.originSchool")}
+                              </span>
+                            </td>
                             <td className="px-3 py-2 text-right">
                               <Button
                                 type="button"
@@ -4653,7 +4962,7 @@ function CurriculumsPageContent() {
                           <tr>
                             <td
                               className="px-3 py-6 text-text-secondary"
-                              colSpan={5}
+                              colSpan={6}
                             >
                               {t("curriculums.subject.empty")}
                             </td>
