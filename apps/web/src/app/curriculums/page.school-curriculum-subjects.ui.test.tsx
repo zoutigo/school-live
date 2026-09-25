@@ -54,9 +54,7 @@ describe("Curriculums page — matieres d'un curriculum national (ecole)", () =>
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
   });
 
-  function mockRoutes(options?: {
-    curriculumSubjects?: unknown[];
-  }) {
+  function mockRoutes(options?: { curriculumSubjects?: unknown[] }) {
     let curriculumSubjects = options?.curriculumSubjects ?? [
       {
         id: "cs-math",

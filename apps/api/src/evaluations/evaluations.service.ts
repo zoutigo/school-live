@@ -1891,7 +1891,11 @@ export class EvaluationsService {
           }),
           this.prisma.curriculumSubjectOverride.findMany({
             where: { schoolId, curriculumId },
-            select: { subjectId: true, action: true, coefficientOverride: true },
+            select: {
+              subjectId: true,
+              action: true,
+              coefficientOverride: true,
+            },
           }),
         ]);
       const overrideBySubjectId = new Map(
@@ -1905,7 +1909,10 @@ export class EvaluationsService {
         if (override?.action === "REMOVE") {
           continue;
         }
-        map.set(row.subjectId, override?.coefficientOverride ?? row.coefficient ?? 1);
+        map.set(
+          row.subjectId,
+          override?.coefficientOverride ?? row.coefficient ?? 1,
+        );
       }
       for (const override of overrides) {
         if (override.action === "ADD" && !map.has(override.subjectId)) {

@@ -2172,7 +2172,12 @@ function CurriculumsPageContent() {
   }
 
   function matchesLanguageFilter(
-    languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null | undefined,
+    languageSystem:
+      | "FRANCOPHONE"
+      | "ANGLOPHONE"
+      | "BILINGUAL"
+      | null
+      | undefined,
   ) {
     if (!catalogLanguageFilter) return true;
     if (!languageSystem) return true;
@@ -2181,7 +2186,12 @@ function CurriculumsPageContent() {
   }
 
   function languageSystemLabel(
-    languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null | undefined,
+    languageSystem:
+      | "FRANCOPHONE"
+      | "ANGLOPHONE"
+      | "BILINGUAL"
+      | null
+      | undefined,
   ) {
     if (!languageSystem) return t("curriculums.language.unspecified");
     return {
@@ -2194,7 +2204,12 @@ function CurriculumsPageContent() {
   function LanguageBadge({
     languageSystem,
   }: {
-    languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null | undefined;
+    languageSystem:
+      | "FRANCOPHONE"
+      | "ANGLOPHONE"
+      | "BILINGUAL"
+      | null
+      | undefined;
   }) {
     const colorClass = !languageSystem
       ? "bg-text-secondary/10 text-text-secondary"

@@ -4947,7 +4947,8 @@ export class ManagementService {
   }
 
   async listSubjects(schoolId: string) {
-    const nationalFilter = await this.getNationalSubjectFilterForSchool(schoolId);
+    const nationalFilter =
+      await this.getNationalSubjectFilterForSchool(schoolId);
     const subjects = await this.prisma.subject.findMany({
       where: { OR: [{ schoolId }, nationalFilter] },
       orderBy: [{ name: "asc" }],

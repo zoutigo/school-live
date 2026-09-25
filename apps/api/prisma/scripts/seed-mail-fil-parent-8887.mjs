@@ -233,7 +233,9 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${messages.length} internal messages for parent ${parent.id}.`);
+  console.log(
+    `Seeded ${messages.length} internal messages for parent ${parent.id}.`,
+  );
 
   // ------------------------- FIL (FeedPost) -------------------------
 
@@ -382,7 +384,11 @@ async function main() {
     `Seeded ${visiblePosts.length} likes and ${parentComments.length} comments from parent ${parent.id}.`,
   );
 
-  if (previousMessageIds.length || previousFeedLikes.count || previousFeedComments.count) {
+  if (
+    previousMessageIds.length ||
+    previousFeedLikes.count ||
+    previousFeedComments.count
+  ) {
     console.log(
       `Cleaned up previous demo data: ${previousMessageIds.length} messages, ${previousFeedLikes.count} likes, ${previousFeedComments.count} comments.`,
     );

@@ -16,22 +16,30 @@ function makePrisma(
     },
     track: {
       findMany: jest.fn().mockResolvedValue([]),
-      create: jest.fn().mockImplementation(({ data }) =>
-        Promise.resolve({ id: "track-1", ...data }),
-      ),
-      update: jest.fn().mockImplementation(({ data }) =>
-        Promise.resolve({ id: "track-1", ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: "track-1", ...data }),
+        ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: "track-1", ...data }),
+        ),
       findFirst: jest.fn().mockResolvedValue({ id: "track-1" }),
     },
     subject: {
       findMany: jest.fn().mockResolvedValue([]),
-      create: jest.fn().mockImplementation(({ data }) =>
-        Promise.resolve({ id: "subject-1", ...data }),
-      ),
-      update: jest.fn().mockImplementation(({ data }) =>
-        Promise.resolve({ id: "subject-1", ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: "subject-1", ...data }),
+        ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: "subject-1", ...data }),
+        ),
       findFirst: jest.fn().mockResolvedValue({ id: "subject-1" }),
     },
     curriculum: {

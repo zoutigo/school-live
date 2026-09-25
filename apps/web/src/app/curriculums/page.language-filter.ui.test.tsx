@@ -69,8 +69,18 @@ const CURRICULUMS = [
     name: "1ERE - A1",
     academicLevelId: "level-fr",
     trackId: "track-fr",
-    academicLevel: { id: "level-fr", code: "1ERE", label: "1ere", languageSystem: "FRANCOPHONE" },
-    track: { id: "track-fr", code: "A1", label: "A1", languageSystem: "FRANCOPHONE" },
+    academicLevel: {
+      id: "level-fr",
+      code: "1ERE",
+      label: "1ere",
+      languageSystem: "FRANCOPHONE",
+    },
+    track: {
+      id: "track-fr",
+      code: "A1",
+      label: "A1",
+      languageSystem: "FRANCOPHONE",
+    },
     _count: { classes: 0, subjects: 3 },
   },
   {
@@ -78,8 +88,18 @@ const CURRICULUMS = [
     name: "FORM1 - SCI",
     academicLevelId: "level-en",
     trackId: "track-en",
-    academicLevel: { id: "level-en", code: "FORM1", label: "Form 1", languageSystem: "ANGLOPHONE" },
-    track: { id: "track-en", code: "SCI", label: "Science", languageSystem: "ANGLOPHONE" },
+    academicLevel: {
+      id: "level-en",
+      code: "FORM1",
+      label: "Form 1",
+      languageSystem: "ANGLOPHONE",
+    },
+    track: {
+      id: "track-en",
+      code: "SCI",
+      label: "Science",
+      languageSystem: "ANGLOPHONE",
+    },
     _count: { classes: 0, subjects: 3 },
   },
 ];
@@ -160,9 +180,7 @@ describe("Curriculums page — filtre et badges de langue (Niveaux, Filieres, Cu
     mockRoutes();
     render(<CurriculumsPage />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Curriculums" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Curriculums" }));
 
     await waitFor(() => {
       expect(screen.getByText("1ERE - A1")).toBeInTheDocument();
@@ -183,9 +201,7 @@ describe("Curriculums page — filtre et badges de langue (Niveaux, Filieres, Cu
     mockRoutes();
     render(<CurriculumsPage />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Curriculums" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Curriculums" }));
     await waitFor(() => {
       expect(screen.getByText("1ERE - A1")).toBeInTheDocument();
     });

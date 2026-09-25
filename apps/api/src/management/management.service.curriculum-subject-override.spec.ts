@@ -230,11 +230,11 @@ describe("ManagementService — personnalisation des matieres d'un curriculum na
       const prisma = makePrisma();
       const service = makeService(prisma);
 
-      await service.upsertCurriculumSubject(
-        SCHOOL_ID,
-        NATIONAL_CURRICULUM_ID,
-        { subjectId: "subject-chinois", coefficient: 1, weeklyHours: 2 },
-      );
+      await service.upsertCurriculumSubject(SCHOOL_ID, NATIONAL_CURRICULUM_ID, {
+        subjectId: "subject-chinois",
+        coefficient: 1,
+        weeklyHours: 2,
+      });
 
       expect(prisma.curriculumSubject.upsert).not.toHaveBeenCalled();
       expect(prisma.curriculumSubjectOverride.upsert).toHaveBeenCalledWith(
