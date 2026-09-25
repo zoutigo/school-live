@@ -98,6 +98,16 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       if (!editorRef.current) {
         return;
       }
+      // A controlled `initialHtml` (FormRichTextEditor's `value`) is fed back
+      // from this editor's own onHtmlChange on every keystroke. Re-assigning
+      // innerHTML unconditionally here would reset the caret to the start of
+      // the content on each render, making newly typed characters appear in
+      // reverse order. Only sync the DOM when the incoming HTML actually
+      // differs from what the editor already holds (an external change,
+      // e.g. loading a different record or clearing the field).
+      if (editorRef.current.innerHTML === initialHtml) {
+        return;
+      }
       editorRef.current.innerHTML = initialHtml;
       onTextChangeRef.current?.(editorRef.current.innerText ?? "");
       onHtmlChangeRef.current?.(editorRef.current.innerHTML ?? "");

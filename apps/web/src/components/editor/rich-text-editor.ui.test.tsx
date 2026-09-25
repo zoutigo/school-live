@@ -344,3 +344,104 @@ describe("RichTextEditor — ref API", () => {
     expect(html).toContain("Test");
   });
 });
+
+// ── Tests — contenu contrôlé (régression texte inversé) ─────────────────────
+//
+// FormRichTextEditor pilote `initialHtml` avec un state React mis à jour à
+// chaque frappe via onHtmlChange (pattern value/onChange contrôlé). Si l'effet
+// qui synchronise `initialHtml` vers le DOM réassignait innerHTML à chaque
+// rendu — même quand le contenu n'a pas changé depuis l'extérieur — le
+// navigateur replaçait le curseur en tête de l'éditeur, et chaque caractère
+// tapé s'insérait avant les précédents : le texte apparaissait à l'envers.
+
+function ControlledEditor({
+  initial = "",
+  onChange,
+}: {
+  initial?: string;
+  onChange?: (html: string) => void;
+}) {
+  const [value, setValue] = React.useState(initial);
+  return (
+    <RichTextEditor
+      initialHtml={value}
+      onHtmlChange={(html) => {
+        setValue(html);
+        onChange?.(html);
+      }}
+    />
+  );
+}
+
+describe("RichTextEditor — contenu contrôlé (régression texte inversé)", () => {
+  it("ne réinjecte pas innerHTML quand le HTML contrôlé revient identique après une frappe", () => {
+    const { container } = render(<ControlledEditor initial="<p>A</p>" />);
+    const editor = getEditor(container);
+
+    // Espionne le setter innerHTML de CE noeud éditeur uniquement : un
+    // vrai navigateur ne recrée pas l'arbre DOM à chaque frappe (il mute
+    // le noeud texte en place), donc simuler la frappe avec innerHTML
+    // détruirait de toute façon les noeuds — ce qui ne teste pas la bonne
+    // chose. Ce qu'on veut vérifier, c'est que l'effet React ne réassigne
+    // PAS innerHTML une fois que le HTML contrôlé revenu de onHtmlChange
+    // correspond déjà au contenu du DOM.
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "innerHTML",
+    )!;
+    const setSpy = vi.fn();
+    Object.defineProperty(editor, "innerHTML", {
+      configurable: true,
+      get() {
+        return descriptor.get!.call(editor);
+      },
+      set(v: string) {
+        setSpy(v);
+        descriptor.set!.call(editor, v);
+      },
+    });
+
+    // Simule une frappe utilisateur réelle : seul le noeud texte est muté,
+    // puis "input" est émis. syncEditorState relaie ce HTML via
+    // onHtmlChange, ce qui re-render le composant avec un initialHtml
+    // désormais identique au DOM courant.
+    act(() => {
+      editor.textContent = "AB";
+      fireEvent.input(editor);
+    });
+
+    expect(setSpy).not.toHaveBeenCalled();
+    expect(editor.textContent).toBe("AB");
+  });
+
+  it("insère les caractères tapés successivement dans l'ordre, sans les inverser", () => {
+    const { container } = render(<ControlledEditor initial="" />);
+    const editor = getEditor(container);
+
+    const word = "Epreuve";
+    let typed = "";
+    for (const char of word) {
+      typed += char;
+      act(() => {
+        // Simule l'ajout d'un caractère en fin de contenu, comme le ferait
+        // une vraie frappe clavier avec le curseur en fin de texte.
+        editor.textContent = typed;
+        fireEvent.input(editor);
+      });
+    }
+
+    expect(editor.textContent).toBe(word);
+    expect(editor.textContent).not.toBe(word.split("").reverse().join(""));
+  });
+
+  it("met bien à jour le DOM quand initialHtml change depuis l'extérieur (changement de contenu)", () => {
+    const { container, rerender } = render(
+      <RichTextEditor initialHtml="<p>Premier</p>" />,
+    );
+    const editor = getEditor(container);
+    expect(editor.textContent).toBe("Premier");
+
+    rerender(<RichTextEditor initialHtml="<p>Second</p>" />);
+    expect(editor.textContent).toBe("Second");
+  });
+});
