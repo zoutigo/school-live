@@ -941,40 +941,40 @@ model NationalCycle {
 }
 
 model Track {
-  id                                  String              @id @default(cuid())
+  id                                  String                @id @default(cuid())
   schoolId                            String?
   code                                String
   label                               String
   languageSystem                      SchoolLanguageSystem?
-  createdAt                           DateTime            @default(now())
-  updatedAt                           DateTime            @updatedAt
-  school                              School?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt                           DateTime              @default(now())
+  updatedAt                           DateTime              @updatedAt
+  school                              School?               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes                             Class[]
   curriculums                         Curriculum[]
   resources                           Resource[]
-  termReportsTargetingThisTrack       StudentTermReport[] @relation("StudentTermReportNextTrack")
+  termReportsTargetingThisTrack       StudentTermReport[]   @relation("StudentTermReportNextTrack")
   feeSchedules                        FeeSchedule[]
   supplyLists                         SupplyList[]
-  enrollmentsTargetingThisTrack       Enrollment[]        @relation("EnrollmentTrack")
-  studentAdmissionsTargetingThisTrack StudentAdmission[]  @relation("StudentAdmissionTrack")
+  enrollmentsTargetingThisTrack       Enrollment[]          @relation("EnrollmentTrack")
+  studentAdmissionsTargetingThisTrack StudentAdmission[]    @relation("StudentAdmissionTrack")
 
   @@unique([schoolId, code])
   @@index([schoolId])
 }
 
 model Curriculum {
-  id              String              @id @default(cuid())
-  schoolId        String?
-  name            String
-  academicLevelId String
-  trackId         String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  school          School?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  academicLevel   AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
-  track           Track?              @relation(fields: [trackId], references: [id], onDelete: SetNull)
-  classes         Class[]
-  subjects        CurriculumSubject[]
+  id               String                      @id @default(cuid())
+  schoolId         String?
+  name             String
+  academicLevelId  String
+  trackId          String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  school           School?                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicLevel    AcademicLevel               @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  track            Track?                      @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  classes          Class[]
+  subjects         CurriculumSubject[]
   subjectOverrides CurriculumSubjectOverride[]
 
   @@unique([schoolId, name])
@@ -1021,8 +1021,8 @@ model CurriculumSubjectOverride {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   school              School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  curriculum           Curriculum    @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
-  subject              Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  curriculum          Curriculum     @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  subject             Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, curriculumId, subjectId])
   @@index([schoolId])
@@ -1076,28 +1076,28 @@ model Class {
 }
 
 model Subject {
-  id                      String                        @id @default(cuid())
-  schoolId                String?
-  code                    String?
-  name                    String
-  languageSystem          SchoolLanguageSystem?
-  createdAt               DateTime                      @default(now())
-  updatedAt               DateTime                      @updatedAt
-  school                  School?                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  assignments             TeacherClassSubject[]
-  studentGrades           StudentGrade[]
-  branches                SubjectBranch[]
-  evaluations             Evaluation[]
-  homeworks               Homework[]
-  termReportEntries       StudentTermReportEntry[]
-  curriculumSubjects      CurriculumSubject[]
+  id                         String                        @id @default(cuid())
+  schoolId                   String?
+  code                       String?
+  name                       String
+  languageSystem             SchoolLanguageSystem?
+  createdAt                  DateTime                      @default(now())
+  updatedAt                  DateTime                      @updatedAt
+  school                     School?                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments                TeacherClassSubject[]
+  studentGrades              StudentGrade[]
+  branches                   SubjectBranch[]
+  evaluations                Evaluation[]
+  homeworks                  Homework[]
+  termReportEntries          StudentTermReportEntry[]
+  curriculumSubjects         CurriculumSubject[]
   curriculumSubjectOverrides CurriculumSubjectOverride[]
-  classOverrides          ClassSubjectOverride[]
-  timetableSlots          ClassTimetableSlot[]
-  timetableOneOffSlots    ClassTimetableOneOffSlot[]
-  timetableSlotExceptions ClassTimetableSlotException[]
-  timetableSubjectStyles  ClassTimetableSubjectStyle[]
-  resources               Resource[]
+  classOverrides             ClassSubjectOverride[]
+  timetableSlots             ClassTimetableSlot[]
+  timetableOneOffSlots       ClassTimetableOneOffSlot[]
+  timetableSlotExceptions    ClassTimetableSlotException[]
+  timetableSubjectStyles     ClassTimetableSubjectStyle[]
+  resources                  Resource[]
 
   @@unique([schoolId, name])
   @@index([schoolId])

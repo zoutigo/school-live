@@ -45,6 +45,7 @@ model School {
   tracks             Track[]
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
+  curriculumSubjectOverrides CurriculumSubjectOverride[]
   lifeEvents         StudentLifeEvent[]
   healthConditions   StudentHealthCondition[]
   healthCareEvents   StudentHealthCareEvent[]
