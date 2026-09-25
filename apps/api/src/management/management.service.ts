@@ -472,11 +472,13 @@ const updateTrackSchema = z.object({
 const createNationalTrackSchema = z.object({
   code: z.string().trim().min(1),
   label: z.string().trim().min(1),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const updateNationalTrackSchema = z.object({
   code: z.string().trim().min(1).optional(),
   label: z.string().trim().min(1).optional(),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const createCurriculumSchema = z.object({
@@ -507,11 +509,13 @@ const updateSubjectSchema = z.object({
 const createNationalSubjectSchema = z.object({
   code: z.string().trim().min(1),
   name: z.string().trim().min(1),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const updateNationalSubjectSchema = z.object({
   code: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1).optional(),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const createNationalCurriculumSchema = z.object({
@@ -3779,9 +3783,10 @@ export class ManagementService {
     };
   }
 
-  private async getNationalCatalogClassificationFilter(
-    schoolId: string,
-  ): Promise<Prisma.AcademicLevelWhereInput["AND"]> {
+  private async resolveSchoolLanguageScope(schoolId: string): Promise<{
+    cycle: string | null;
+    languageSystems: SchoolLanguageSystem[] | undefined;
+  }> {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
       select: { cycle: true, languageSystem: true },
@@ -3794,10 +3799,19 @@ export class ManagementService {
           ? [school.languageSystem]
           : undefined;
 
+    return { cycle: school?.cycle ?? null, languageSystems };
+  }
+
+  private async getNationalCatalogClassificationFilter(
+    schoolId: string,
+  ): Promise<Prisma.AcademicLevelWhereInput["AND"]> {
+    const { cycle, languageSystems } =
+      await this.resolveSchoolLanguageScope(schoolId);
+
     const conditions: Prisma.AcademicLevelWhereInput[] = [];
-    if (school?.cycle) {
+    if (cycle) {
       conditions.push({
-        OR: [{ cycleId: null }, { cycle: { is: { code: school.cycle } } }],
+        OR: [{ cycleId: null }, { cycle: { is: { code: cycle } } }],
       });
     }
     if (languageSystems) {
@@ -3809,6 +3823,40 @@ export class ManagementService {
       });
     }
     return conditions;
+  }
+
+  private async getNationalTrackFilterForSchool(
+    schoolId: string,
+  ): Promise<Prisma.TrackWhereInput> {
+    const { languageSystems } = await this.resolveSchoolLanguageScope(schoolId);
+    return {
+      schoolId: null,
+      ...(languageSystems
+        ? {
+            OR: [
+              { languageSystem: null },
+              { languageSystem: { in: languageSystems } },
+            ],
+          }
+        : {}),
+    };
+  }
+
+  private async getNationalSubjectFilterForSchool(
+    schoolId: string,
+  ): Promise<Prisma.SubjectWhereInput> {
+    const { languageSystems } = await this.resolveSchoolLanguageScope(schoolId);
+    return {
+      schoolId: null,
+      ...(languageSystems
+        ? {
+            OR: [
+              { languageSystem: null },
+              { languageSystem: { in: languageSystems } },
+            ],
+          }
+        : {}),
+    };
   }
 
   private async getNationalCatalogFilterForSchool(
@@ -4155,8 +4203,9 @@ export class ManagementService {
   }
 
   async listTracks(schoolId: string) {
+    const nationalFilter = await this.getNationalTrackFilterForSchool(schoolId);
     return this.prisma.track.findMany({
-      where: { schoolId },
+      where: { OR: [{ schoolId }, nationalFilter] },
       orderBy: [{ code: "asc" }],
       include: {
         _count: {
@@ -4244,6 +4293,7 @@ export class ManagementService {
             id: true,
             code: true,
             label: true,
+            languageSystem: true,
           },
         },
         track: {
@@ -4251,6 +4301,7 @@ export class ManagementService {
             id: true,
             code: true,
             label: true,
+            languageSystem: true,
           },
         },
         _count: {
@@ -4370,20 +4421,110 @@ export class ManagementService {
   async listCurriculumSubjects(schoolId: string, curriculumId: string) {
     await this.ensureCurriculumAccessible(curriculumId, schoolId);
 
-    return this.prisma.curriculumSubject.findMany({
-      where: {
-        curriculumId,
-      },
-      orderBy: [{ subject: { name: "asc" } }],
-      include: {
-        subject: {
-          select: {
-            id: true,
-            name: true,
+    const curriculum = await this.prisma.curriculum.findUnique({
+      where: { id: curriculumId },
+      select: { schoolId: true },
+    });
+
+    if (curriculum?.schoolId === schoolId) {
+      const rows = await this.prisma.curriculumSubject.findMany({
+        where: { curriculumId },
+        orderBy: [{ subject: { name: "asc" } }],
+        include: {
+          subject: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-    });
+      });
+      return rows.map((row) => ({
+        ...row,
+        isNational: false,
+        isCustomized: false,
+      }));
+    }
+
+    // Curriculum national (schoolId: null) : fusionner la base nationale
+    // partagee avec les personnalisations propres a cette ecole, sans jamais
+    // muter les lignes CurriculumSubject partagees avec les autres ecoles.
+    const [base, overrides] = await Promise.all([
+      this.prisma.curriculumSubject.findMany({
+        where: { curriculumId, schoolId: null },
+        include: {
+          subject: { select: { id: true, name: true } },
+        },
+      }),
+      this.prisma.curriculumSubjectOverride.findMany({
+        where: { schoolId, curriculumId },
+        include: {
+          subject: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+
+    const overrideBySubjectId = new Map(
+      overrides.map((override) => [override.subjectId, override]),
+    );
+    const baseSubjectIds = new Set(base.map((row) => row.subjectId));
+
+    const result: Array<{
+      id: string;
+      schoolId: string | null;
+      curriculumId: string;
+      subjectId: string;
+      isMandatory: boolean;
+      coefficient: number | null;
+      weeklyHours: number | null;
+      createdAt: Date;
+      updatedAt: Date;
+      subject: { id: string; name: string };
+      isNational: boolean;
+      isCustomized: boolean;
+    }> = [];
+
+    for (const row of base) {
+      const override = overrideBySubjectId.get(row.subjectId);
+      if (override?.action === "REMOVE") {
+        continue;
+      }
+      if (override?.action === "ADD") {
+        result.push({
+          ...row,
+          isMandatory: override.isMandatory,
+          coefficient: override.coefficientOverride,
+          weeklyHours: override.weeklyHoursOverride,
+          isNational: true,
+          isCustomized: true,
+        });
+        continue;
+      }
+      result.push({ ...row, isNational: true, isCustomized: false });
+    }
+
+    for (const override of overrides) {
+      if (override.action !== "ADD" || baseSubjectIds.has(override.subjectId)) {
+        continue;
+      }
+      result.push({
+        id: override.id,
+        schoolId: override.schoolId,
+        curriculumId: override.curriculumId,
+        subjectId: override.subjectId,
+        isMandatory: override.isMandatory,
+        coefficient: override.coefficientOverride,
+        weeklyHours: override.weeklyHoursOverride,
+        createdAt: override.createdAt,
+        updatedAt: override.updatedAt,
+        subject: override.subject,
+        isNational: false,
+        isCustomized: false,
+      });
+    }
+
+    result.sort((a, b) => a.subject.name.localeCompare(b.subject.name));
+    return result;
   }
 
   async upsertCurriculumSubject(
@@ -4399,28 +4540,71 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    await this.ensureCurriculumOwnedBySchool(curriculumId, schoolId);
+    await this.ensureCurriculumAccessible(curriculumId, schoolId);
     await this.ensureSubjectAccessible(parsed.subjectId, schoolId);
 
-    return this.prisma.curriculumSubject.upsert({
+    const curriculum = await this.prisma.curriculum.findUnique({
+      where: { id: curriculumId },
+      select: { schoolId: true },
+    });
+
+    if (curriculum?.schoolId === schoolId) {
+      return this.prisma.curriculumSubject.upsert({
+        where: {
+          curriculumId_subjectId: {
+            curriculumId,
+            subjectId: parsed.subjectId,
+          },
+        },
+        update: {
+          isMandatory: parsed.isMandatory,
+          coefficient: parsed.coefficient,
+          weeklyHours: parsed.weeklyHours,
+        },
+        create: {
+          schoolId,
+          curriculumId,
+          subjectId: parsed.subjectId,
+          isMandatory: parsed.isMandatory ?? true,
+          coefficient: parsed.coefficient,
+          weeklyHours: parsed.weeklyHours,
+        },
+        include: {
+          subject: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+    }
+
+    // Curriculum national : la matiere est ajoutee (ou son coefficient/volume
+    // horaire est personnalise) pour cette ecole uniquement, via un override
+    // ADD, sans jamais toucher la ligne CurriculumSubject nationale partagee.
+    return this.prisma.curriculumSubjectOverride.upsert({
       where: {
-        curriculumId_subjectId: {
+        schoolId_curriculumId_subjectId: {
+          schoolId,
           curriculumId,
           subjectId: parsed.subjectId,
         },
       },
       update: {
-        isMandatory: parsed.isMandatory,
-        coefficient: parsed.coefficient,
-        weeklyHours: parsed.weeklyHours,
+        action: "ADD",
+        isMandatory: parsed.isMandatory ?? true,
+        coefficientOverride: parsed.coefficient,
+        weeklyHoursOverride: parsed.weeklyHours,
       },
       create: {
         schoolId,
         curriculumId,
         subjectId: parsed.subjectId,
+        action: "ADD",
         isMandatory: parsed.isMandatory ?? true,
-        coefficient: parsed.coefficient,
-        weeklyHours: parsed.weeklyHours,
+        coefficientOverride: parsed.coefficient,
+        weeklyHoursOverride: parsed.weeklyHours,
       },
       include: {
         subject: {
@@ -4438,27 +4622,70 @@ export class ManagementService {
     curriculumId: string,
     subjectId: string,
   ) {
-    await this.ensureCurriculumOwnedBySchool(curriculumId, schoolId);
+    await this.ensureCurriculumAccessible(curriculumId, schoolId);
 
-    const existing = await this.prisma.curriculumSubject.findFirst({
-      where: {
-        schoolId,
-        curriculumId,
-        subjectId,
-      },
-      select: {
-        id: true,
-      },
+    const curriculum = await this.prisma.curriculum.findUnique({
+      where: { id: curriculumId },
+      select: { schoolId: true },
     });
 
-    if (!existing) {
+    if (curriculum?.schoolId === schoolId) {
+      const existing = await this.prisma.curriculumSubject.findFirst({
+        where: {
+          schoolId,
+          curriculumId,
+          subjectId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException("Curriculum subject not found");
+      }
+
+      await this.prisma.curriculumSubject.delete({
+        where: {
+          id: existing.id,
+        },
+      });
+
+      return { success: true };
+    }
+
+    // Curriculum national : jamais de suppression de la ligne partagee.
+    // Si la matiere avait ete ajoutee par cette ecole (override ADD), on
+    // annule simplement cet ajout. Sinon, si elle vient de la base
+    // nationale, on l'exclut pour cette ecole uniquement (override REMOVE).
+    const [nationalBase, existingOverride] = await Promise.all([
+      this.prisma.curriculumSubject.findFirst({
+        where: { curriculumId, subjectId, schoolId: null },
+        select: { id: true },
+      }),
+      this.prisma.curriculumSubjectOverride.findFirst({
+        where: { schoolId, curriculumId, subjectId },
+        select: { id: true, action: true },
+      }),
+    ]);
+
+    if (existingOverride?.action === "ADD") {
+      await this.prisma.curriculumSubjectOverride.delete({
+        where: { id: existingOverride.id },
+      });
+      return { success: true };
+    }
+
+    if (!nationalBase) {
       throw new NotFoundException("Curriculum subject not found");
     }
 
-    await this.prisma.curriculumSubject.delete({
+    await this.prisma.curriculumSubjectOverride.upsert({
       where: {
-        id: existing.id,
+        schoolId_curriculumId_subjectId: { schoolId, curriculumId, subjectId },
       },
+      update: { action: "REMOVE" },
+      create: { schoolId, curriculumId, subjectId, action: "REMOVE" },
     });
 
     return { success: true };
@@ -4720,8 +4947,10 @@ export class ManagementService {
   }
 
   async listSubjects(schoolId: string) {
+    const nationalFilter =
+      await this.getNationalSubjectFilterForSchool(schoolId);
     const subjects = await this.prisma.subject.findMany({
-      where: { OR: [{ schoolId }, { schoolId: null }] },
+      where: { OR: [{ schoolId }, nationalFilter] },
       orderBy: [{ name: "asc" }],
       include: {
         branches: {
@@ -4880,6 +5109,7 @@ export class ManagementService {
         schoolId: null,
         code: parsed.code,
         name: parsed.name,
+        languageSystem: parsed.languageSystem,
       },
     });
   }
@@ -4896,7 +5126,11 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.code === undefined && parsed.name === undefined) {
+    if (
+      parsed.code === undefined &&
+      parsed.name === undefined &&
+      parsed.languageSystem === undefined
+    ) {
       throw new BadRequestException("No fields to update");
     }
 
@@ -4913,6 +5147,7 @@ export class ManagementService {
       data: {
         code: parsed.code,
         name: parsed.name,
+        languageSystem: parsed.languageSystem,
       },
     });
   }
@@ -4991,6 +5226,7 @@ export class ManagementService {
         schoolId: null,
         code: parsed.code,
         label: parsed.label,
+        languageSystem: parsed.languageSystem,
       },
     });
   }
@@ -5004,7 +5240,11 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.code === undefined && parsed.label === undefined) {
+    if (
+      parsed.code === undefined &&
+      parsed.label === undefined &&
+      parsed.languageSystem === undefined
+    ) {
       throw new BadRequestException("No fields to update");
     }
 
@@ -5021,6 +5261,7 @@ export class ManagementService {
       data: {
         code: parsed.code,
         label: parsed.label,
+        languageSystem: parsed.languageSystem,
       },
     });
   }

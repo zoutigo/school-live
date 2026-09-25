@@ -42,12 +42,14 @@ describe("Curriculums page — catalogue national", () => {
     nationalCycles?: unknown[];
     nationalLevels?: unknown[];
     nationalCurriculums?: unknown[];
+    nationalTracks?: unknown[];
     nationalSubjects?: unknown[];
     nationalCurriculumSubjects?: unknown[];
   }) {
     const nationalCycles = options?.nationalCycles ?? [];
     const nationalLevels = options?.nationalLevels ?? [];
     const nationalCurriculums = options?.nationalCurriculums ?? [];
+    const nationalTracks = options?.nationalTracks ?? [];
     const nationalSubjects = options?.nationalSubjects ?? [];
     const nationalCurriculumSubjects =
       options?.nationalCurriculumSubjects ?? [];
@@ -99,6 +101,17 @@ describe("Curriculums page — catalogue national", () => {
           return jsonResponse({ id: "curriculum-national-1" }, 201);
         }
         return jsonResponse(nationalCurriculums);
+      }
+      if (/\/api\/system\/tracks\/[^/]+$/.test(url)) {
+        if (method === "PATCH" || method === "DELETE") {
+          return jsonResponse({ id: "track-national-1" });
+        }
+      }
+      if (url.endsWith("/api/system/tracks")) {
+        if (method === "POST") {
+          return jsonResponse({ id: "track-national-1" }, 201);
+        }
+        return jsonResponse(nationalTracks);
       }
       if (/\/api\/system\/subjects\/[^/]+$/.test(url)) {
         if (method === "PATCH" || method === "DELETE") {
@@ -519,6 +532,156 @@ describe("Curriculums page — catalogue national", () => {
             isMandatory: true,
             coefficient: 4,
             weeklyHours: undefined,
+          }),
+        }),
+      );
+    });
+  });
+
+  it("creates a national track with languageSystem selected, then edits it", async () => {
+    const fetchMock = mockBaseRoutes({
+      nationalTracks: [
+        {
+          id: "track-1",
+          code: "A1",
+          label: "Serie A1",
+          languageSystem: "FRANCOPHONE",
+        },
+      ],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Filieres nationales" }),
+    );
+
+    await screen.findByText("Serie A1");
+
+    fireEvent.change(screen.getByLabelText("Code"), {
+      target: { value: "ARTS_A1" },
+    });
+    fireEvent.change(screen.getByLabelText("Libelle"), {
+      target: { value: "Arts A1" },
+    });
+    fireEvent.change(
+      screen.getByLabelText("Systeme linguistique (optionnel)"),
+      { target: { value: "ANGLOPHONE" } },
+    );
+    const addTrackButton = screen.getByRole("button", { name: "Ajouter" });
+    await waitFor(() => expect(addTrackButton).toBeEnabled());
+    fireEvent.click(addTrackButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/tracks"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            code: "ARTS_A1",
+            label: "Arts A1",
+            languageSystem: "ANGLOPHONE",
+          }),
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    const languageSelects = screen.getAllByLabelText(
+      "Systeme linguistique (optionnel)",
+    ) as HTMLSelectElement[];
+    const editLanguageSelect = languageSelects[languageSelects.length - 1];
+    expect(editLanguageSelect.value).toBe("FRANCOPHONE");
+    fireEvent.change(editLanguageSelect, { target: { value: "BILINGUAL" } });
+    const saveTrackButton = screen.getByRole("button", { name: "Enregistrer" });
+    await waitFor(() => expect(saveTrackButton).toBeEnabled());
+    fireEvent.click(saveTrackButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/tracks/track-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            code: "A1",
+            label: "Serie A1",
+            languageSystem: "BILINGUAL",
+          }),
+        }),
+      );
+    });
+  });
+
+  it("creates a national subject with languageSystem selected, then edits it", async () => {
+    const fetchMock = mockBaseRoutes({
+      nationalSubjects: [
+        {
+          id: "subject-1",
+          code: "MATH",
+          name: "Maths",
+          languageSystem: "FRANCOPHONE",
+        },
+      ],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Matieres nationales" }),
+    );
+
+    await screen.findByText("Maths");
+
+    fireEvent.change(screen.getByLabelText("Code"), {
+      target: { value: "MATHS_EN" },
+    });
+    fireEvent.change(screen.getByLabelText("Nom"), {
+      target: { value: "Mathematics" },
+    });
+    fireEvent.change(
+      screen.getByLabelText("Systeme linguistique (optionnel)"),
+      { target: { value: "ANGLOPHONE" } },
+    );
+    const addSubjectButton = screen.getByRole("button", { name: "Ajouter" });
+    await waitFor(() => expect(addSubjectButton).toBeEnabled());
+    fireEvent.click(addSubjectButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/subjects"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            code: "MATHS_EN",
+            name: "Mathematics",
+            languageSystem: "ANGLOPHONE",
+          }),
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    const languageSelects = screen.getAllByLabelText(
+      "Systeme linguistique (optionnel)",
+    ) as HTMLSelectElement[];
+    const editLanguageSelect = languageSelects[languageSelects.length - 1];
+    expect(editLanguageSelect.value).toBe("FRANCOPHONE");
+    fireEvent.change(editLanguageSelect, { target: { value: "BILINGUAL" } });
+    const saveSubjectButton = screen.getByRole("button", {
+      name: "Enregistrer",
+    });
+    await waitFor(() => expect(saveSubjectButton).toBeEnabled());
+    fireEvent.click(saveSubjectButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/subjects/subject-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            code: "MATH",
+            name: "Maths",
+            languageSystem: "BILINGUAL",
           }),
         }),
       );

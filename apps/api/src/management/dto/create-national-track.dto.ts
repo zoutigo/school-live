@@ -1,4 +1,5 @@
-import { IsString } from "class-validator";
+import { SchoolLanguageSystem } from "@prisma/client";
+import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export class CreateNationalTrackDto {
   @IsString()
@@ -6,4 +7,8 @@ export class CreateNationalTrackDto {
 
   @IsString()
   label!: string;
+
+  @IsOptional()
+  @IsEnum(SchoolLanguageSystem)
+  languageSystem?: SchoolLanguageSystem;
 }

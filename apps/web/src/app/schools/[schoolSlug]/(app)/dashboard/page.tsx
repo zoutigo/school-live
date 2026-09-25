@@ -113,9 +113,6 @@ type InboxMessageRaw = {
 
 type SchoolDashboardSummary = {
   classesCount: number;
-  studentsCount: number;
-  teachersCount: number;
-  assignmentsCount: number;
   unreadMessages: number;
 };
 
@@ -1533,9 +1530,6 @@ export default function DashboardPage() {
   const [schoolCardsLoading, setSchoolCardsLoading] = useState(false);
   const [schoolSummary, setSchoolSummary] = useState<SchoolDashboardSummary>({
     classesCount: 0,
-    studentsCount: 0,
-    teachersCount: 0,
-    assignmentsCount: 0,
     unreadMessages: 0,
   });
 
@@ -1869,23 +1863,8 @@ export default function DashboardPage() {
       const buildAdminPath = (segment: string) =>
         `${API_URL}/schools/${schoolSlug}/admin/${segment}`;
 
-      const [
-        classesResponse,
-        studentsResponse,
-        teachersResponse,
-        assignmentsResponse,
-        unreadMessages,
-      ] = await Promise.all([
+      const [classesResponse, unreadMessages] = await Promise.all([
         fetch(buildAdminPath("classrooms"), {
-          credentials: "include",
-        }),
-        fetch(buildAdminPath("students"), {
-          credentials: "include",
-        }),
-        fetch(buildAdminPath("teachers"), {
-          credentials: "include",
-        }),
-        fetch(buildAdminPath("teacher-assignments"), {
           credentials: "include",
         }),
         getSchoolMessagesUnreadCount(schoolSlug).catch(() => 0),
@@ -1895,15 +1874,6 @@ export default function DashboardPage() {
         classesCount: classesResponse.ok
           ? ((await classesResponse.json()) as Array<unknown>).length
           : 0,
-        studentsCount: studentsResponse.ok
-          ? ((await studentsResponse.json()) as { total: number }).total
-          : 0,
-        teachersCount: teachersResponse.ok
-          ? ((await teachersResponse.json()) as Array<unknown>).length
-          : 0,
-        assignmentsCount: assignmentsResponse.ok
-          ? ((await assignmentsResponse.json()) as Array<unknown>).length
-          : 0,
         unreadMessages,
       };
 
@@ -1911,9 +1881,6 @@ export default function DashboardPage() {
     } catch {
       setSchoolSummary({
         classesCount: 0,
-        studentsCount: 0,
-        teachersCount: 0,
-        assignmentsCount: 0,
         unreadMessages: 0,
       });
     } finally {
@@ -1929,26 +1896,14 @@ export default function DashboardPage() {
       href: "/classes",
     },
     {
-      id: "students",
-      label: t("sidebar.nav.students"),
-      value: formatCount(schoolSummary.studentsCount),
-      href: "/eleves",
-    },
-    {
-      id: "teachers",
-      label: t("sidebar.nav.teachers"),
-      value: formatCount(schoolSummary.teachersCount),
-      href: "/teachers",
+      id: "users",
+      label: t("sidebar.nav.users"),
+      value: t("dashboard.school.openValue"),
+      href: `/schools/${schoolSlug}/utilisateurs`,
     },
   ];
 
   const schoolAcademicLinks: DashboardQuickLink[] = [
-    {
-      id: "assignments",
-      label: t("dashboard.school.assignmentsLabel"),
-      value: formatCount(schoolSummary.assignmentsCount),
-      href: "/teachers",
-    },
     {
       id: "grades",
       label: t("sidebar.nav.grades"),

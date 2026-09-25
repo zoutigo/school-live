@@ -9,8 +9,11 @@ import { ManagementService } from "../src/management/management.service.js";
  */
 
 const prisma = {
-  curriculum: { findFirst: jest.fn() },
+  curriculum: { findFirst: jest.fn(), findUnique: jest.fn() },
   curriculumSubject: { findMany: jest.fn(), findFirst: jest.fn() },
+  curriculumSubjectOverride: {
+    findMany: jest.fn().mockResolvedValue([]),
+  },
   schoolYear: { findFirst: jest.fn() },
   class: { findFirst: jest.fn() },
   schoolMembership: { findFirst: jest.fn() },
@@ -34,12 +37,14 @@ describe("ManagementService — matières d'un curriculum national utilisé par 
     prisma.curriculum.findFirst.mockResolvedValue({
       id: NATIONAL_CURRICULUM_ID,
     });
+    prisma.curriculum.findUnique.mockResolvedValue({ schoolId: null });
     prisma.curriculumSubject.findMany.mockResolvedValue([
       {
         id: "cs-1",
         schoolId: null,
         curriculumId: NATIONAL_CURRICULUM_ID,
         subjectId: "sub-ang",
+        subject: { id: "sub-ang", name: "Anglais" },
       },
     ]);
 
@@ -50,7 +55,7 @@ describe("ManagementService — matières d'un curriculum national utilisé par 
 
     expect(prisma.curriculumSubject.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { curriculumId: NATIONAL_CURRICULUM_ID },
+        where: { curriculumId: NATIONAL_CURRICULUM_ID, schoolId: null },
       }),
     );
     expect(result).toHaveLength(1);

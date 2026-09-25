@@ -923,21 +923,6 @@ describe("DashboardPage role dashboards", () => {
         return createJsonResponse([{ id: "c1" }, { id: "c2" }, { id: "c3" }]);
       }
 
-      if (url.includes("/admin/students")) {
-        return createJsonResponse({
-          students: [{ id: "s1" }, { id: "s2" }],
-          total: 2,
-        });
-      }
-
-      if (url.includes("/admin/teachers")) {
-        return createJsonResponse([{ id: "t1" }, { id: "t2" }]);
-      }
-
-      if (url.includes("/admin/teacher-assignments")) {
-        return createJsonResponse([{ id: "a1" }, { id: "a2" }, { id: "a3" }]);
-      }
-
       if (url.includes("/schools/college-vogt/messages/unread-count")) {
         return createJsonResponse({ unread: 5 });
       }
@@ -961,13 +946,17 @@ describe("DashboardPage role dashboards", () => {
       "href",
       "/classes",
     );
-    expect(screen.getByRole("link", { name: /Eleves\s+2/i })).toHaveAttribute(
-      "href",
-      "/eleves",
-    );
+    // Regression 2026-09-23 : Élèves et Enseignants ne sont plus des
+    // raccourcis dédiés sur ce dashboard — cette gestion vit désormais dans
+    // le module Utilisateurs (schoolSlug-scoped), qui remplace les deux.
+    expect(screen.queryByRole("link", { name: /^Eleves/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Enseignants/i })).toBeNull();
     expect(
-      screen.getByRole("link", { name: /Enseignants\s+2/i }),
-    ).toHaveAttribute("href", "/teachers");
+      screen.getByRole("link", { name: /Utilisateurs\s+Ouvrir/i }),
+    ).toHaveAttribute("href", "/schools/college-vogt/utilisateurs");
+    // "Affectations" pointait vers /teachers (liste des enseignants, pas les
+    // affectations) : cette fonctionnalité vit désormais dans Utilisateurs.
+    expect(screen.queryByText("Affectations")).toBeNull();
     const messagingLink = screen
       .getAllByRole("link")
       .find(
