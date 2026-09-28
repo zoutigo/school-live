@@ -34,6 +34,22 @@ const STAGE_ORDER: QuizStage[] = ["DISCOVERY", "PRACTICE", "MASTERY"];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
+// Most deep links (TEACHER/PARENT chapters) point at screens nested under
+// `/schools/{schoolSlug}/...`, so `schoolBase` is prepended below. The
+// SCHOOL_ADMIN chapters' screens are top-level app routes instead (e.g.
+// `/classes`, not `/schools/{slug}/classes`) — listed here by their exact
+// path so they're excluded from that prefix (a route like
+// "/classes/{classId}/notes" is a different, nested one and still needs it).
+const TOP_LEVEL_DEEP_LINK_ROUTES = new Set([
+  "/classes",
+  "/subjects",
+  "/salles",
+  "/enrollments",
+  "/promotions",
+  "/finance-reinscription-deadlines",
+  "/settings",
+]);
+
 // Cooldown (seconds) applied before "Retry" is re-enabled, indexed by the
 // number of wrong attempts made so far on this question (a single honest
 // mistake stays free). Deliberately steep past that — up to 8 minutes — to
@@ -871,7 +887,12 @@ export default function TrainingQuizChapterPage() {
                       }
                       onClick={() => {
                         setHasVisitedDeepLink(true);
-                        router.push(`${schoolBase}${resolvedDeepLink}`);
+                        const target = TOP_LEVEL_DEEP_LINK_ROUTES.has(
+                          resolvedDeepLink,
+                        )
+                          ? resolvedDeepLink
+                          : `${schoolBase}${resolvedDeepLink}`;
+                        router.push(target);
                       }}
                       className="w-full sm:w-auto"
                     >

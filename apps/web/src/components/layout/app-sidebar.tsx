@@ -425,6 +425,12 @@ function buildRoleItems(
         matchPrefix: "/resources",
       },
       {
+        label: t("sidebar.nav.trainingQuiz"),
+        href: "/training-quiz",
+        icon: Trophy,
+        matchPrefix: "/training-quiz",
+      },
+      {
         label: t("sidebar.nav.settings"),
         href: "/settings",
         icon: Settings,

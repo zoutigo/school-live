@@ -9,6 +9,13 @@ import {
   GraduationCap,
   HeartPulse,
   Newspaper,
+  Users,
+  Settings,
+  Building2,
+  DoorOpen,
+  UserPlus,
+  TrendingUp,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,6 +30,13 @@ const ICONS: Record<string, LucideIcon> = {
   GraduationCap,
   HeartPulse,
   Newspaper,
+  Users,
+  Settings,
+  Building2,
+  DoorOpen,
+  UserPlus,
+  TrendingUp,
+  CalendarClock,
 };
 
 export function TrainingQuizIcon({
