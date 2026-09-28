@@ -540,6 +540,42 @@ describe("TrainingQuizChapterPage", () => {
     );
   });
 
+  it("navigates a SCHOOL_ADMIN top-level deep link without the schoolBase prefix", async () => {
+    const ADMIN_CHAPTER = {
+      ...DISCOVERY_CHAPTER,
+      questions: [
+        {
+          ...DISCOVERY_CHAPTER.questions[0],
+          deepLinkRoute: "/classes",
+        },
+        DISCOVERY_CHAPTER.questions[1],
+      ],
+    };
+    mockFetch({
+      chapter: ADMIN_CHAPTER,
+      answerResult: {
+        correct: false,
+        alreadySolved: false,
+        explanation: "Pas exactement.",
+        correctOptionIds: [],
+        attemptsCount: 1,
+      },
+    });
+    render(<TrainingQuizChapterPage />);
+
+    await screen.findByText("Onglet Discipline");
+    fireEvent.click(screen.getByText("Messagerie"));
+    fireEvent.click(screen.getByText("Valider"));
+
+    await screen.findByText("Voir dans l'application");
+    fireEvent.click(screen.getByText("Voir dans l'application"));
+
+    // "/classes" is a top-level admin screen (SCHOOL_ADMIN chapters), not
+    // one nested under /schools/{slug}/... like the TEACHER/PARENT ones —
+    // it must be pushed as-is, without the schoolBase prefix.
+    expect(pushMock).toHaveBeenCalledWith("/classes");
+  });
+
   it("hides the deep-link CTA when the parent has no linked child yet", async () => {
     mockFetch({
       linkedStudents: [],

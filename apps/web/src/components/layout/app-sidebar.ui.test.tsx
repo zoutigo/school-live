@@ -1052,6 +1052,17 @@ describe("AppSidebar messaging link for platform roles", () => {
     expect(link.getAttribute("href")).toBe("/resources");
   });
 
+  it("shows a Quiz de formation link pointing to /training-quiz for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", {
+      name: "Quiz de formation",
+    });
+    expect(link.getAttribute("href")).toBe("/training-quiz");
+  });
+
   it("no longer shows the dead Parents-eleves link for SCHOOL_ADMIN", async () => {
     mockUnreadCount(0);
 
