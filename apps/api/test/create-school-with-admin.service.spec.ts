@@ -313,12 +313,10 @@ describe("ManagementService — protection de l'admin principal", () => {
     const svc = new ManagementService(
       {
         user: {
-          findUnique: jest
-            .fn()
-            .mockResolvedValue({
-              id: "platform-1",
-              platformRoles: [{ role: "SUPPORT" }],
-            }),
+          findUnique: jest.fn().mockResolvedValue({
+            id: "platform-1",
+            platformRoles: [{ role: "SUPPORT" }],
+          }),
           delete: jest.fn(),
         },
         school: {

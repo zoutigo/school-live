@@ -190,19 +190,16 @@ const updateUserSchema = z.object({
   isTester: z.boolean().optional(),
 });
 
-const createSchoolSchema = z
-  .object({
-    name: z.string().trim().min(1),
-    country: z.string().trim().min(1).max(120).optional(),
-    region: z.string().trim().min(1).max(120).optional(),
-    city: z.string().trim().min(1).max(120).optional(),
-    cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
-    languageSystem: z
-      .enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"])
-      .optional(),
-    primaryAdminUserId: z.string().trim().min(1),
-    logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
-  });
+const createSchoolSchema = z.object({
+  name: z.string().trim().min(1),
+  country: z.string().trim().min(1).max(120).optional(),
+  region: z.string().trim().min(1).max(120).optional(),
+  city: z.string().trim().min(1).max(120).optional(),
+  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
+  primaryAdminUserId: z.string().trim().min(1),
+  logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
+});
 
 const replacePrimaryAdminSchema = z.object({
   userId: z.string().trim().min(1),
