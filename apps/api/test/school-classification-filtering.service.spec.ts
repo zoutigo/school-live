@@ -206,7 +206,9 @@ describe("ManagementService — persistance cycle/languageSystem sur School", ()
     prisma.user.findUnique.mockResolvedValue({
       id: "admin-1",
       firstName: "Jane",
-      mustChangePassword: false,
+      lastName: "Doe",
+      email: "admin@greenwich.cm",
+      platformRoles: [{ role: "SUPPORT" }],
     });
 
     const schoolCreateData: unknown[] = [];
@@ -245,7 +247,7 @@ describe("ManagementService — persistance cycle/languageSystem sur School", ()
       city: "Bamenda",
       cycle: "SECONDARY",
       languageSystem: "ANGLOPHONE",
-      schoolAdminEmail: "admin@greenwich.cm",
+      primaryAdminUserId: "admin-1",
     });
 
     expect(schoolCreateData[0]).toEqual(

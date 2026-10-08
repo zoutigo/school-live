@@ -21,6 +21,7 @@ import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
 import { PinInput } from "../../components/ui/pin-input";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import {
@@ -124,8 +125,10 @@ type SchoolDetails = {
     gradesCount: number;
   };
   roleBreakdown?: SchoolRoleBreakdown;
+  primaryAdminUserId: string | null;
   schoolAdmins: Array<{
     id: string;
+    isPrimary: boolean;
     firstName: string;
     lastName: string;
     email: string;
@@ -138,6 +141,14 @@ type SchoolDetails = {
 };
 
 type AdminMode = "email" | "phone";
+
+type PlatformUserOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  platformRoles: string[];
+};
 
 type SchoolCycleGroup = { schools: number; students: number; classes: number };
 
@@ -203,22 +214,10 @@ const createSchoolSchema = z.object({
     ])
     .optional()
     .transform((value) => (value ? value : undefined)),
-  schoolAdminEmail: z
-    .union([
-      z.string().trim().email("L'email du school admin est invalide."),
-      z.literal(""),
-      z.undefined(),
-    ])
-    .optional()
-    .transform((value) => (value ? value : undefined)),
-  schoolAdminPhone: z
-    .union([z.string().trim(), z.literal(""), z.undefined()])
-    .optional()
-    .transform((value) => (value ? value : undefined)),
-  schoolAdminPin: z
-    .union([z.string().trim(), z.literal(""), z.undefined()])
-    .optional()
-    .transform((value) => (value ? value : undefined)),
+  primaryAdminUserId: z
+    .string()
+    .trim()
+    .min(1, "L'administrateur principal est obligatoire."),
   logoUrl: z
     .union([z.string().trim().url(), z.literal(""), z.undefined()])
     .optional()
@@ -311,9 +310,12 @@ export default function SchoolsPage() {
     baseExists: false,
     error: null,
   });
-  const [emailCheckState, setEmailCheckState] =
-    useState<EmailCheckState>("idle");
-  const [emailCheckName, setEmailCheckName] = useState<string | null>(null);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUserOption[]>([]);
+  const [replacePrimaryUserId, setReplacePrimaryUserId] = useState("");
+  const [replacingPrimary, setReplacingPrimary] = useState(false);
+  const [replacePrimaryError, setReplacePrimaryError] = useState<string | null>(
+    null,
+  );
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -343,7 +345,6 @@ export default function SchoolsPage() {
   const [addAdminMode, setAddAdminMode] = useState<AdminMode>("email");
   const [addAdminPhone, setAddAdminPhone] = useState("");
   const [addAdminPin, setAddAdminPin] = useState("");
-  const [founderAdminMode, setFounderAdminMode] = useState<AdminMode>("email");
   const [additionalAdmins, setAdditionalAdmins] = useState<
     Array<{ mode: AdminMode; email: string; phone: string; pin: string }>
   >([]);
@@ -366,9 +367,7 @@ export default function SchoolsPage() {
       city: "",
       cycle: "",
       languageSystem: "",
-      schoolAdminEmail: "",
-      schoolAdminPhone: "",
-      schoolAdminPin: "",
+      primaryAdminUserId: "",
       logoUrl: "",
     },
   });
@@ -387,6 +386,10 @@ export default function SchoolsPage() {
   });
   const createSchoolValues = createSchoolForm.watch();
   const editSchoolValues = editSchoolForm.watch();
+  const platformUserOptions = platformUsers.map((user) => ({
+    value: user.id,
+    label: `${user.firstName} ${user.lastName}${user.email ? ` - ${user.email}` : ""}`,
+  }));
 
   useEffect(() => {
     void bootstrap();
@@ -421,25 +424,11 @@ export default function SchoolsPage() {
   }, [createSchoolValues.name]);
 
   useEffect(() => {
-    const email = (createSchoolValues.schoolAdminEmail ?? "").trim();
-    if (!email) {
-      setEmailCheckState("idle");
-      setEmailCheckName(null);
+    if (tab !== "create" && tab !== "details") {
       return;
     }
-
-    if (!z.string().email().safeParse(email).success) {
-      setEmailCheckState("invalid");
-      setEmailCheckName(null);
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      void checkAdminEmail(email);
-    }, 350);
-
-    return () => clearTimeout(timeout);
-  }, [createSchoolValues.schoolAdminEmail]);
+    void loadPlatformUsers("");
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== "create") {
@@ -553,42 +542,69 @@ export default function SchoolsPage() {
     }
   }
 
-  async function checkAdminEmail(email: string) {
-    setEmailCheckState("checking");
+  async function loadPlatformUsers(query: string) {
     try {
-      const params = new URLSearchParams({ email });
+      const params = new URLSearchParams();
+      if (query.trim()) {
+        params.set("search", query.trim());
+      }
       const response = await fetch(
-        `${API_URL}/system/users/exists?${params.toString()}`,
-        {
-          credentials: "include",
-        },
+        `${API_URL}/system/platform-users${params.size ? `?${params.toString()}` : ""}`,
+        { credentials: "include" },
       );
-
       if (!response.ok) {
-        setEmailCheckState("error");
-        setEmailCheckName(null);
         return;
       }
-
-      const payload = (await response.json()) as {
-        exists: boolean;
-        user?: {
-          firstName: string;
-          lastName: string;
-          mustChangePassword: boolean;
-        };
-      };
-
-      if (payload.exists && payload.user) {
-        setEmailCheckState("exists");
-        setEmailCheckName(`${payload.user.firstName} ${payload.user.lastName}`);
-      } else {
-        setEmailCheckState("not_found");
-        setEmailCheckName(null);
-      }
+      setPlatformUsers((await response.json()) as PlatformUserOption[]);
     } catch {
-      setEmailCheckState("error");
-      setEmailCheckName(null);
+      // La liste reste vide : le champ obligatoire bloque la creation.
+    }
+  }
+
+  async function onReplacePrimaryAdmin(schoolId: string) {
+    if (!replacePrimaryUserId) {
+      return;
+    }
+    setReplacePrimaryError(null);
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setReplacePrimaryError(t("schools.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setReplacingPrimary(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/system/schools/${schoolId}/primary-admin`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ userId: replacePrimaryUserId }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("schools.primaryAdmin.replaceFailed"));
+        setReplacePrimaryError(String(message));
+        return;
+      }
+      setReplacePrimaryUserId("");
+      setSubmitSuccess(t("schools.primaryAdmin.replaceSuccess"));
+      await openSchoolDetails(schoolId);
+    } catch {
+      setReplacePrimaryError(t("schools.error.network"));
+    } finally {
+      setReplacingPrimary(false);
     }
   }
 
@@ -797,16 +813,6 @@ export default function SchoolsPage() {
     setSubmitError(null);
     setSubmitSuccess(null);
 
-    const founderError = validateAdminIdentity(
-      founderAdminMode,
-      values.schoolAdminEmail ?? "",
-      values.schoolAdminPhone ?? "",
-      values.schoolAdminPin ?? "",
-    );
-    if (founderError) {
-      setSubmitError(founderError);
-      return;
-    }
     const additionalErrors = additionalAdmins.map((admin) =>
       validateAdminIdentity(admin.mode, admin.email, admin.phone, admin.pin),
     );
@@ -823,13 +829,6 @@ export default function SchoolsPage() {
     }
 
     const parsed = createSchoolSchema.parse(values);
-    const founderPayload =
-      founderAdminMode === "email"
-        ? { schoolAdminEmail: parsed.schoolAdminEmail }
-        : {
-            schoolAdminPhone: parsed.schoolAdminPhone,
-            schoolAdminPin: parsed.schoolAdminPin,
-          };
     const body = {
       name: parsed.name,
       country: parsed.country,
@@ -838,7 +837,7 @@ export default function SchoolsPage() {
       cycle: parsed.cycle,
       languageSystem: parsed.languageSystem,
       logoUrl: parsed.logoUrl,
-      ...founderPayload,
+      primaryAdminUserId: parsed.primaryAdminUserId,
     };
 
     setSubmitting(true);
@@ -867,14 +866,9 @@ export default function SchoolsPage() {
 
       const payload = (await response.json()) as {
         school: { id: string };
-        userExisted: boolean;
-        setupCompleted: boolean;
-        activationRequired?: boolean;
-        activationCode?: string | null;
       };
 
       const activationCodes: string[] = [];
-      if (payload.activationCode) activationCodes.push(payload.activationCode);
 
       let additionalFailures = 0;
       for (const admin of additionalAdmins) {
@@ -911,11 +905,7 @@ export default function SchoolsPage() {
       }
 
       const messageParts = [
-        payload.userExisted
-          ? payload.setupCompleted
-            ? t("schools.success.createExisting")
-            : t("schools.success.createExistingPending")
-          : t("schools.success.createNew"),
+        t("schools.success.createWithPrimaryAdmin"),
         ...activationCodes.map(
           (code) => `${t("schools.form.activationCodeBanner")}: ${code}`,
         ),
@@ -932,12 +922,9 @@ export default function SchoolsPage() {
         city: "",
         cycle: "",
         languageSystem: "",
-        schoolAdminEmail: "",
-        schoolAdminPhone: "",
-        schoolAdminPin: "",
+        primaryAdminUserId: "",
         logoUrl: "",
       });
-      setFounderAdminMode("email");
       setAdditionalAdmins([]);
       setAdditionalAdminErrors([]);
       setSlugPreview({
@@ -947,8 +934,6 @@ export default function SchoolsPage() {
         baseExists: false,
         error: null,
       });
-      setEmailCheckState("idle");
-      setEmailCheckName(null);
       await Promise.all([loadOverview(), loadSchools(1)]);
       // Si un code d'activation doit etre transmis manuellement (admin cree
       // par telephone), on reste sur l'onglet creation le temps que
@@ -2091,6 +2076,14 @@ export default function SchoolsPage() {
                               {admin.activationRequired
                                 ? ` (${t("schools.details.pendingActivation")})`
                                 : ""}
+                              {admin.isPrimary ? (
+                                <span
+                                  data-testid="primary-admin-badge"
+                                  className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                                >
+                                  {t("schools.primaryAdmin.badge")}
+                                </span>
+                              ) : null}
                             </span>
                             <div className="flex items-center gap-2">
                               {admin.canResendInvite ? (
@@ -2114,7 +2107,9 @@ export default function SchoolsPage() {
                               <button
                                 type="button"
                                 className="text-sm text-notification disabled:opacity-40"
+                                hidden={admin.isPrimary}
                                 disabled={
+                                  admin.isPrimary ||
                                   selectedSchool.schoolAdmins.length <= 1
                                 }
                                 onClick={() =>
@@ -2138,6 +2133,59 @@ export default function SchoolsPage() {
                         {t("schools.details.removeAdminLastAdminHint")}
                       </p>
                     ) : null}
+
+                    <div className="mt-3 grid gap-2 border-t border-border pt-3">
+                      <p className="text-sm font-medium text-text-primary">
+                        {selectedSchool.primaryAdminUserId
+                          ? t("schools.primaryAdmin.replaceTitle")
+                          : t("schools.primaryAdmin.designateTitle")}
+                      </p>
+                      {!selectedSchool.primaryAdminUserId ? (
+                        <p className="text-xs text-text-secondary">
+                          {t("schools.primaryAdmin.missingHint")}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-text-secondary">
+                          {t("schools.primaryAdmin.replaceHint")}
+                        </p>
+                      )}
+                      <SearchableSelect
+                        ariaLabel={t("schools.form.primaryAdminLabel")}
+                        data-testid="replace-primary-admin"
+                        options={platformUserOptions.filter(
+                          (option) =>
+                            option.value !== selectedSchool.primaryAdminUserId,
+                        )}
+                        value={replacePrimaryUserId}
+                        placeholder={t("schools.form.primaryAdminPlaceholder")}
+                        searchPlaceholder={t("schools.form.primaryAdminSearch")}
+                        noResultsLabel={t("schools.form.primaryAdminNoResults")}
+                        onSearchChange={(query) => {
+                          void loadPlatformUsers(query);
+                        }}
+                        onChange={setReplacePrimaryUserId}
+                      />
+                      {replacePrimaryError ? (
+                        <p className="text-sm text-notification" role="alert">
+                          {replacePrimaryError}
+                        </p>
+                      ) : null}
+                      <div>
+                        <Button
+                          type="button"
+                          disabled={!replacePrimaryUserId || replacingPrimary}
+                          onClick={() => {
+                            void onReplacePrimaryAdmin(selectedSchool.id);
+                          }}
+                        >
+                          {replacingPrimary
+                            ? t("schools.primaryAdmin.replacing")
+                            : selectedSchool.primaryAdminUserId
+                              ? t("schools.primaryAdmin.replaceAction")
+                              : t("schools.primaryAdmin.designateAction")}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -2346,111 +2394,37 @@ export default function SchoolsPage() {
                 </FormField>
 
                 <div className="grid gap-3 md:col-span-2">
-                  <p className="text-sm font-medium text-text-primary">
-                    {t("schools.form.mainAdminTitle")}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={
-                        founderAdminMode === "email" ? "primary" : "secondary"
-                      }
-                      onClick={() => setFounderAdminMode("email")}
-                    >
-                      {t("schools.form.adminModeEmail")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={
-                        founderAdminMode === "phone" ? "primary" : "secondary"
-                      }
-                      onClick={() => setFounderAdminMode("phone")}
-                    >
-                      {t("schools.form.adminModePhone")}
-                    </Button>
-                  </div>
-
-                  {founderAdminMode === "email" ? (
-                    <FormField
-                      label={t("schools.form.fieldAdminEmail")}
-                      error={
-                        createSchoolForm.formState.errors.schoolAdminEmail
-                          ?.message
-                      }
-                      hint={
-                        emailCheckState === "checking"
-                          ? t("schools.email.checking")
-                          : emailCheckState === "invalid"
-                            ? t("schools.email.invalid")
-                            : emailCheckState === "exists"
-                              ? t("schools.email.exists").replace(
-                                  "{name}",
-                                  emailCheckName ?? "utilisateur",
-                                )
-                              : emailCheckState === "not_found"
-                                ? t("schools.email.notFound")
-                                : emailCheckState === "error"
-                                  ? t("schools.email.error")
-                                  : null
-                      }
-                    >
-                      <EmailInput
-                        aria-label={t("schools.form.fieldAdminEmail")}
-                        value={createSchoolValues.schoolAdminEmail ?? ""}
-                        onChange={(event) => {
-                          createSchoolForm.setValue(
-                            "schoolAdminEmail",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          );
-                        }}
-                        invalid={Boolean(
-                          createSchoolForm.formState.errors.schoolAdminEmail,
-                        )}
-                      />
-                    </FormField>
-                  ) : (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <FormField label={t("schools.form.fieldAdminPhone")}>
-                        <FormTextInput
-                          aria-label={t("schools.form.fieldAdminPhone")}
-                          value={createSchoolValues.schoolAdminPhone ?? ""}
-                          onChange={(event) => {
-                            createSchoolForm.setValue(
-                              "schoolAdminPhone",
-                              event.target.value.replace(/\D/g, "").slice(0, 9),
-                              {
-                                shouldDirty: true,
-                                shouldTouch: true,
-                                shouldValidate: true,
-                              },
-                            );
-                          }}
-                        />
-                      </FormField>
-                      <FormField label={t("schools.form.fieldAdminPin")}>
-                        <PinInput
-                          aria-label={t("schools.form.fieldAdminPin")}
-                          value={createSchoolValues.schoolAdminPin ?? ""}
-                          onChange={(event) => {
-                            createSchoolForm.setValue(
-                              "schoolAdminPin",
-                              event.target.value.replace(/\D/g, "").slice(0, 6),
-                              {
-                                shouldDirty: true,
-                                shouldTouch: true,
-                                shouldValidate: true,
-                              },
-                            );
-                          }}
-                        />
-                      </FormField>
-                    </div>
-                  )}
+                  <FormField
+                    label={t("schools.form.primaryAdminLabel")}
+                    hint={t("schools.form.primaryAdminHint")}
+                    error={
+                      createSchoolForm.formState.errors.primaryAdminUserId
+                        ?.message
+                    }
+                  >
+                    <SearchableSelect
+                      ariaLabel={t("schools.form.primaryAdminLabel")}
+                      data-testid="create-primary-admin"
+                      options={platformUserOptions}
+                      value={createSchoolValues.primaryAdminUserId ?? ""}
+                      placeholder={t("schools.form.primaryAdminPlaceholder")}
+                      searchPlaceholder={t("schools.form.primaryAdminSearch")}
+                      noResultsLabel={t("schools.form.primaryAdminNoResults")}
+                      invalid={Boolean(
+                        createSchoolForm.formState.errors.primaryAdminUserId,
+                      )}
+                      onSearchChange={(query) => {
+                        void loadPlatformUsers(query);
+                      }}
+                      onChange={(value) => {
+                        createSchoolForm.setValue("primaryAdminUserId", value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                    />
+                  </FormField>
                 </div>
 
                 <div className="grid gap-3 md:col-span-2">
@@ -2737,6 +2711,11 @@ export default function SchoolsPage() {
             />
           ) : null}
 
+          {tab === "details" && submitSuccess ? (
+            <p className="mt-3 text-sm text-success" role="status">
+              {submitSuccess}
+            </p>
+          ) : null}
           {tab !== "create" && submitError ? (
             <p className="mt-3 text-sm text-notification">{submitError}</p>
           ) : null}

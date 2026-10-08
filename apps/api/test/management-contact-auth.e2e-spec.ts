@@ -26,6 +26,7 @@ describe("Management contact auth e2e", () => {
   let bearerToken = "";
 
   const runId = randomSuffix();
+  let superAdminUser: { id: string };
   const superAdminEmail = `e2e-contact-superadmin-${runId}@example.test`;
   const schoolAdminEmail = `e2e-contact-schooladmin-${runId}@example.test`;
   const password = "StrongPass1";
@@ -61,6 +62,10 @@ describe("Management contact auth e2e", () => {
     baseUrl = await app.getUrl();
     prisma = app.get(PrismaService);
 
+    await prisma.school.updateMany({
+      where: { primaryAdminUser: { email: { startsWith: "e2e-contact-" } } },
+      data: { primaryAdminUserId: null },
+    });
     await prisma.user.deleteMany({
       where: {
         email: { startsWith: "e2e-contact-" },
@@ -70,7 +75,7 @@ describe("Management contact auth e2e", () => {
     const passwordHash = await bcrypt.hash(password, 10);
     const superAdminPhone = `+23769988${Math.floor(Math.random() * 9000 + 1000)}`;
     const superAdminPinHash = await bcrypt.hash("123456", 10);
-    await prisma.user.create({
+    superAdminUser = await prisma.user.create({
       data: {
         firstName: "Super",
         lastName: "Admin",
@@ -117,7 +122,7 @@ describe("Management contact auth e2e", () => {
       },
       body: JSON.stringify({
         name: `E2E Contact School ${runId}`,
-        schoolAdminEmail,
+        primaryAdminUserId: superAdminUser.id,
       }),
     });
     expect(createSchool.response.status).toBe(201);

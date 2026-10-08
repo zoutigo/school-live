@@ -346,6 +346,75 @@ describe("SchoolUsersService", () => {
   // ── getMemberDetail — unitaires ──────────────────────────────────────────────
 
   describe("getMemberDetail", () => {
+    it("marque l'administrateur principal (isPrimaryAdmin)", async () => {
+      prisma.school.findUnique.mockResolvedValue({
+        activeSchoolYearId: null,
+        primaryAdminUserId: USER_ID,
+      });
+      prisma.user.findUnique.mockResolvedValue(
+        makePrismaUser({ memberships: [{ role: "SCHOOL_ADMIN" }] }),
+      );
+      expect(await service.getMemberDetail(SCHOOL_ID, USER_ID)).toMatchObject({
+        isPrimaryAdmin: true,
+      });
+    });
+
+    it("isSelf et hasActiveClass reflètent le demandeur et l'inscription de l'année active", async () => {
+      prisma.school.findUnique.mockResolvedValue({
+        activeSchoolYearId: "year-1",
+        primaryAdminUserId: null,
+      });
+      const enrollment = (schoolYearId: string, cls: unknown) => ({
+        id: "e",
+        schoolYearId,
+        schoolYear: { label: "2026" },
+        class: cls,
+      });
+      prisma.user.findUnique.mockResolvedValue(
+        makePrismaUser({
+          memberships: [{ role: "STUDENT" }],
+          studentProfiles: [
+            {
+              parentLinks: [],
+              enrollments: [enrollment("year-1", { id: "c1", name: "6e A" })],
+            },
+          ],
+        }),
+      );
+      expect(
+        await service.getMemberDetail(SCHOOL_ID, USER_ID, USER_ID),
+      ).toMatchObject({ isSelf: true, hasActiveClass: true });
+
+      prisma.user.findUnique.mockResolvedValue(
+        makePrismaUser({
+          memberships: [{ role: "STUDENT" }],
+          studentProfiles: [
+            {
+              parentLinks: [],
+              enrollments: [
+                enrollment("year-1", null),
+                enrollment("year-0", { id: "c0", name: "7e" }),
+              ],
+            },
+          ],
+        }),
+      );
+      expect(
+        await service.getMemberDetail(SCHOOL_ID, USER_ID, "other"),
+      ).toMatchObject({ isSelf: false, hasActiveClass: false });
+    });
+
+    it("isPrimaryAdmin est false pour un autre membre", async () => {
+      prisma.school.findUnique.mockResolvedValue({
+        activeSchoolYearId: null,
+        primaryAdminUserId: "someone-else",
+      });
+      prisma.user.findUnique.mockResolvedValue(makePrismaUser());
+      expect(await service.getMemberDetail(SCHOOL_ID, USER_ID)).toMatchObject({
+        isPrimaryAdmin: false,
+      });
+    });
+
     it("retourne le détail complet d'un enseignant", async () => {
       prisma.user.findUnique.mockResolvedValue(
         makePrismaUser({
