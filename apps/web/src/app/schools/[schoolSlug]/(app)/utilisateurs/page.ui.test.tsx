@@ -1226,6 +1226,146 @@ describe("UtilisateursPage", () => {
     expect(screen.getByText(t("users.editRoles.success"))).toBeInTheDocument();
   });
 
+  // ── Exclusion de l'école ──────────────────────────────────────────────────
+
+  function mockExclusion(
+    user: typeof TEACHER_USER,
+    detail: Record<string, unknown>,
+    deleteResponse: () => Promise<Response> = () =>
+      jsonRes({ action: "EXCLUDED", remainingRoles: [] }),
+  ) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url.includes("/users?")) return jsonRes(makeListResponse([user]));
+      if (url.includes(`/users/${user.id}`) && method === "DELETE")
+        return deleteResponse();
+      if (url.includes(`/users/${user.id}`)) return jsonRes(detail);
+      return jsonRes({}, 404);
+    });
+  }
+
+  const deleteCalls = (fetchMock: ReturnType<typeof mockExclusion>) =>
+    fetchMock.mock.calls.filter(
+      (c) => (c[1]?.method ?? "").toUpperCase() === "DELETE",
+    );
+
+  it("exclut un enseignant après confirmation (DELETE + CSRF), toast de succès et fermeture du panneau", async () => {
+    const fetchMock = mockExclusion(TEACHER_USER, TEACHER_DETAIL);
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/Ekani Marie/)).toBeInTheDocument();
+    expect(deleteCalls(fetchMock)).toHaveLength(0);
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
+    );
+
+    await waitFor(() => expect(deleteCalls(fetchMock)).toHaveLength(1));
+    const call = deleteCalls(fetchMock)[0];
+    expect(String(call[0])).toContain(`/users/${TEACHER_USER.id}`);
+    expect((call[1]?.headers as Record<string, string>)["X-CSRF-Token"]).toBe(
+      "csrf-test",
+    );
+    expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId("action-exclude")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("n'exclut rien si l'on annule la confirmation", async () => {
+    const fetchMock = mockExclusion(TEACHER_USER, TEACHER_DETAIL);
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Annuler" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(deleteCalls(fetchMock)).toHaveLength(0);
+  });
+
+  it("masque l'exclusion pour l'administrateur principal", async () => {
+    mockExclusion(TEACHER_USER, { ...TEACHER_DETAIL, isPrimaryAdmin: true });
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    await screen.findByTestId("action-edit-roles");
+    expect(screen.queryByTestId("action-exclude")).not.toBeInTheDocument();
+  });
+
+  it("masque l'exclusion pour soi-même", async () => {
+    mockExclusion(TEACHER_USER, { ...TEACHER_DETAIL, isSelf: true });
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    await screen.findByTestId("action-edit-roles");
+    expect(screen.queryByTestId("action-exclude")).not.toBeInTheDocument();
+  });
+
+  it("affiche l'erreur du serveur (409) sans fermer le panneau", async () => {
+    mockExclusion(TEACHER_USER, TEACHER_DETAIL, () =>
+      jsonRes(
+        { message: "Impossible d'exclure le dernier administrateur" },
+        409,
+      ),
+    );
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
+    );
+
+    expect(await screen.findByTestId("toast-error")).toBeInTheDocument();
+    expect(screen.getByTestId("action-exclude")).toBeInTheDocument();
+  });
+
+  it("élève affecté à une classe : action 'Retirer de sa classe' (rôle conservé, panneau ouvert)", async () => {
+    const fetchMock = mockExclusion(
+      STUDENT_USER as unknown as typeof TEACHER_USER,
+      { ...STUDENT_DETAIL, hasActiveClass: true },
+      () =>
+        jsonRes({
+          action: "UNASSIGNED_FROM_CLASS",
+          remainingRoles: ["STUDENT"],
+        }),
+    );
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
+    const button = await screen.findByTestId("action-exclude");
+    expect(button).toHaveTextContent(t("users.actions.unassignClass"));
+    fireEvent.click(button);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(t("users.unassignClass.title")),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: t("users.unassignClass.confirm"),
+      }),
+    );
+
+    await waitFor(() => expect(deleteCalls(fetchMock)).toHaveLength(1));
+    expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
+    // Le panneau reste ouvert : l'élève n'est pas exclu de l'école.
+    expect(screen.getByTestId("action-edit-roles")).toBeInTheDocument();
+  });
+
+  it("élève sans classe pour l'année active : aucune action de retrait", async () => {
+    mockExclusion(STUDENT_USER as unknown as typeof TEACHER_USER, {
+      ...STUDENT_DETAIL,
+      hasActiveClass: false,
+    });
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
+    await screen.findByTestId("action-edit-roles");
+    expect(screen.queryByTestId("action-exclude")).not.toBeInTheDocument();
+  });
+
   // ── Contact et activité ───────────────────────────────────────────────────
 
   it("affiche les informations de contact", async () => {

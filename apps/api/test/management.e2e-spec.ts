@@ -19,6 +19,7 @@ describe("Management API e2e", () => {
   let bearerToken = "";
 
   const runId = randomSuffix();
+  let superAdminUser: { id: string };
   const superAdminEmail = `e2e-superadmin-${runId}@example.test`;
   const schoolAdminEmail = `e2e-schooladmin-${runId}@example.test`;
   const password = "StrongPass1";
@@ -61,6 +62,10 @@ describe("Management API e2e", () => {
     baseUrl = await app.getUrl();
     prisma = app.get(PrismaService);
 
+    await prisma.school.updateMany({
+      where: { primaryAdminUser: { email: { startsWith: "e2e-" } } },
+      data: { primaryAdminUserId: null },
+    });
     await prisma.user.deleteMany({
       where: {
         email: {
@@ -71,11 +76,20 @@ describe("Management API e2e", () => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const superAdminPhone = `+23769966${Math.floor(Math.random() * 9000 + 1000)}`;
+    superAdminUser = await prisma.user.create({
       data: {
         firstName: "Super",
         lastName: "Admin",
         email: superAdminEmail,
+        phone: superAdminPhone,
+        phoneCredential: {
+          create: {
+            phoneE164: superAdminPhone,
+            pinHash: await bcrypt.hash("123456", 10),
+            verifiedAt: new Date(),
+          },
+        },
         passwordHash,
         mustChangePassword: false,
         profileCompleted: true,
@@ -142,7 +156,7 @@ describe("Management API e2e", () => {
       },
       body: JSON.stringify({
         name: `E2E School ${runId}`,
-        schoolAdminEmail,
+        primaryAdminUserId: superAdminUser.id,
       }),
     });
 
@@ -469,7 +483,7 @@ describe("Management API e2e", () => {
       },
       body: JSON.stringify({
         name: `E2E School B ${runId}`,
-        schoolAdminEmail,
+        primaryAdminUserId: superAdminUser.id,
       }),
     });
 

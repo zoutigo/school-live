@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -408,10 +410,14 @@ export class SchoolUsersService {
     };
   }
 
-  async getMemberDetail(schoolId: string, userId: string) {
+  async getMemberDetail(
+    schoolId: string,
+    userId: string,
+    viewerUserId?: string,
+  ) {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
-      select: { activeSchoolYearId: true },
+      select: { activeSchoolYearId: true, primaryAdminUserId: true },
     });
     const activeSchoolYearId = school?.activeSchoolYearId ?? undefined;
 
@@ -454,6 +460,7 @@ export class SchoolUsersService {
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,
+                schoolYearId: true,
                 schoolYear: { select: { label: true } },
                 class: {
                   select: {
@@ -540,6 +547,15 @@ export class SchoolUsersService {
       gender: user.gender,
       avatarUrl: user.avatarUrl,
       roles: user.memberships.map((m) => m.role),
+      isPrimaryAdmin: school?.primaryAdminUserId === user.id,
+      isSelf: viewerUserId !== undefined && viewerUserId === user.id,
+      hasActiveClass: user.studentProfiles.some((profile) =>
+        profile.enrollments.some(
+          (enrollment) =>
+            enrollment.schoolYearId === activeSchoolYearId &&
+            enrollment.class !== null,
+        ),
+      ),
       activationStatus: user.activationStatus,
       profileCompleted: user.profileCompleted,
       hasPhoneCredential: Boolean(user.phoneCredential),
@@ -594,6 +610,18 @@ export class SchoolUsersService {
       );
     }
 
+    if (!dto.roles.includes("SCHOOL_ADMIN")) {
+      const school = await this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { primaryAdminUserId: true },
+      });
+      if (school?.primaryAdminUserId === userId) {
+        throw new ConflictException(
+          "L'administrateur principal doit conserver le rôle d'administrateur, il peut seulement être remplacé par la plateforme.",
+        );
+      }
+    }
+
     const becomesTeacher = dto.roles.includes("TEACHER");
 
     await this.prisma.$transaction(async (tx) => {
@@ -618,6 +646,169 @@ export class SchoolUsersService {
     });
 
     return { roles: updated.map((m) => m.role) };
+  }
+
+  /**
+   * Retire un membre de l'établissement sans jamais effacer son passé :
+   * - un élève reste élève mais perd sa classe de l'année active (inscription
+   *   ACTIVE conservée, `classId` à null) ; les années passées sont intactes ;
+   * - les autres rôles sont retirés, les affectations enseignant de l'année
+   *   active sont arrêtées (emploi du temps clos à la date du jour), les
+   *   liens parent-élève et les données historiques sont conservés.
+   * Le compte `User` n'est jamais supprimé.
+   */
+  async removeMember(
+    schoolId: string,
+    actorUserId: string,
+    userId: string,
+  ): Promise<{
+    action: "EXCLUDED" | "UNASSIGNED_FROM_CLASS";
+    remainingRoles: string[];
+  }> {
+    if (actorUserId === userId) {
+      throw new ForbiddenException(
+        "Vous ne pouvez pas vous exclure vous-même de l'établissement.",
+      );
+    }
+
+    const memberships = await this.prisma.schoolMembership.findMany({
+      where: { schoolId, userId },
+      select: { role: true },
+    });
+    if (memberships.length === 0) {
+      throw new NotFoundException(
+        "Cet utilisateur n'est pas membre de cet établissement.",
+      );
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { primaryAdminUserId: true, activeSchoolYearId: true },
+    });
+    if (school?.primaryAdminUserId === userId) {
+      throw new ConflictException(
+        "L'administrateur principal ne peut pas être exclu, il peut seulement être remplacé par la plateforme.",
+      );
+    }
+
+    const roles = memberships.map((membership) => membership.role);
+    if (roles.includes("SCHOOL_ADMIN")) {
+      const adminCount = await this.prisma.schoolMembership.count({
+        where: { schoolId, role: "SCHOOL_ADMIN" },
+      });
+      if (adminCount <= 1) {
+        throw new ConflictException(
+          "Impossible d'exclure le dernier administrateur de l'établissement.",
+        );
+      }
+    }
+
+    const isStudent = roles.includes("STUDENT");
+    const otherRoles = roles.filter((role) => role !== "STUDENT");
+    const activeSchoolYearId = school?.activeSchoolYearId ?? null;
+    const now = new Date();
+
+    let classedEnrollmentIds: string[] = [];
+    if (isStudent && otherRoles.length === 0) {
+      const enrollments = activeSchoolYearId
+        ? await this.prisma.enrollment.findMany({
+            where: {
+              schoolId,
+              schoolYearId: activeSchoolYearId,
+              status: "ACTIVE",
+              classId: { not: null },
+              student: { userId },
+            },
+            select: { id: true },
+          })
+        : [];
+      if (enrollments.length === 0) {
+        throw new ConflictException(
+          "Cet élève n'est affecté à aucune classe pour l'année scolaire en cours.",
+        );
+      }
+      classedEnrollmentIds = enrollments.map((enrollment) => enrollment.id);
+    } else if (isStudent && activeSchoolYearId) {
+      const enrollments = await this.prisma.enrollment.findMany({
+        where: {
+          schoolId,
+          schoolYearId: activeSchoolYearId,
+          status: "ACTIVE",
+          classId: { not: null },
+          student: { userId },
+        },
+        select: { id: true },
+      });
+      classedEnrollmentIds = enrollments.map((enrollment) => enrollment.id);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (classedEnrollmentIds.length > 0) {
+        await tx.enrollment.updateMany({
+          where: { id: { in: classedEnrollmentIds } },
+          data: { classId: null },
+        });
+      }
+
+      if (otherRoles.length === 0) {
+        return;
+      }
+
+      await tx.schoolMembership.deleteMany({
+        where: { schoolId, userId, role: { not: "STUDENT" } },
+      });
+      await tx.schoolStaffAssignment.deleteMany({
+        where: { schoolId, userId },
+      });
+
+      if (roles.includes("TEACHER")) {
+        await tx.teacher.deleteMany({ where: { schoolId, userId } });
+        if (activeSchoolYearId) {
+          await tx.teacherClassSubject.deleteMany({
+            where: {
+              schoolId,
+              schoolYearId: activeSchoolYearId,
+              teacherUserId: userId,
+            },
+          });
+          await tx.classTimetableSlot.deleteMany({
+            where: {
+              schoolId,
+              schoolYearId: activeSchoolYearId,
+              teacherUserId: userId,
+              activeFromDate: { gt: now },
+            },
+          });
+          await tx.classTimetableSlot.updateMany({
+            where: {
+              schoolId,
+              schoolYearId: activeSchoolYearId,
+              teacherUserId: userId,
+              OR: [{ activeToDate: null }, { activeToDate: { gt: now } }],
+            },
+            data: { activeToDate: now },
+          });
+          await tx.classTimetableOneOffSlot.deleteMany({
+            where: {
+              schoolId,
+              schoolYearId: activeSchoolYearId,
+              teacherUserId: userId,
+              occurrenceDate: { gt: now },
+            },
+          });
+        }
+      }
+
+      await tx.user.updateMany({
+        where: { id: userId, activeSchoolId: schoolId },
+        data: { activeSchoolId: null },
+      });
+    });
+
+    return {
+      action: otherRoles.length === 0 ? "UNASSIGNED_FROM_CLASS" : "EXCLUDED",
+      remainingRoles: isStudent ? ["STUDENT"] : [],
+    };
   }
 
   async resetMemberPin(

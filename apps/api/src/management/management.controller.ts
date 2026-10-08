@@ -84,6 +84,7 @@ import { UpdateTrackDto } from "./dto/update-track.dto.js";
 import { UpdateUserDto } from "./dto/update-user.dto.js";
 import { UpdateEvaluationTypeDto } from "./dto/update-evaluation-type.dto.js";
 import { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
+import { ReplacePrimaryAdminDto } from "./dto/replace-primary-admin.dto.js";
 import { ManagementService } from "./management.service.js";
 
 @Controller()
@@ -119,6 +120,13 @@ export class ManagementController {
   @Roles("SUPER_ADMIN", "ADMIN")
   checkSchoolSlug(@Query() query: CheckSchoolSlugDto) {
     return this.managementService.checkSchoolSlug(query.name);
+  }
+
+  @Get("system/platform-users")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listPlatformUsers(@Query("search") search?: string) {
+    return this.managementService.listPlatformUsers(search);
   }
 
   @Get("system/schools/:schoolId")
@@ -226,6 +234,16 @@ export class ManagementController {
     @Body() payload: AddSchoolAdminDto,
   ) {
     return this.managementService.addSchoolAdmin(schoolId, payload);
+  }
+
+  @Patch("system/schools/:schoolId/primary-admin")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  replacePrimaryAdmin(
+    @Param("schoolId") schoolId: string,
+    @Body() payload: ReplacePrimaryAdminDto,
+  ) {
+    return this.managementService.replacePrimaryAdmin(schoolId, payload);
   }
 
   @Delete("system/schools/:schoolId/admins/:adminUserId")

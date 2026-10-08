@@ -3754,6 +3754,29 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Ecole creee. Un compte SCHOOL_ADMIN a ete cree avec mot de passe provisoire et doit changer son mot de passe pour finaliser.",
     "schools.success.inviteSent":
       "Invitation renvoyee a {email}. Le school admin recevra un nouveau mot de passe provisoire.",
+    "schools.form.primaryAdminLabel": "Administrateur principal",
+    "schools.form.primaryAdminHint":
+      "Choisissez un utilisateur de la plateforme. Il restera administrateur de l'école ; il pourra être remplacé mais jamais retiré.",
+    "schools.form.primaryAdminPlaceholder":
+      "Sélectionner un utilisateur plateforme",
+    "schools.form.primaryAdminSearch": "Rechercher un utilisateur plateforme…",
+    "schools.form.primaryAdminNoResults": "Aucun utilisateur plateforme",
+    "schools.success.createWithPrimaryAdmin":
+      "École créée. L'administrateur principal a reçu le rôle SCHOOL_ADMIN.",
+    "schools.primaryAdmin.badge": "Principal",
+    "schools.primaryAdmin.replaceTitle": "Remplacer l'administrateur principal",
+    "schools.primaryAdmin.designateTitle":
+      "Désigner l'administrateur principal",
+    "schools.primaryAdmin.replaceHint":
+      "L'administrateur principal ne peut pas être retiré, seulement remplacé. L'ancien perd le rôle d'administrateur mais conserve ses autres rôles dans l'école.",
+    "schools.primaryAdmin.missingHint":
+      "Cette école n'a pas encore d'administrateur principal. Désignez un utilisateur de la plateforme.",
+    "schools.primaryAdmin.replaceAction": "Remplacer",
+    "schools.primaryAdmin.designateAction": "Désigner",
+    "schools.primaryAdmin.replacing": "Enregistrement…",
+    "schools.primaryAdmin.replaceSuccess":
+      "Administrateur principal mis à jour.",
+    "schools.primaryAdmin.replaceFailed": "Remplacement impossible.",
     "schools.delete.title": "Confirmer la suppression",
     "schools.delete.message":
       "Voulez-vous supprimer l'ecole {name} ? Cette action est irreversible.",
@@ -4789,6 +4812,20 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.resetPwd.title": "Réinitialiser le mot de passe",
     "users.resetPwd.success": "Mot de passe temporaire généré.",
     "users.resetPin.success": "Nouveau PIN généré.",
+    "users.actions.exclude": "Exclure de l'école",
+    "users.actions.unassignClass": "Retirer de sa classe",
+    "users.exclude.title": "Exclure de l'école",
+    "users.exclude.message":
+      "{name} n'aura plus accès à l'établissement et ses rôles seront retirés. Son historique (notes, présences, années passées) est conservé et le compte n'est pas supprimé.",
+    "users.exclude.confirm": "Exclure",
+    "users.exclude.success": "{name} a été exclu(e) de l'école.",
+    "users.exclude.failed": "Exclusion impossible.",
+    "users.unassignClass.title": "Retirer de sa classe",
+    "users.unassignClass.message":
+      "{name} restera élève de l'école mais ne sera plus affecté(e) à une classe pour l'année scolaire en cours. Son historique est conservé.",
+    "users.unassignClass.confirm": "Retirer de la classe",
+    "users.unassignClass.success":
+      "{name} n'a plus de classe pour l'année en cours.",
     "users.credentials.title": "Accès créé",
     "users.credentials.subtitle":
       "Communiquez ces identifiants à l'élève. Ils ne seront plus affichés ensuite.",
@@ -9152,6 +9189,27 @@ export const translations: Record<Locale, Record<string, string>> = {
       "School created. A SCHOOL_ADMIN account was created with a temporary password and must set a new password to complete setup.",
     "schools.success.inviteSent":
       "Invite resent to {email}. The school admin will receive a new temporary password.",
+    "schools.form.primaryAdminLabel": "Primary administrator",
+    "schools.form.primaryAdminHint":
+      "Pick a platform user. They will stay school administrator; they can be replaced but never removed.",
+    "schools.form.primaryAdminPlaceholder": "Select a platform user",
+    "schools.form.primaryAdminSearch": "Search platform users…",
+    "schools.form.primaryAdminNoResults": "No platform user found",
+    "schools.success.createWithPrimaryAdmin":
+      "School created. The primary administrator received the SCHOOL_ADMIN role.",
+    "schools.primaryAdmin.badge": "Primary",
+    "schools.primaryAdmin.replaceTitle": "Replace the primary administrator",
+    "schools.primaryAdmin.designateTitle":
+      "Designate the primary administrator",
+    "schools.primaryAdmin.replaceHint":
+      "The primary administrator cannot be removed, only replaced. The previous one loses the administrator role but keeps their other roles in the school.",
+    "schools.primaryAdmin.missingHint":
+      "This school has no primary administrator yet. Designate a platform user.",
+    "schools.primaryAdmin.replaceAction": "Replace",
+    "schools.primaryAdmin.designateAction": "Designate",
+    "schools.primaryAdmin.replacing": "Saving…",
+    "schools.primaryAdmin.replaceSuccess": "Primary administrator updated.",
+    "schools.primaryAdmin.replaceFailed": "Replacement failed.",
     "schools.delete.title": "Confirm deletion",
     "schools.delete.message":
       "Are you sure you want to delete the school {name}? This action is irreversible.",
@@ -10167,6 +10225,20 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.credentials.close": "I've noted the credentials",
     "users.resetPwd.success": "Temporary password generated.",
     "users.resetPin.success": "New PIN generated.",
+    "users.actions.exclude": "Remove from school",
+    "users.actions.unassignClass": "Remove from class",
+    "users.exclude.title": "Remove from school",
+    "users.exclude.message":
+      "{name} will lose access to the school and their roles will be removed. Their history (grades, attendance, past years) is kept and the account is not deleted.",
+    "users.exclude.confirm": "Remove",
+    "users.exclude.success": "{name} was removed from the school.",
+    "users.exclude.failed": "Removal failed.",
+    "users.unassignClass.title": "Remove from class",
+    "users.unassignClass.message":
+      "{name} will remain a student of the school but will no longer be assigned to a class for the current school year. Their history is kept.",
+    "users.unassignClass.confirm": "Remove from class",
+    "users.unassignClass.success":
+      "{name} no longer has a class for the current year.",
     "users.status.active": "Active",
     "users.status.pending": "Pending",
     "users.status.suspended": "Suspended",

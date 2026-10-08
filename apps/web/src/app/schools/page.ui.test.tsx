@@ -34,6 +34,28 @@ function jsonResponse(payload: unknown, status = 200) {
   );
 }
 
+const PLATFORM_USERS = [
+  {
+    id: "platform-1",
+    firstName: "Paul",
+    lastName: "Support",
+    email: "paul@scolive.cm",
+    platformRoles: ["SUPPORT"],
+  },
+  {
+    id: "platform-2",
+    firstName: "Alice",
+    lastName: "Admin",
+    email: "alice@scolive.cm",
+    platformRoles: ["ADMIN"],
+  },
+];
+
+async function pickPrimaryAdmin(label = "Paul Support - paul@scolive.cm") {
+  fireEvent.click(screen.getByTestId("create-primary-admin"));
+  fireEvent.click(await screen.findByRole("option", { name: label }));
+}
+
 function schoolsListPage(items: unknown[]) {
   return {
     items,
@@ -91,6 +113,10 @@ describe("Schools page create form", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
+
+      if (url.includes("/api/system/platform-users")) {
+        return jsonResponse(PLATFORM_USERS);
+      }
       if (url.endsWith("/api/system/schools/overview")) {
         return jsonResponse(schoolsOverview([]));
       }
@@ -130,18 +156,10 @@ describe("Schools page create form", () => {
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
       target: { value: "College Vogt" },
     });
-    fireEvent.change(screen.getByLabelText("Email School Admin"), {
-      target: { value: "bad-email" },
-    });
-
-    expect(
-      await screen.findByText("L'email du school admin est invalide."),
-    ).toBeInTheDocument();
+    // Sans administrateur principal choisi, la creation reste impossible.
     expect(submitButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Email School Admin"), {
-      target: { value: "admin@vogt.cm" },
-    });
+    await pickPrimaryAdmin();
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
@@ -163,6 +181,10 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
         }
@@ -180,10 +202,7 @@ describe("Schools page create form", () => {
           return jsonResponse({ exists: false });
         }
         if (url.endsWith("/api/system/schools") && method === "POST") {
-          return jsonResponse(
-            { userExisted: false, setupCompleted: false },
-            201,
-          );
+          return jsonResponse({ school: { id: "school-new" } }, 201);
         }
 
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -203,9 +222,7 @@ describe("Schools page create form", () => {
     fireEvent.change(screen.getByLabelText("Ville"), {
       target: { value: "Yaoundé" },
     });
-    fireEvent.change(screen.getByLabelText("Email School Admin"), {
-      target: { value: "admin@vogt.cm" },
-    });
+    await pickPrimaryAdmin();
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Creer l ecole" }),
@@ -224,7 +241,7 @@ describe("Schools page create form", () => {
               country: "Cameroun",
               region: "Centre",
               city: "Yaoundé",
-              schoolAdminEmail: "admin@vogt.cm",
+              primaryAdminUserId: "platform-1",
             }),
       );
       expect(postCall).toBeDefined();
@@ -236,6 +253,9 @@ describe("Schools page create form", () => {
       const url = String(input);
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.includes("/api/system/platform-users")) {
+        return jsonResponse(PLATFORM_USERS);
       }
       if (url.endsWith("/api/system/schools/overview")) {
         return jsonResponse(schoolsOverview([]));
@@ -280,7 +300,7 @@ describe("Schools page create form", () => {
     expect(citySelect).toHaveValue("");
   });
 
-  it("cree l'admin fondateur par telephone + PIN quand ce mode est choisi", async () => {
+  it("n'expose plus de saisie email/telephone/PIN pour l'admin principal et envoie uniquement l'id choisi", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
@@ -290,6 +310,9 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
         }
@@ -298,24 +321,14 @@ describe("Schools page create form", () => {
         }
         if (url.includes("/api/system/schools/slug-preview?")) {
           return jsonResponse({
-            baseSlug: "ecole-telephone",
-            suggestedSlug: "ecole-telephone",
+            baseSlug: "ecole-plateforme",
+            suggestedSlug: "ecole-plateforme",
             baseExists: false,
           });
         }
         if (url.endsWith("/api/system/schools") && method === "POST") {
-          return jsonResponse(
-            {
-              school: { id: "school-phone-1" },
-              userExisted: false,
-              setupCompleted: false,
-              activationRequired: true,
-              activationCode: "ABCD1234",
-            },
-            201,
-          );
+          return jsonResponse({ school: { id: "school-pf-1" } }, 201);
         }
-
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
       });
 
@@ -324,16 +337,18 @@ describe("Schools page create form", () => {
       await screen.findByRole("button", { name: "Nouvelle ecole" }),
     );
 
+    expect(
+      screen.queryByRole("button", { name: "Telephone + PIN" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Email School Admin"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("PIN initial")).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
-      target: { value: "École par téléphone" },
+      target: { value: "École plateforme" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Telephone + PIN" }));
-    fireEvent.change(screen.getByLabelText("Telephone"), {
-      target: { value: "699001122" },
-    });
-    fireEvent.change(screen.getByLabelText("PIN initial"), {
-      target: { value: "123456" },
-    });
+    await pickPrimaryAdmin("Alice Admin - alice@scolive.cm");
 
     await waitFor(() => {
       expect(
@@ -350,12 +365,66 @@ describe("Schools page create form", () => {
       );
       expect(postCall).toBeDefined();
       const body = JSON.parse(String(postCall?.[1]?.body ?? "{}"));
-      expect(body.schoolAdminPhone).toBe("699001122");
-      expect(body.schoolAdminPin).toBe("123456");
+      expect(body.primaryAdminUserId).toBe("platform-2");
       expect(body.schoolAdminEmail).toBeUndefined();
+      expect(body.schoolAdminPhone).toBeUndefined();
+      expect(body.schoolAdminPin).toBeUndefined();
+    });
+  });
+
+  it("affiche l'erreur serveur si la creation echoue (admin principal refuse)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.includes("/api/system/platform-users")) {
+        return jsonResponse(PLATFORM_USERS);
+      }
+      if (url.endsWith("/api/system/schools/overview")) {
+        return jsonResponse(schoolsOverview([]));
+      }
+      if (url.includes("/api/system/schools?page=") && method === "GET") {
+        return jsonResponse(schoolsListPage([]));
+      }
+      if (url.includes("/api/system/schools/slug-preview?")) {
+        return jsonResponse({
+          baseSlug: "x",
+          suggestedSlug: "x",
+          baseExists: false,
+        });
+      }
+      if (url.endsWith("/api/system/schools") && method === "POST") {
+        return jsonResponse(
+          {
+            message:
+              "L'administrateur principal doit etre un utilisateur de la plateforme",
+          },
+          400,
+        );
+      }
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
     });
 
-    expect(await screen.findByText(/ABCD1234/)).toBeInTheDocument();
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
+    );
+    fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
+      target: { value: "École KO" },
+    });
+    await pickPrimaryAdmin();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Creer l ecole" }),
+      ).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Creer l ecole" }));
+
+    expect(
+      await screen.findByText(/doit etre un utilisateur de la plateforme/),
+    ).toBeInTheDocument();
   });
 
   it("ajoute et retire des administrateurs supplementaires a la creation", async () => {
@@ -367,6 +436,10 @@ describe("Schools page create form", () => {
 
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
         }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
@@ -418,9 +491,7 @@ describe("Schools page create form", () => {
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
       target: { value: "École multi-admins" },
     });
-    fireEvent.change(screen.getByLabelText("Email School Admin"), {
-      target: { value: "principal@ecole.cm" },
-    });
+    await pickPrimaryAdmin();
 
     fireEvent.click(
       screen.getByRole("button", { name: "+ Ajouter un administrateur" }),
@@ -468,6 +539,10 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
         }
@@ -485,10 +560,7 @@ describe("Schools page create form", () => {
           return jsonResponse({ exists: false });
         }
         if (url.endsWith("/api/system/schools") && method === "POST") {
-          return jsonResponse(
-            { userExisted: false, setupCompleted: false },
-            201,
-          );
+          return jsonResponse({ school: { id: "school-new" } }, 201);
         }
 
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -511,9 +583,7 @@ describe("Schools page create form", () => {
         target: { value: "ANGLOPHONE" },
       },
     );
-    fireEvent.change(screen.getByLabelText("Email School Admin"), {
-      target: { value: "admin@greenwich.cm" },
-    });
+    await pickPrimaryAdmin("Alice Admin - alice@scolive.cm");
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Creer l ecole" }),
@@ -532,7 +602,7 @@ describe("Schools page create form", () => {
               country: "Cameroun",
               cycle: "SECONDARY",
               languageSystem: "ANGLOPHONE",
-              schoolAdminEmail: "admin@greenwich.cm",
+              primaryAdminUserId: "platform-2",
             }),
       );
       expect(postCall).toBeDefined();
@@ -548,6 +618,10 @@ describe("Schools page create form", () => {
 
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
         }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
@@ -657,6 +731,10 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
         }
@@ -752,6 +830,10 @@ describe("Schools page create form", () => {
 
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
         }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
@@ -882,6 +964,10 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
         }
@@ -962,6 +1048,10 @@ describe("Schools page create form", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
+
+      if (url.includes("/api/system/platform-users")) {
+        return jsonResponse(PLATFORM_USERS);
+      }
       const overviewSourceSchools = [
         {
           id: "school-1",
@@ -1035,6 +1125,10 @@ describe("Schools page create form", () => {
 
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+
+      if (url.includes("/api/system/platform-users")) {
+        return jsonResponse(PLATFORM_USERS);
       }
       if (url.endsWith("/api/system/schools/overview")) {
         return jsonResponse(schoolsOverview([]));
@@ -1160,6 +1254,10 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));
         }
@@ -1262,6 +1360,215 @@ describe("Schools page create form", () => {
     expect(lastRemoveButton).toBeDisabled();
   });
 
+  function mockDetailsFetch(options: {
+    primaryAdminUserId: string | null;
+    onPatch?: (body: unknown) => Response | Promise<Response>;
+  }) {
+    let primary = options.primaryAdminUserId;
+    const admin = (id: string, firstName: string, lastName: string) => ({
+      id,
+      isPrimary: id === primary,
+      firstName,
+      lastName,
+      email: `${firstName.toLowerCase()}@vogt.cm`,
+      phone: null,
+      mustChangePassword: false,
+      profileCompleted: true,
+      activationRequired: false,
+      canResendInvite: false,
+    });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
+        if (url.includes("/api/system/schools?page=")) {
+          return jsonResponse(
+            schoolsListPage([
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+            ]),
+          );
+        }
+        if (
+          url.endsWith("/api/system/schools/school-1/primary-admin") &&
+          method === "PATCH"
+        ) {
+          const body = JSON.parse(String(init?.body ?? "{}"));
+          if (options.onPatch) {
+            return Promise.resolve(options.onPatch(body));
+          }
+          primary = body.userId;
+          return jsonResponse({ success: true });
+        }
+        if (url.endsWith("/api/system/schools/school-1")) {
+          return jsonResponse({
+            id: "school-1",
+            slug: "college-vogt",
+            name: "College Vogt",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            cycle: "SECONDARY",
+            languageSystem: "FRANCOPHONE",
+            logoUrl: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            academicYear: null,
+            tracks: [],
+            curriculums: [],
+            stats: {
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+              teachersCount: 8,
+              gradesCount: 300,
+            },
+            roleBreakdown: {
+              staff: 3,
+              teachers: 8,
+              parents: 90,
+              students: 100,
+            },
+            primaryAdminUserId: primary,
+            schoolAdmins: [
+              admin("platform-1", "Paul", "Support"),
+              admin("admin-2", "Sarah", "Moukouri"),
+            ],
+          });
+        }
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+    return fetchMock;
+  }
+
+  async function openDetails() {
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
+    fireEvent.click(
+      within(await screen.findByTestId("school-card-school-1")).getByRole(
+        "button",
+        { name: "Voir" },
+      ),
+    );
+    await screen.findByText(/Sarah Moukouri/);
+  }
+
+  it("details : badge Principal, pas de bouton Retirer pour l'admin principal, retrait possible pour les autres", async () => {
+    mockDetailsFetch({ primaryAdminUserId: "platform-1" });
+    await openDetails();
+
+    expect(screen.getAllByTestId("primary-admin-badge")).toHaveLength(1);
+    const removeButtons = screen.getAllByRole("button", { name: "Retirer" });
+    // L'admin principal n'a aucun bouton (cache), l'autre admin oui.
+    expect(removeButtons).toHaveLength(1);
+    expect(removeButtons[0]).toBeEnabled();
+    expect(
+      screen.getByText("Remplacer l'administrateur principal"),
+    ).toBeInTheDocument();
+  });
+
+  it("details : remplace l'admin principal via la liste des platform users (l'actuel est exclu de la liste)", async () => {
+    const fetchMock = mockDetailsFetch({ primaryAdminUserId: "platform-1" });
+    await openDetails();
+
+    const replaceButton = screen.getByRole("button", { name: "Remplacer" });
+    expect(replaceButton).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("replace-primary-admin"));
+    expect(
+      screen.queryByRole("option", { name: "Paul Support - paul@scolive.cm" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "Alice Admin - alice@scolive.cm",
+      }),
+    );
+    expect(replaceButton).toBeEnabled();
+    fireEvent.click(replaceButton);
+
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/api/system/schools/school-1/primary-admin") &&
+          init?.method === "PATCH",
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(String(patch?.[1]?.body))).toEqual({
+        userId: "platform-2",
+      });
+      expect(
+        (patch?.[1]?.headers as Record<string, string>)["X-CSRF-Token"],
+      ).toBe("csrf-token-test");
+    });
+    expect(
+      await screen.findByText("Administrateur principal mis à jour."),
+    ).toBeInTheDocument();
+  });
+
+  it("details : affiche l'erreur serveur si le remplacement est refuse", async () => {
+    mockDetailsFetch({
+      primaryAdminUserId: "platform-1",
+      onPatch: () =>
+        new Response(
+          JSON.stringify({
+            message: "Cet utilisateur est deja l'administrateur principal",
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+    });
+    await openDetails();
+    fireEvent.click(screen.getByTestId("replace-primary-admin"));
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "Alice Admin - alice@scolive.cm",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remplacer" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "deja l'administrateur principal",
+    );
+  });
+
+  it("details : ecole legacy sans admin principal -> invite a en designer un, sans bloquer le retrait", async () => {
+    mockDetailsFetch({ primaryAdminUserId: null });
+    await openDetails();
+
+    expect(screen.queryByTestId("primary-admin-badge")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Désigner l'administrateur principal"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Désigner" })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: "Retirer" })).toHaveLength(2);
+  });
+
   it("requests page/limit server-side and paginates the school list beyond page 1", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
@@ -1270,6 +1577,10 @@ describe("Schools page create form", () => {
 
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+
+        if (url.includes("/api/system/platform-users")) {
+          return jsonResponse(PLATFORM_USERS);
         }
         if (url.endsWith("/api/system/schools/overview")) {
           return jsonResponse(schoolsOverview([]));

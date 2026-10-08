@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  UserMinus,
   BookOpen,
   Briefcase,
   Calendar,
@@ -24,6 +25,7 @@ import { useTranslation } from "../../../../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 import { PasswordInput } from "../../../../../components/ui/password-input";
 import { PinInput } from "../../../../../components/ui/pin-input";
+import { ConfirmDialog } from "../../../../../components/ui/confirm-dialog";
 import { DateInput } from "../../../../../components/ui/date-input";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -78,6 +80,9 @@ type StudentOnlyItem = {
 type SchoolMember = SchoolUserItem | StudentOnlyItem;
 
 type SchoolUserDetail = SchoolUserItem & {
+  isPrimaryAdmin?: boolean;
+  isSelf?: boolean;
+  hasActiveClass?: boolean;
   lastLoginAt: string | null;
   updatedAt: string;
   hasPhoneCredential: boolean;
@@ -2596,6 +2601,8 @@ function UserDetailPanel({
   const [assignChildOpen, setAssignChildOpen] = useState(false);
   const [assignParentOpen, setAssignParentOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
+  const [excludeOpen, setExcludeOpen] = useState(false);
+  const [excluding, setExcluding] = useState(false);
   const [credentials, setCredentials] = useState<{
     username: string | null;
     temporaryPassword: string | null;
@@ -2690,6 +2697,48 @@ function UserDetailPanel({
       onShowToast(t("users.resetPin.success"), "success");
     } catch (err) {
       onShowToast(extractError(err), "error");
+    }
+  }
+
+  const userDetail =
+    detail && member.type === "user" ? (detail as SchoolUserDetail) : null;
+  const isStudentOnlyRole =
+    member.roles.length > 0 && member.roles.every((role) => role === "STUDENT");
+  const canRemove =
+    member.type === "user" &&
+    Boolean(userDetail) &&
+    !userDetail?.isPrimaryAdmin &&
+    !userDetail?.isSelf &&
+    (!isStudentOnlyRole || Boolean(userDetail?.hasActiveClass));
+
+  async function handleExclude() {
+    const csrf = getCsrfTokenCookie();
+    setExcluding(true);
+    try {
+      await apiFetch(`/schools/${schoolSlug}/users/${member.id}`, {
+        method: "DELETE",
+        headers: { "X-CSRF-Token": csrf ?? "" },
+      });
+      setExcludeOpen(false);
+      onRefreshList();
+      if (isStudentOnlyRole) {
+        void loadDetail();
+        onShowToast(
+          t("users.unassignClass.success").replace("{name}", fullName),
+          "success",
+        );
+      } else {
+        onShowToast(
+          t("users.exclude.success").replace("{name}", fullName),
+          "success",
+        );
+        onClose();
+      }
+    } catch (err) {
+      setExcludeOpen(false);
+      onShowToast(extractError(err), "error");
+    } finally {
+      setExcluding(false);
     }
   }
 
@@ -2836,6 +2885,19 @@ function UserDetailPanel({
                     onClick={() => void handleResetPin()}
                   />
                 ) : null}
+                {canRemove ? (
+                  <ActionBtn
+                    icon={<UserMinus size={12} />}
+                    label={
+                      isStudentOnlyRole
+                        ? t("users.actions.unassignClass")
+                        : t("users.actions.exclude")
+                    }
+                    color="#B42318"
+                    data-testid="action-exclude"
+                    onClick={() => setExcludeOpen(true)}
+                  />
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -2946,6 +3008,26 @@ function UserDetailPanel({
       </div>
 
       {/* Modals */}
+      <ConfirmDialog
+        open={excludeOpen}
+        title={
+          isStudentOnlyRole
+            ? t("users.unassignClass.title")
+            : t("users.exclude.title")
+        }
+        message={(isStudentOnlyRole
+          ? t("users.unassignClass.message")
+          : t("users.exclude.message")
+        ).replace("{name}", fullName)}
+        confirmLabel={
+          isStudentOnlyRole
+            ? t("users.unassignClass.confirm")
+            : t("users.exclude.confirm")
+        }
+        loading={excluding}
+        onConfirm={() => void handleExclude()}
+        onCancel={() => setExcludeOpen(false)}
+      />
       {member.type === "user" && editRolesOpen ? (
         <EditRolesModal
           schoolSlug={schoolSlug}

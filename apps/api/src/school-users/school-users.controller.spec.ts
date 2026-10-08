@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { SchoolScopeGuard } from "../access/school-scope.guard.js";
@@ -49,6 +54,9 @@ const makeServiceMock = () => ({
   listMembers: jest.fn().mockResolvedValue(makeListResult()),
   getMemberDetail: jest.fn().mockResolvedValue(makeDetailResult()),
   updateMemberRoles: jest.fn().mockResolvedValue({ roles: ["TEACHER"] }),
+  removeMember: jest
+    .fn()
+    .mockResolvedValue({ action: "EXCLUDED", remainingRoles: [] }),
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -113,7 +121,20 @@ describe("SchoolUsersController", () => {
   describe("getDetail", () => {
     it("délègue à service.getMemberDetail avec schoolId et userId", async () => {
       await controller.getDetail(SCHOOL_ID, "user-1");
-      expect(service.getMemberDetail).toHaveBeenCalledWith(SCHOOL_ID, "user-1");
+      expect(service.getMemberDetail).toHaveBeenCalledWith(
+        SCHOOL_ID,
+        "user-1",
+        undefined,
+      );
+    });
+
+    it("transmet l'identité du demandeur pour calculer isSelf", async () => {
+      await controller.getDetail(SCHOOL_ID, "user-1", { id: "me" } as never);
+      expect(service.getMemberDetail).toHaveBeenCalledWith(
+        SCHOOL_ID,
+        "user-1",
+        "me",
+      );
     });
 
     it("retourne le détail du service tel quel", async () => {
@@ -180,6 +201,46 @@ describe("SchoolUsersController", () => {
           roles: ["TEACHER"] as never[],
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("removeMember", () => {
+    it("transmet schoolId, acteur et cible au service", async () => {
+      const result = await controller.removeMember(
+        SCHOOL_ID,
+        { id: "actor-1" } as never,
+        "user-1",
+      );
+      expect(service.removeMember).toHaveBeenCalledWith(
+        SCHOOL_ID,
+        "actor-1",
+        "user-1",
+      );
+      expect(result).toEqual({ action: "EXCLUDED", remainingRoles: [] });
+    });
+
+    it("propage Forbidden / Conflict / NotFound du service", async () => {
+      service.removeMember.mockRejectedValueOnce(new ForbiddenException());
+      await expect(
+        controller.removeMember(SCHOOL_ID, { id: "a" } as never, "a"),
+      ).rejects.toThrow(ForbiddenException);
+      service.removeMember.mockRejectedValueOnce(new ConflictException());
+      await expect(
+        controller.removeMember(SCHOOL_ID, { id: "a" } as never, "p"),
+      ).rejects.toThrow(ConflictException);
+      service.removeMember.mockRejectedValueOnce(new NotFoundException());
+      await expect(
+        controller.removeMember(SCHOOL_ID, { id: "a" } as never, "g"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("est protégé par les rôles école/plateforme attendus", () => {
+      const roles = Reflect.getMetadata("roles", SchoolUsersController) as
+        | string[]
+        | undefined;
+      expect(roles ?? []).toEqual(
+        expect.arrayContaining(["SCHOOL_ADMIN", "SUPER_ADMIN", "ADMIN"]),
+      );
     });
   });
 });

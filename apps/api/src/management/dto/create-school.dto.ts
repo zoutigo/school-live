@@ -1,14 +1,13 @@
 import { SchoolCycle, SchoolLanguageSystem } from "@prisma/client";
 import {
-  IsEmail,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
 } from "class-validator";
 
 const SCHOOL_LOGO_URL_REGEX = /^https?:\/\/.+$/;
-const PHONE_PIN_REGEX = /^\d{6}$/;
 
 export class CreateSchoolDto {
   @IsString()
@@ -34,20 +33,9 @@ export class CreateSchoolDto {
   @IsEnum(SchoolLanguageSystem)
   languageSystem?: SchoolLanguageSystem;
 
-  @IsOptional()
-  @IsEmail()
-  schoolAdminEmail?: string;
-
-  @IsOptional()
   @IsString()
-  schoolAdminPhone?: string;
-
-  @IsOptional()
-  @IsString()
-  @Matches(PHONE_PIN_REGEX, {
-    message: "Le PIN doit contenir exactement 6 chiffres.",
-  })
-  schoolAdminPin?: string;
+  @IsNotEmpty()
+  primaryAdminUserId!: string;
 
   @IsOptional()
   @IsString()

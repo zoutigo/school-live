@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -9,6 +10,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentSchoolId } from "../auth/decorators/current-school-id.decorator.js";
 import { RolesGuard } from "../access/roles.guard.js";
 import { SchoolScopeGuard } from "../access/school-scope.guard.js";
@@ -35,8 +38,13 @@ export class SchoolUsersController {
   getDetail(
     @CurrentSchoolId() schoolId: string,
     @Param("userId") userId: string,
+    @CurrentUser() currentUser?: AuthenticatedUser,
   ) {
-    return this.schoolUsersService.getMemberDetail(schoolId, userId);
+    return this.schoolUsersService.getMemberDetail(
+      schoolId,
+      userId,
+      currentUser?.id,
+    );
   }
 
   @Patch(":userId/roles")
@@ -54,5 +62,18 @@ export class SchoolUsersController {
     @Param("userId") userId: string,
   ) {
     return this.schoolUsersService.resetMemberPin(schoolId, userId);
+  }
+
+  @Delete(":userId")
+  removeMember(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("userId") userId: string,
+  ) {
+    return this.schoolUsersService.removeMember(
+      schoolId,
+      currentUser.id,
+      userId,
+    );
   }
 }

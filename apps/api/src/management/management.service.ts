@@ -200,25 +200,13 @@ const createSchoolSchema = z
     languageSystem: z
       .enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"])
       .optional(),
-    schoolAdminEmail: z.string().trim().email().optional(),
-    schoolAdminPhone: z.string().trim().min(6).max(30).optional(),
-    schoolAdminPin: z
-      .string()
-      .trim()
-      .regex(/^\d{6}$/)
-      .optional(),
+    primaryAdminUserId: z.string().trim().min(1),
     logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
-  })
-  .refine(
-    (value) => Boolean(value.schoolAdminEmail || value.schoolAdminPhone),
-    { message: "Email ou telephone administrateur requis" },
-  )
-  .refine(
-    (value) =>
-      !(value.schoolAdminPhone && !value.schoolAdminEmail) ||
-      Boolean(value.schoolAdminPin),
-    { message: "PIN initial requis pour un administrateur cree par telephone" },
-  );
+  });
+
+const replacePrimaryAdminSchema = z.object({
+  userId: z.string().trim().min(1),
+});
 
 const updateSchoolSchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -862,6 +850,16 @@ export class ManagementService {
       );
     }
 
+    if (
+      parsed.role ||
+      parsed.platformRole !== undefined ||
+      parsed.platformRoles !== undefined ||
+      parsed.schoolRole !== undefined ||
+      parsed.schoolRoles !== undefined
+    ) {
+      await this.assertNotPrimaryAdmin(userId, "Modification des roles");
+    }
+
     const requestedPlatformRoles = parsed.platformRoles
       ? parsed.platformRoles
       : parsed.platformRole !== undefined
@@ -1006,6 +1004,8 @@ export class ManagementService {
         "Only SUPER_ADMIN can delete an ADMIN account",
       );
     }
+
+    await this.assertNotPrimaryAdmin(userId, "Suppression");
 
     await this.prisma.user.delete({
       where: { id: userId },
@@ -1188,6 +1188,7 @@ export class ManagementService {
         createdAt: true,
         updatedAt: true,
         activeSchoolYearId: true,
+        primaryAdminUserId: true,
         activeSchoolYear: {
           select: { id: true, label: true, startsAt: true, endsAt: true },
         },
@@ -1312,8 +1313,10 @@ export class ManagementService {
         parents: parentsCount,
         students: enrolledStudentsCount,
       },
+      primaryAdminUserId: school.primaryAdminUserId,
       schoolAdmins: school.memberships.map((membership) => ({
         id: membership.user.id,
+        isPrimary: membership.user.id === school.primaryAdminUserId,
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
         email: membership.user.email,
@@ -1564,6 +1567,16 @@ export class ManagementService {
     });
     if (!membership) {
       throw new NotFoundException("School admin membership not found");
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { primaryAdminUserId: true },
+    });
+    if (school?.primaryAdminUserId === adminUserId) {
+      throw new ConflictException(
+        "L'administrateur principal ne peut pas etre retire, seulement remplace",
+      );
     }
 
     const activeAdminCount = await this.prisma.schoolMembership.count({
@@ -2089,6 +2102,80 @@ export class ManagementService {
     });
   }
 
+  private async assertPlatformUser(
+    client: Pick<PrismaService, "user">,
+    userId: string,
+  ) {
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        platformRoles: { select: { role: true } },
+      },
+    });
+    if (!user) {
+      throw new NotFoundException("Platform user not found");
+    }
+    if (user.platformRoles.length === 0) {
+      throw new BadRequestException(
+        "L'administrateur principal doit etre un utilisateur de la plateforme",
+      );
+    }
+    return user;
+  }
+
+  private async assertNotPrimaryAdmin(userId: string, action: string) {
+    const schools = await this.prisma.school.findMany({
+      where: { primaryAdminUserId: userId },
+      select: { name: true },
+    });
+    if (schools.length > 0) {
+      throw new ConflictException(
+        `${action} impossible : cet utilisateur est administrateur principal de ${schools
+          .map((school) => school.name)
+          .join(", ")}. Remplacez-le d'abord.`,
+      );
+    }
+  }
+
+  async listPlatformUsers(search?: string) {
+    const term = search?.trim();
+    const users = await this.prisma.user.findMany({
+      where: {
+        platformRoles: { some: {} },
+        ...(term
+          ? {
+              OR: [
+                { firstName: { contains: term, mode: "insensitive" } },
+                { lastName: { contains: term, mode: "insensitive" } },
+                { email: { contains: term, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        platformRoles: { select: { role: true } },
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 50,
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      platformRoles: user.platformRoles.map((assignment) => assignment.role),
+    }));
+  }
+
   async createSchoolWithSchoolAdmin(payload: CreateSchoolDto) {
     const parsedResult = createSchoolSchema.safeParse(payload);
     if (!parsedResult.success) {
@@ -2098,12 +2185,11 @@ export class ManagementService {
     }
     const parsed = parsedResult.data;
 
+    const primaryAdmin = await this.assertPlatformUser(
+      this.prisma,
+      parsed.primaryAdminUserId,
+    );
     const generatedSlug = await this.generateAvailableSchoolSlug(parsed.name);
-
-    const adminEmail = parsed.schoolAdminEmail?.trim().toLowerCase() ?? null;
-    const adminPhone = parsed.schoolAdminPhone
-      ? this.normalizePhone(parsed.schoolAdminPhone)
-      : null;
 
     const schoolSelect = {
       id: true,
@@ -2115,188 +2201,120 @@ export class ManagementService {
       cycle: true,
       languageSystem: true,
       logoUrl: true,
+      primaryAdminUserId: true,
       createdAt: true,
       updatedAt: true,
     } as const;
 
-    const buildSchoolCreateInput = () => ({
-      slug: generatedSlug,
-      name: parsed.name,
-      country: parsed.country,
-      region: parsed.region,
-      city: parsed.city,
-      cycle: parsed.cycle,
-      languageSystem: parsed.languageSystem,
-      logoUrl: parsed.logoUrl,
-    });
-
-    const existingAdminUser = adminEmail
-      ? await this.prisma.user.findUnique({
-          where: { email: adminEmail },
-          select: { id: true, firstName: true, mustChangePassword: true },
-        })
-      : await this.prisma.user.findFirst({
-          where: { phone: adminPhone! },
-          select: { id: true, firstName: true, mustChangePassword: true },
-        });
-
-    if (existingAdminUser) {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const schoolYearLabel = this.getDefaultSchoolYearLabel();
-        const schoolYear = await tx.schoolYear.create({
-          data: {
-            label: schoolYearLabel,
-            school: { create: buildSchoolCreateInput() },
-          },
-          include: { school: { select: schoolSelect } },
-        });
-
-        const school = schoolYear.school;
-
-        await tx.school.update({
-          where: { id: school.id },
-          data: { activeSchoolYearId: schoolYear.id },
-        });
-
-        await tx.schoolMembership.create({
-          data: {
-            userId: existingAdminUser.id,
-            schoolId: school.id,
-            role: "SCHOOL_ADMIN",
-          },
-        });
-
-        return { school };
-      });
-
-      return {
-        school: result.school,
-        schoolAdmin: {
-          id: existingAdminUser.id,
-          email: adminEmail,
-          firstName: existingAdminUser.firstName,
-        },
-        userExisted: true,
-        setupCompleted: !existingAdminUser.mustChangePassword,
-      };
-    }
-
-    if (adminEmail) {
-      const derivedName = this.deriveNameFromEmail(adminEmail);
-      const generatedTemporaryPassword = this.generateTemporaryPassword();
-      const adminHash = await bcrypt.hash(generatedTemporaryPassword, 10);
-
-      const created = await this.prisma.$transaction(async (tx) => {
-        const schoolYearLabel = this.getDefaultSchoolYearLabel();
-        const schoolYear = await tx.schoolYear.create({
-          data: {
-            label: schoolYearLabel,
-            school: { create: buildSchoolCreateInput() },
-          },
-          include: { school: { select: schoolSelect } },
-        });
-
-        const school = schoolYear.school;
-
-        await tx.school.update({
-          where: { id: school.id },
-          data: { activeSchoolYearId: schoolYear.id },
-        });
-
-        const schoolAdmin = await tx.user.create({
-          data: {
-            firstName: derivedName.firstName,
-            lastName: derivedName.lastName,
-            email: adminEmail,
-            passwordHash: adminHash,
-            mustChangePassword: true,
-            profileCompleted: false,
-            memberships: {
-              create: {
-                schoolId: school.id,
-                role: "SCHOOL_ADMIN",
-              },
-            },
-          },
-        });
-
-        return { school, schoolAdmin };
-      });
-
-      await this.mailService.sendTemporaryPasswordEmail({
-        to: adminEmail,
-        firstName: derivedName.firstName,
-        temporaryPassword: generatedTemporaryPassword,
-        schoolSlug: created.school.slug,
-      });
-
-      return {
-        school: created.school,
-        schoolAdmin: created.schoolAdmin,
-        userExisted: false,
-        setupCompleted: false,
-      };
-    }
-
-    const initialPin = parsed.schoolAdminPin!.trim();
-    const pinHash = await bcrypt.hash(initialPin, 10);
-    const technicalEmail = this.buildTechnicalEmailFromPhone(
-      adminPhone!,
-      "school-admin",
-    );
-
-    const created = await this.prisma.$transaction(async (tx) => {
-      const schoolYearLabel = this.getDefaultSchoolYearLabel();
+    const school = await this.prisma.$transaction(async (tx) => {
       const schoolYear = await tx.schoolYear.create({
         data: {
-          label: schoolYearLabel,
-          school: { create: buildSchoolCreateInput() },
+          label: this.getDefaultSchoolYearLabel(),
+          school: {
+            create: {
+              slug: generatedSlug,
+              name: parsed.name,
+              country: parsed.country,
+              region: parsed.region,
+              city: parsed.city,
+              cycle: parsed.cycle,
+              languageSystem: parsed.languageSystem,
+              logoUrl: parsed.logoUrl,
+              primaryAdminUserId: primaryAdmin.id,
+            },
+          },
         },
         include: { school: { select: schoolSelect } },
       });
 
-      const school = schoolYear.school;
-
       await tx.school.update({
-        where: { id: school.id },
+        where: { id: schoolYear.school.id },
         data: { activeSchoolYearId: schoolYear.id },
       });
 
-      const schoolAdmin = await tx.user.create({
+      await tx.schoolMembership.create({
         data: {
-          firstName: "Administrateur",
-          lastName: adminPhone!.slice(-4),
-          email: technicalEmail,
-          phone: adminPhone!,
-          passwordHash: pinHash,
-          mustChangePassword: false,
-          profileCompleted: false,
-          activationStatus: "PENDING",
-          memberships: {
-            create: {
-              schoolId: school.id,
-              role: "SCHOOL_ADMIN",
-            },
-          },
+          userId: primaryAdmin.id,
+          schoolId: schoolYear.school.id,
+          role: "SCHOOL_ADMIN",
         },
       });
 
-      return { school, schoolAdmin };
+      return schoolYear.school;
     });
 
-    const activationCode = await this.issueActivationCode(
-      created.schoolAdmin.id,
-      created.school.id,
-      undefined,
-    );
+    return {
+      school,
+      schoolAdmin: {
+        id: primaryAdmin.id,
+        email: primaryAdmin.email,
+        firstName: primaryAdmin.firstName,
+        lastName: primaryAdmin.lastName,
+      },
+    };
+  }
+
+  async replacePrimaryAdmin(schoolId: string, payload: { userId: string }) {
+    const parsedResult = replacePrimaryAdminSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const { userId } = parsedResult.data;
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { id: true, primaryAdminUserId: true },
+    });
+    if (!school) {
+      throw new NotFoundException("School not found");
+    }
+    if (school.primaryAdminUserId === userId) {
+      throw new BadRequestException(
+        "Cet utilisateur est deja l'administrateur principal de l'ecole",
+      );
+    }
+
+    const newAdmin = await this.assertPlatformUser(this.prisma, userId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.schoolMembership.upsert({
+        where: {
+          userId_schoolId_role: {
+            userId: newAdmin.id,
+            schoolId,
+            role: "SCHOOL_ADMIN",
+          },
+        },
+        create: { userId: newAdmin.id, schoolId, role: "SCHOOL_ADMIN" },
+        update: {},
+      });
+
+      if (school.primaryAdminUserId) {
+        await tx.schoolMembership.deleteMany({
+          where: {
+            schoolId,
+            userId: school.primaryAdminUserId,
+            role: "SCHOOL_ADMIN",
+          },
+        });
+      }
+
+      await tx.school.update({
+        where: { id: schoolId },
+        data: { primaryAdminUserId: newAdmin.id },
+      });
+    });
 
     return {
-      school: created.school,
-      schoolAdmin: created.schoolAdmin,
-      userExisted: false,
-      setupCompleted: false,
-      activationRequired: true,
-      activationCode,
+      success: true,
+      primaryAdmin: {
+        id: newAdmin.id,
+        firstName: newAdmin.firstName,
+        lastName: newAdmin.lastName,
+        email: newAdmin.email,
+      },
     };
   }
 
