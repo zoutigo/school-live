@@ -1,5 +1,6 @@
 "use client";
 
+import { useSchoolReadOnly } from "../layout/school-read-only-context";
 import { useEffect, useState } from "react";
 import {
   Archive,
@@ -94,13 +95,14 @@ function getFolderLabel(folder: FolderKey, t: TranslateFn) {
 export function MessagingMailboxView({
   client,
   contextLabel,
-  canCompose,
+  canCompose: canComposeProp,
   initialFolder = "inbox",
   initialSearch = "",
   onOpenCompose,
   onOpenComposeFromMessage,
   onOpenMessage,
 }: Props) {
+  const canCompose = canComposeProp && !useSchoolReadOnly();
   const { t } = useTranslation();
 
   const [folder, setFolder] = useState<FolderKey>(initialFolder);

@@ -64,6 +64,7 @@ model School {
   feedLikes          FeedLike[]
   feedPollVotes      FeedPollVote[]
   activationCodes    ActivationCode[]
+  memberExclusions   SchoolMemberExclusion[]
   authAuditLogs      AuthAuditLog[]
   timetableSlots     ClassTimetableSlot[]
   timetableOneOffSlots ClassTimetableOneOffSlot[]
@@ -144,6 +145,7 @@ model User {
   phoneCredential    UserPhoneCredential?
   emailVerificationTokens EmailVerificationToken[]
   activationCodes    ActivationCode[]         @relation("ActivationCodeUser")
+  schoolExclusions   SchoolMemberExclusion[]  @relation("ExclusionUser")
   createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
   authAuditLogs      AuthAuditLog[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
@@ -394,4 +396,29 @@ model EmailVerificationToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// Trace d'une sortie complète d'un membre de l'école (exclusion). La ligne
+/// "courante" est celle dont `reinvitedAt` est null. Le droit d'accès réel reste
+/// porté par `SchoolMembership` (enseignant, parent, staff : supprimé) et
+/// `Enrollment.status = WITHDRAWN` (élève) ; cette table sert à l'historique,
+/// à l'affichage des exclus et à la réinvitation.
+model SchoolMemberExclusion {
+  id               String       @id @default(cuid())
+  schoolId         String
+  userId           String?
+  studentId        String?
+  rolesSnapshot    SchoolRole[]
+  reason           String?
+  excludedAt       DateTime     @default(now())
+  excludedByUserId String?
+  reinvitedAt      DateTime?
+  reinvitedByUserId String?
+  school           School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user             User?        @relation("ExclusionUser", fields: [userId], references: [id], onDelete: Cascade)
+  student          Student?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, reinvitedAt])
+  @@index([userId])
+  @@index([studentId])
 }

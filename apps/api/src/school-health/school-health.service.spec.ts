@@ -65,6 +65,16 @@ describe("SchoolHealthService", () => {
       );
     });
 
+    it("n'inclut jamais les élèves exclus (WITHDRAWN) de l'année active", async () => {
+      await service.listStudents(SCHOOL_ID);
+      const args = prisma.student.findMany.mock.calls[0][0];
+      expect(args.where.NOT).toEqual({
+        enrollments: {
+          some: { schoolYearId: SCHOOL_YEAR_ID, status: "WITHDRAWN" },
+        },
+      });
+    });
+
     it("calcule skip/take à partir de page/limit demandés", async () => {
       await service.listStudents(SCHOOL_ID, { page: 3, limit: 10 });
       expect(prisma.student.findMany).toHaveBeenCalledWith(
@@ -232,8 +242,26 @@ describe("SchoolHealthService", () => {
       const groupByArgs =
         prisma.studentHealthCondition.groupBy.mock.calls[0][0];
       expect(groupByArgs.where.student).toEqual({
+        NOT: {
+          enrollments: {
+            some: { schoolYearId: SCHOOL_YEAR_ID, status: "WITHDRAWN" },
+          },
+        },
         enrollments: {
           some: { classId: CLASS_ID, schoolYearId: SCHOOL_YEAR_ID },
+        },
+      });
+    });
+
+    it("écarte les élèves exclus (WITHDRAWN) des agrégats, même sans filtre classe", async () => {
+      await service.getStats(SCHOOL_ID);
+      const groupByArgs =
+        prisma.studentHealthCondition.groupBy.mock.calls[0][0];
+      expect(groupByArgs.where.student).toEqual({
+        NOT: {
+          enrollments: {
+            some: { schoolYearId: SCHOOL_YEAR_ID, status: "WITHDRAWN" },
+          },
         },
       });
     });

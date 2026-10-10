@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { FamilyFeedPage } from "./family-feed-page";
+import { SchoolReadOnlyContext } from "../layout/school-read-only-context";
 
 function getPostCard(title: string) {
   const titleNode = screen.getAllByText(title)[0];
@@ -126,5 +127,38 @@ describe("FamilyFeedPage — readOnly (parent viewing a child's class feed)", ()
     expect(
       screen.queryByRole("button", { name: "Supprimer la publication" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("FamilyFeedPage — lecture seule héritée du contexte école (élève/parent exclu)", () => {
+  it("masque les déclencheurs de publication sans prop readOnly explicite", () => {
+    render(
+      <SchoolReadOnlyContext.Provider value={true}>
+        <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />
+      </SchoolReadOnlyContext.Provider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Publier une info" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Realiser un sondage" }),
+    ).not.toBeInTheDocument();
+    const postCard = getPostCard("Semaine culturelle - programme final");
+    expect(
+      within(postCard).getByRole("button", { name: /Aimer/ }),
+    ).toBeDisabled();
+  });
+
+  it("garde le fil interactif quand le contexte n'est pas en lecture seule", () => {
+    render(
+      <SchoolReadOnlyContext.Provider value={false}>
+        <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />
+      </SchoolReadOnlyContext.Provider>,
+    );
+    const postCard = getPostCard("Semaine culturelle - programme final");
+    expect(
+      within(postCard).getByRole("button", { name: /Aimer/ }),
+    ).toBeEnabled();
   });
 });

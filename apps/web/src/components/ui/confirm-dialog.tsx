@@ -12,6 +12,7 @@ type Props = {
   confirmLabel?: string;
   cancelLabel?: string;
   loading?: boolean;
+  children?: React.ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   loading = false,
+  children,
   onConfirm,
   onCancel,
 }: Props) {
@@ -73,6 +75,7 @@ export function ConfirmDialog({
           {title}
         </h2>
         <p className="mt-2 text-sm text-text-secondary">{message}</p>
+        {children ? <div className="mt-4">{children}</div> : null}
         <div className="mt-5 flex justify-end gap-2">
           <Button
             type="button"

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { isStudentExcludedInSchool } from "../common/school-member-status.util.js";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import bcrypt from "bcryptjs";
@@ -171,6 +172,10 @@ export class StudentManagementService {
     subject: string,
   ): Promise<void> {
     try {
+      // Élève exclu : ses parents ne sont plus notifiés.
+      if (await isStudentExcludedInSchool(this.prisma, schoolId, studentId)) {
+        return;
+      }
       const parentLinks = await this.prisma.parentStudent.findMany({
         where: { studentId, schoolId },
         select: { parentUserId: true },

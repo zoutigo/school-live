@@ -39,6 +39,7 @@ const makePrismaMock = () => ({
     upsert: jest.fn(),
   },
   evaluationAuditLog: { create: jest.fn() },
+  studentEvaluationScore: { groupBy: jest.fn().mockResolvedValue([]) },
   subject: { findFirst: jest.fn(), findMany: jest.fn() },
   subjectBranch: { findFirst: jest.fn(), findMany: jest.fn() },
   teacherClassSubject: { findFirst: jest.fn(), findMany: jest.fn() },
@@ -530,6 +531,123 @@ describe("EvaluationsService", () => {
       expect(result[2].class.studentsCount).toBe(30);
       // Une classe partagée par plusieurs évaluations n'est comptée qu'une fois.
       expect(prisma.enrollment.count).toHaveBeenCalledTimes(2);
+    });
+
+    it("ne compte pas les notes des élèves exclus : le décompte vient de l'effectif ACTIVE (une requête par classe/année)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-a",
+          _count: { scores: 2 }, // brut : inclut la note d'un élève exclu
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-1" },
+        }),
+        makeEvaluation({
+          id: "eval-b",
+          _count: { scores: 1 },
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-1" },
+        }),
+      ]);
+      prisma.studentEvaluationScore.groupBy.mockResolvedValue([
+        { evaluationId: "eval-a", _count: { _all: 1 } },
+      ]);
+
+      const result = await service.listSchoolEvaluations(
+        makeUser(),
+        "school-1",
+        {},
+      );
+
+      expect(result[0]._count.scores).toBe(1);
+      // Aucune ligne pour eval-b : 0 note d'un élève actif.
+      expect(result[1]._count.scores).toBe(0);
+      expect(prisma.studentEvaluationScore.groupBy).toHaveBeenCalledTimes(1);
+      expect(prisma.studentEvaluationScore.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          by: ["evaluationId"],
+          where: {
+            evaluationId: { in: ["eval-a", "eval-b"] },
+            student: {
+              enrollments: {
+                some: {
+                  schoolId: "school-1",
+                  classId: "class-9",
+                  schoolYearId: "year-1",
+                  status: "ACTIVE",
+                },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it("interroge une fois par couple classe/année distinct", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-a",
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-1" },
+        }),
+        makeEvaluation({
+          id: "eval-c",
+          class: { id: "class-10", name: "5ème C", schoolYearId: "year-1" },
+        }),
+      ]);
+      prisma.studentEvaluationScore.groupBy.mockImplementation(
+        ({ where }: { where: { evaluationId: { in: string[] } } }) =>
+          Promise.resolve(
+            where.evaluationId.in.map((evaluationId) => ({
+              evaluationId,
+              _count: { _all: evaluationId === "eval-a" ? 12 : 7 },
+            })),
+          ),
+      );
+
+      const result = await service.listSchoolEvaluations(
+        makeUser(),
+        "school-1",
+        {},
+      );
+
+      expect(prisma.studentEvaluationScore.groupBy).toHaveBeenCalledTimes(2);
+      expect(result.map((r) => r._count.scores)).toEqual([12, 7]);
+    });
+
+    it("la liste d'une classe applique le même décompte actif", async () => {
+      prisma.class.findFirst.mockResolvedValue({
+        id: "class-1",
+        name: "6ème A",
+        schoolYearId: "year-1",
+      });
+      prisma.teacherClassSubject.findMany.mockResolvedValue([]);
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ id: "eval-1", _count: { scores: 5 } }),
+      ]);
+      prisma.studentEvaluationScore.groupBy.mockResolvedValue([
+        { evaluationId: "eval-1", _count: { _all: 4 } },
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0]._count.scores).toBe(4);
+    });
+
+    it("propage l'erreur si le décompte des notes échoue (pas de valeur silencieusement fausse)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-a",
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-1" },
+        }),
+      ]);
+      prisma.studentEvaluationScore.groupBy.mockRejectedValue(
+        new Error("db down"),
+      );
+
+      await expect(
+        service.listSchoolEvaluations(makeUser(), "school-1", {}),
+      ).rejects.toThrow("db down");
     });
 
     it("refuse l'accès à un utilisateur sans rôle admin/manager/supervisor sur l'école", async () => {

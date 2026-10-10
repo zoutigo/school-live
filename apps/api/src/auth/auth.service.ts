@@ -25,6 +25,7 @@ import type {
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
 import { MailService } from "../mail/mail.service.js";
+import { isReadOnlySchoolMember } from "../common/school-member-status.util.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
   AuthenticatedUser,
@@ -3673,6 +3674,8 @@ export class AuthService {
       schoolName: string | null;
       referentClass: { name: string } | null;
       onboardingHelpEnabled: boolean;
+      /** Élève exclu (ou parent dont tous les enfants sont exclus) : lecture seule. */
+      schoolReadOnly: boolean;
       linkedStudents?: Array<{
         id: string;
         firstName: string;
@@ -3770,6 +3773,13 @@ export class AuthService {
       schoolRoles,
     );
 
+    const schoolReadOnly = await isReadOnlySchoolMember(
+      this.prisma,
+      schoolId,
+      user.id,
+      schoolRoles,
+    );
+
     return {
       id: user.id,
       platformRoles,
@@ -3791,6 +3801,7 @@ export class AuthService {
       schoolName: user.memberships[0]?.school?.name ?? null,
       referentClass: user.referentOfClasses?.[0] ?? null,
       onboardingHelpEnabled: user.onboardingHelpEnabled,
+      schoolReadOnly,
       linkedStudents: user.parentLinks.map((link) => ({
         id: link.student.id,
         firstName: link.student.firstName,

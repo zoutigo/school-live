@@ -192,9 +192,11 @@ describe("SchoolUsersService", () => {
       // on vérifie que prisma.user.findMany a été appelé avec le bon where
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            memberships: { some: { schoolId: SCHOOL_ID } },
-          }),
+          where: {
+            AND: expect.arrayContaining([
+              { memberships: { some: { schoolId: SCHOOL_ID } } },
+            ]),
+          },
         }),
       );
     });
@@ -229,9 +231,13 @@ describe("SchoolUsersService", () => {
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            memberships: { some: { schoolId: SCHOOL_ID, role: "TEACHER" } },
-          }),
+          where: {
+            AND: expect.arrayContaining([
+              {
+                memberships: { some: { schoolId: SCHOOL_ID, role: "TEACHER" } },
+              },
+            ]),
+          },
         }),
       );
     });
@@ -281,9 +287,13 @@ describe("SchoolUsersService", () => {
       expect(result.data.every((u) => u.roles.includes("STUDENT"))).toBe(true);
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            memberships: { some: { schoolId: SCHOOL_ID, role: "STUDENT" } },
-          }),
+          where: {
+            AND: expect.arrayContaining([
+              {
+                memberships: { some: { schoolId: SCHOOL_ID, role: "STUDENT" } },
+              },
+            ]),
+          },
         }),
       );
     });

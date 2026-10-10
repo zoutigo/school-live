@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ENROLLMENT_VIEWABLE_STATUSES } from "../common/school-member-status.util.js";
 import {
   EvaluationStatus,
   Sequence,
@@ -202,8 +203,60 @@ export class EvaluationsService {
    * ligne d'évaluation, dérivé des inscriptions ACTIVE de la classe pour
    * l'année scolaire concernée.
    */
+  private async countActiveRosterScores(
+    schoolId: string,
+    evaluations: Array<{
+      id: string;
+      class: { id: string; schoolYearId: string };
+    }>,
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    const byPair = new Map<
+      string,
+      { classId: string; schoolYearId: string; ids: string[] }
+    >();
+    for (const evaluation of evaluations) {
+      const key = `${evaluation.class.id}:${evaluation.class.schoolYearId}`;
+      const entry = byPair.get(key) ?? {
+        classId: evaluation.class.id,
+        schoolYearId: evaluation.class.schoolYearId,
+        ids: [],
+      };
+      entry.ids.push(evaluation.id);
+      byPair.set(key, entry);
+    }
+    await Promise.all(
+      Array.from(byPair.values()).map(async (pair) => {
+        const rows = await this.prisma.studentEvaluationScore.groupBy({
+          by: ["evaluationId"],
+          where: {
+            evaluationId: { in: pair.ids },
+            student: {
+              enrollments: {
+                some: {
+                  schoolId,
+                  classId: pair.classId,
+                  schoolYearId: pair.schoolYearId,
+                  status: "ACTIVE",
+                },
+              },
+            },
+          },
+          _count: { _all: true },
+        });
+        for (const row of rows) {
+          result.set(row.evaluationId, row._count._all);
+        }
+      }),
+    );
+    return result;
+  }
+
   private async attachStudentsCounts<
-    T extends { class: { id: string; name: string; schoolYearId: string } },
+    T extends {
+      id: string;
+      class: { id: string; name: string; schoolYearId: string };
+    },
   >(
     schoolId: string,
     evaluations: T[],
@@ -242,10 +295,18 @@ export class EvaluationsService {
       }),
     );
 
+    // Les notes d'un élève exclu ne comptent plus dans la complétude : on
+    // ne retient que celles des élèves de l'effectif actif de la classe.
+    const scoresCounts = await this.countActiveRosterScores(
+      schoolId,
+      evaluations,
+    );
+
     return evaluations.map((evaluation) => {
       const { class: classEntity, ...rest } = evaluation;
       return {
         ...rest,
+        _count: { scores: scoresCounts.get(evaluation.id) ?? 0 },
         class: {
           id: classEntity.id,
           name: classEntity.name,
@@ -1094,7 +1155,13 @@ export class EvaluationsService {
     }
 
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { schoolId, studentId, status: "ACTIVE", classId: { not: null } },
+      where: {
+        schoolId,
+        studentId,
+        // Élève exclu : l'historique de notes reste consultable.
+        status: { in: [...ENROLLMENT_VIEWABLE_STATUSES] },
+        classId: { not: null },
+      },
       orderBy: [{ schoolYear: { label: "desc" } }],
       select: {
         classId: true,

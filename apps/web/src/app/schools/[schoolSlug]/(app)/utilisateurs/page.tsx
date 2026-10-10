@@ -60,6 +60,9 @@ type SchoolUserItem = {
   activationStatus: ActivationStatus;
   profileCompleted: boolean;
   createdAt: string;
+  excluded?: boolean;
+  excludedAt?: string;
+  exclusionReason?: string | null;
 };
 
 type StudentOnlyItem = {
@@ -75,7 +78,14 @@ type StudentOnlyItem = {
   activationStatus: null;
   profileCompleted: false;
   createdAt: string;
+  excluded?: boolean;
+  excludedAt?: string;
+  exclusionReason?: string | null;
 };
+
+type MembershipFilter = "active" | "excluded";
+
+const EXCLUSION_REASON_MAX = 500;
 
 type SchoolMember = SchoolUserItem | StudentOnlyItem;
 
@@ -2602,6 +2612,11 @@ function UserDetailPanel({
   const [assignParentOpen, setAssignParentOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [excludeOpen, setExcludeOpen] = useState(false);
+  // "unassign" = retirer l'élève de sa classe ; "exclude" = sortie complète de l'école.
+  const [excludeMode, setExcludeMode] = useState<"unassign" | "exclude">(
+    "exclude",
+  );
+  const [excludeReason, setExcludeReason] = useState("");
   const [excluding, setExcluding] = useState(false);
   const [credentials, setCredentials] = useState<{
     username: string | null;
@@ -2704,24 +2719,56 @@ function UserDetailPanel({
     detail && member.type === "user" ? (detail as SchoolUserDetail) : null;
   const isStudentOnlyRole =
     member.roles.length > 0 && member.roles.every((role) => role === "STUDENT");
-  const canRemove =
+  const canExclude =
+    member.type === "student-only" ||
+    (member.type === "user" &&
+      Boolean(userDetail) &&
+      !userDetail?.isPrimaryAdmin &&
+      !userDetail?.isSelf);
+  const canUnassignClass =
     member.type === "user" &&
     Boolean(userDetail) &&
-    !userDetail?.isPrimaryAdmin &&
+    isStudentOnlyRole &&
     !userDetail?.isSelf &&
-    (!isStudentOnlyRole || Boolean(userDetail?.hasActiveClass));
+    Boolean(userDetail?.hasActiveClass);
+  const isStudentMember = member.roles.includes("STUDENT");
+  const reasonTooLong = excludeReason.length > EXCLUSION_REASON_MAX;
+
+  function openExclude(mode: "unassign" | "exclude") {
+    setExcludeMode(mode);
+    setExcludeReason("");
+    setExcludeOpen(true);
+  }
 
   async function handleExclude() {
+    if (excludeMode === "exclude" && reasonTooLong) return;
     const csrf = getCsrfTokenCookie();
     setExcluding(true);
     try {
-      await apiFetch(`/schools/${schoolSlug}/users/${member.id}`, {
-        method: "DELETE",
-        headers: { "X-CSRF-Token": csrf ?? "" },
-      });
+      if (excludeMode === "unassign") {
+        await apiFetch(`/schools/${schoolSlug}/users/${member.id}`, {
+          method: "DELETE",
+          headers: { "X-CSRF-Token": csrf ?? "" },
+        });
+      } else {
+        const path =
+          member.type === "student-only"
+            ? `/schools/${schoolSlug}/users/students/${member.studentId}/exclude`
+            : `/schools/${schoolSlug}/users/${member.id}/exclude`;
+        await apiFetch(path, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrf ?? "",
+          },
+          body: JSON.stringify(
+            excludeReason.trim() ? { reason: excludeReason.trim() } : {},
+          ),
+        });
+      }
       setExcludeOpen(false);
       onRefreshList();
-      if (isStudentOnlyRole) {
+      if (excludeMode === "unassign") {
         void loadDetail();
         onShowToast(
           t("users.unassignClass.success").replace("{name}", fullName),
@@ -2885,21 +2932,36 @@ function UserDetailPanel({
                     onClick={() => void handleResetPin()}
                   />
                 ) : null}
-                {canRemove ? (
+                {canUnassignClass ? (
                   <ActionBtn
                     icon={<UserMinus size={12} />}
-                    label={
-                      isStudentOnlyRole
-                        ? t("users.actions.unassignClass")
-                        : t("users.actions.exclude")
-                    }
+                    label={t("users.actions.unassignClass")}
+                    color="#B42318"
+                    data-testid="action-unassign-class"
+                    onClick={() => openExclude("unassign")}
+                  />
+                ) : null}
+                {canExclude ? (
+                  <ActionBtn
+                    icon={<UserMinus size={12} />}
+                    label={t("users.actions.exclude")}
                     color="#B42318"
                     data-testid="action-exclude"
-                    onClick={() => setExcludeOpen(true)}
+                    onClick={() => openExclude("exclude")}
                   />
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-warm-border pt-3">
+                <ActionBtn
+                  icon={<UserMinus size={12} />}
+                  label={t("users.actions.exclude")}
+                  color="#B42318"
+                  data-testid="action-exclude"
+                  onClick={() => openExclude("exclude")}
+                />
+              </div>
+            )}
           </div>
 
           {/* Role sections */}
@@ -3011,23 +3073,53 @@ function UserDetailPanel({
       <ConfirmDialog
         open={excludeOpen}
         title={
-          isStudentOnlyRole
+          excludeMode === "unassign"
             ? t("users.unassignClass.title")
             : t("users.exclude.title")
         }
-        message={(isStudentOnlyRole
+        message={(excludeMode === "unassign"
           ? t("users.unassignClass.message")
-          : t("users.exclude.message")
-        ).replace("{name}", fullName)}
+          : isStudentMember
+            ? t("users.exclude.messageStudent")
+            : t("users.exclude.messageStaff")
+        ).replace(/\{name\}/g, fullName)}
         confirmLabel={
-          isStudentOnlyRole
+          excludeMode === "unassign"
             ? t("users.unassignClass.confirm")
             : t("users.exclude.confirm")
         }
         loading={excluding}
         onConfirm={() => void handleExclude()}
         onCancel={() => setExcludeOpen(false)}
-      />
+      >
+        {excludeMode === "exclude" ? (
+          <div>
+            <label
+              htmlFor="exclude-reason"
+              className="mb-1 block text-xs font-semibold text-text-secondary"
+            >
+              {t("users.exclude.reasonLabel")}
+            </label>
+            <textarea
+              id="exclude-reason"
+              data-testid="exclude-reason-input"
+              value={excludeReason}
+              rows={2}
+              onChange={(e) => setExcludeReason(e.target.value)}
+              placeholder={t("users.exclude.reasonPlaceholder")}
+              className="w-full rounded-xl border border-warm-border bg-background px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/60"
+            />
+            {reasonTooLong ? (
+              <p
+                className="mt-1 text-xs text-red-600"
+                data-testid="exclude-reason-error"
+              >
+                {t("users.exclude.reasonTooLong")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </ConfirmDialog>
       {member.type === "user" && editRolesOpen ? (
         <EditRolesModal
           schoolSlug={schoolSlug}
@@ -3114,6 +3206,9 @@ export default function UtilisateursPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
   const [accountFilter, setAccountFilter] = useState<AccountFilter>("ALL");
+  const [membershipFilter, setMembershipFilter] =
+    useState<MembershipFilter>("active");
+  const [reinvitingId, setReinvitingId] = useState<string | null>(null);
   const [schoolYearId, setSchoolYearId] = useState("");
   const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [selected, setSelected] = useState<SchoolMember | null>(null);
@@ -3156,9 +3251,16 @@ export default function UtilisateursPage() {
         });
         if (effectiveSearch.trim()) q.set("search", effectiveSearch.trim());
         if (roleFilter !== "ALL") q.set("role", roleFilter);
+        if (membershipFilter === "excluded") {
+          q.set("membershipStatus", "excluded");
+        }
         if (accountFilter === "WITH_ACCOUNT") q.set("hasAccount", "true");
         if (accountFilter === "WITHOUT_ACCOUNT") q.set("hasAccount", "false");
-        if (schoolYearId && yearFilterApplies(roleFilter)) {
+        if (
+          schoolYearId &&
+          yearFilterApplies(roleFilter) &&
+          membershipFilter === "active"
+        ) {
           q.set("schoolYearId", schoolYearId);
         }
 
@@ -3182,12 +3284,48 @@ export default function UtilisateursPage() {
         setLoadingMore(false);
       }
     },
-    [schoolSlug, roleFilter, accountFilter, schoolYearId, search, t],
+    [
+      schoolSlug,
+      roleFilter,
+      accountFilter,
+      membershipFilter,
+      schoolYearId,
+      search,
+      t,
+    ],
   );
 
   useEffect(() => {
     void loadUsers({ reset: true });
-  }, [roleFilter, accountFilter, schoolYearId]);
+  }, [roleFilter, accountFilter, membershipFilter, schoolYearId]);
+
+  function handleMembershipFilterChange(value: MembershipFilter) {
+    if (value === membershipFilter) return;
+    setSelected(null);
+    setMembershipFilter(value);
+  }
+
+  async function handleReinvite(member: SchoolMember) {
+    const name = `${member.lastName} ${member.firstName}`.trim();
+    const csrf = getCsrfTokenCookie();
+    setReinvitingId(member.id);
+    try {
+      const path =
+        member.type === "student-only"
+          ? `/schools/${schoolSlug}/users/students/${member.studentId}/reinvite`
+          : `/schools/${schoolSlug}/users/${member.id}/reinvite`;
+      await apiFetch(path, {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrf ?? "" },
+      });
+      showToast(t("users.reinvite.success").replace("{name}", name), "success");
+      void loadUsers({ reset: true });
+    } catch (err) {
+      showToast(extractError(err) || t("users.reinvite.failed"), "error");
+    } finally {
+      setReinvitingId(null);
+    }
+  }
 
   function handleSearchChange(val: string) {
     setSearch(val);
@@ -3226,7 +3364,7 @@ export default function UtilisateursPage() {
               {t("users.subtitle")}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap">
             {total > 0 ? (
               <span
                 className="rounded-full border border-warm-border bg-warm-surface px-3 py-1 text-xs font-semibold text-text-secondary"
@@ -3290,6 +3428,36 @@ export default function UtilisateursPage() {
                   <XCircle size={16} />
                 </button>
               ) : null}
+            </div>
+
+            <div
+              role="group"
+              aria-label={t("users.membership.label")}
+              className="flex gap-1.5"
+              data-testid="users-membership-filter"
+            >
+              {(["active", "excluded"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={membershipFilter === value}
+                  data-testid={`membership-filter-${value}`}
+                  onClick={() => handleMembershipFilterChange(value)}
+                  className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition-all ${
+                    membershipFilter === value
+                      ? value === "excluded"
+                        ? "border-[#B42318] bg-[#B42318] text-white shadow-sm"
+                        : "border-primary bg-primary text-white shadow-sm"
+                      : "border-warm-border bg-warm-surface text-text-secondary hover:border-primary/60 hover:text-primary"
+                  }`}
+                >
+                  {t(
+                    value === "active"
+                      ? "users.membership.active"
+                      : "users.membership.excluded",
+                  )}
+                </button>
+              ))}
             </div>
 
             <div
@@ -3368,21 +3536,92 @@ export default function UtilisateursPage() {
               >
                 <Users size={40} className="mb-3 text-text-secondary/30" />
                 <p className="text-sm font-semibold text-text-secondary">
-                  {search || roleFilter !== "ALL"
-                    ? t("users.empty.title")
-                    : t("users.empty.noUsers")}
+                  {membershipFilter === "excluded"
+                    ? t("users.empty.excludedTitle")
+                    : search || roleFilter !== "ALL"
+                      ? t("users.empty.title")
+                      : t("users.empty.noUsers")}
                 </p>
                 <p className="mt-1 text-xs text-text-secondary/60">
-                  {search || roleFilter !== "ALL"
-                    ? t("users.empty.message")
-                    : t("users.empty.noUsersMsg")}
+                  {membershipFilter === "excluded"
+                    ? t("users.empty.excludedMessage")
+                    : search || roleFilter !== "ALL"
+                      ? t("users.empty.message")
+                      : t("users.empty.noUsersMsg")}
                 </p>
               </div>
             ) : (
               <>
+                {membershipFilter === "excluded" ? (
+                  <p
+                    className="border-b border-warm-border/50 bg-[#FEF3F2] px-4 py-2 text-xs text-[#B42318]"
+                    data-testid="users-excluded-hint"
+                  >
+                    {t("users.excluded.hint")}
+                  </p>
+                ) : null}
                 {users.map((u) => {
                   const isActive = selected?.id === u.id;
                   const name = `${u.lastName} ${u.firstName}`.trim();
+                  if (u.excluded) {
+                    return (
+                      <div
+                        key={u.id}
+                        data-testid={`user-card-${u.id}`}
+                        data-excluded="true"
+                        className="w-full border-b border-warm-border/50 border-l-2 border-l-[#B42318] bg-[#FEF3F2]/60 px-4 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-text-secondary line-through decoration-[#B42318]/40">
+                              {name}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1 opacity-70">
+                              {u.roles.map((r) => (
+                                <RoleBadge
+                                  key={r}
+                                  role={r as SchoolRole}
+                                  t={t}
+                                />
+                              ))}
+                            </div>
+                            <p
+                              className="mt-1.5 text-[11px] font-semibold text-[#B42318]"
+                              data-testid={`user-excluded-since-${u.id}`}
+                            >
+                              {t("users.excluded.since").replace(
+                                "{date}",
+                                u.excludedAt
+                                  ? new Date(u.excludedAt).toLocaleDateString()
+                                  : "—",
+                              )}
+                            </p>
+                            {u.exclusionReason ? (
+                              <p className="mt-0.5 text-[11px] text-text-secondary">
+                                {t("users.excluded.reason").replace(
+                                  "{reason}",
+                                  u.exclusionReason,
+                                )}
+                              </p>
+                            ) : null}
+                          </div>
+                          <span className="shrink-0 rounded-full bg-[#B42318]/10 px-2 py-0.5 text-[10px] font-semibold text-[#B42318]">
+                            {t("users.excluded.badge")}
+                          </span>
+                        </div>
+                        <div className="mt-2">
+                          <ActionBtn
+                            icon={<UserPlus size={12} />}
+                            label={t("users.actions.reinvite")}
+                            color="#08467D"
+                            data-testid={`action-reinvite-${u.id}`}
+                            disabled={reinvitingId === u.id}
+                            onClick={() => void handleReinvite(u)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <button
                       key={u.id}

@@ -372,10 +372,7 @@ export class BadgesService {
         authorUserId: teacherUserId,
         status: "PUBLISHED",
       },
-      select: {
-        schoolYearId: true,
-        _count: { select: { scores: true } },
-      },
+      select: { id: true, schoolYearId: true },
     });
     if (evaluations.length === 0) {
       return 0;
@@ -398,7 +395,24 @@ export class BadgesService {
         rosterCountBySchoolYear.set(evaluation.schoolYearId, rosterCount);
       }
 
-      total += Math.max(0, rosterCount - evaluation._count.scores);
+      // Seules les notes des élèves de l'effectif actif comptent (un élève
+      // exclu n'est plus à noter, même s'il avait déjà une note).
+      const scoredActive = await this.prisma.studentEvaluationScore.count({
+        where: {
+          evaluationId: evaluation.id,
+          student: {
+            enrollments: {
+              some: {
+                schoolId,
+                classId,
+                schoolYearId: evaluation.schoolYearId,
+                status: "ACTIVE",
+              },
+            },
+          },
+        },
+      });
+      total += Math.max(0, rosterCount - scoredActive);
     }
 
     return total;

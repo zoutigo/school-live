@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { notExcludedStudentFilter } from "../common/school-member-status.util.js";
 import type { Prisma, StudentHealthAlertLevel } from "@prisma/client";
 import { computeAgeInYears } from "../common/age.util.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -44,6 +45,7 @@ export class SchoolHealthService {
 
     const where: Prisma.StudentWhereInput = {
       schoolId,
+      ...notExcludedStudentFilter(activeSchoolYearId),
       ...(query.search
         ? {
             OR: [
@@ -180,8 +182,10 @@ export class SchoolHealthService {
     }
     const activeSchoolYearId = await this.getActiveSchoolYearId(schoolId);
 
+    const notExcluded = notExcludedStudentFilter(activeSchoolYearId);
     const studentScope: Prisma.StudentWhereInput | undefined = query.classId
       ? {
+          ...notExcluded,
           enrollments: {
             some: {
               classId: query.classId,
@@ -191,7 +195,9 @@ export class SchoolHealthService {
             },
           },
         }
-      : undefined;
+      : activeSchoolYearId
+        ? notExcluded
+        : undefined;
 
     const conditionWhereBase: Prisma.StudentHealthConditionWhereInput = {
       schoolId,

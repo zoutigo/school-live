@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader, APP_HEADER_MENU_TOUR_TARGET } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
+import { SchoolReadOnlyContext } from "./school-read-only-context";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { HelpDialog } from "../ui/help-dialog";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
@@ -66,6 +67,8 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [schoolReadOnly, setSchoolReadOnly] = useState(false);
+  const [readOnlyBlocked, setReadOnlyBlocked] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
@@ -109,6 +112,77 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
       // Keep shell usable even when API is temporarily unreachable.
     }
   }
+
+  const activeAppRole = me?.activeRole ?? me?.role ?? null;
+  const mayBeReadOnly =
+    activeAppRole === "STUDENT" || activeAppRole === "PARENT";
+
+  useEffect(() => {
+    // Seuls un élève exclu (ou un parent dont tous les enfants le sont) passent
+    // en lecture seule : on évite l'appel pour tous les autres rôles.
+    if (!schoolSlug || !mayBeReadOnly) {
+      setSchoolReadOnly(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`${API_URL}/schools/${schoolSlug}/me`, {
+          credentials: "include",
+        });
+        if (!response.ok || cancelled) return;
+        const payload = (await response.json()) as {
+          schoolReadOnly?: boolean;
+        };
+        if (!cancelled) setSchoolReadOnly(payload.schoolReadOnly === true);
+      } catch {
+        // Bannière purement informative : on ignore les erreurs réseau.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, mayBeReadOnly]);
+
+  useEffect(() => {
+    // Filet de sécurité : si une écriture est tout de même tentée en lecture
+    // seule (le serveur la refuse en 403 SCHOOL_MEMBER_READ_ONLY), on l'explique
+    // clairement plutôt que de laisser la page afficher une erreur générique.
+    if (!schoolReadOnly || typeof window === "undefined") return;
+    const originalFetch = window.fetch;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    window.fetch = async (...args: Parameters<typeof fetch>) => {
+      const response = await originalFetch(...args);
+      try {
+        const method = (
+          args[1]?.method ??
+          (args[0] instanceof Request ? args[0].method : "GET")
+        ).toUpperCase();
+        if (
+          response.status === 403 &&
+          method !== "GET" &&
+          method !== "HEAD" &&
+          method !== "OPTIONS"
+        ) {
+          const payload = (await response.clone().json()) as {
+            code?: string;
+          };
+          if (payload.code === "SCHOOL_MEMBER_READ_ONLY") {
+            setReadOnlyBlocked(true);
+            if (hideTimer) clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => setReadOnlyBlocked(false), 5000);
+          }
+        }
+      } catch {
+        // Réponse non JSON : rien à signaler.
+      }
+      return response;
+    };
+    return () => {
+      window.fetch = originalFetch;
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [schoolReadOnly]);
 
   async function loadSchoolBranding(slug: string) {
     try {
@@ -337,10 +411,38 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
             data-testid="app-shell-main"
             className="site-main-gutter site-scroll-frame min-w-0 flex-1 overflow-y-auto bg-background"
           >
-            {children}
+            {schoolReadOnly ? (
+              <div
+                role="status"
+                data-testid="read-only-banner"
+                className="mb-4 rounded-xl border border-[#F4C7A1] bg-[#FFF3E4] px-4 py-3 text-sm text-[#7A4A12]"
+              >
+                <p className="font-semibold">{t("readOnly.title")}</p>
+                <p className="mt-0.5">
+                  {t(
+                    role === "PARENT"
+                      ? "readOnly.messageParent"
+                      : "readOnly.message",
+                  )}
+                </p>
+              </div>
+            ) : null}
+            <SchoolReadOnlyContext.Provider value={schoolReadOnly}>
+              {children}
+            </SchoolReadOnlyContext.Provider>
           </main>
         </div>
       </div>
+
+      {readOnlyBlocked ? (
+        <div
+          role="alert"
+          data-testid="read-only-blocked-toast"
+          className="fixed bottom-6 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-[#F4C7A1] bg-[#FFF3E4] px-4 py-3 text-sm font-medium text-[#7A4A12] shadow-lg"
+        >
+          {t("readOnly.actionBlocked")}
+        </div>
+      ) : null}
 
       <OnboardingTourOverlay />
 

@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassHomeworkPage from "./page";
+import { SchoolReadOnlyContext } from "../../../../../../../components/layout/school-read-only-context";
 import { useLocaleStore } from "../../../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../../../i18n/translations";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
@@ -361,6 +362,39 @@ describe("Teacher class homework page", () => {
     expect(screen.getByTestId("homework-toggle-done")).toHaveTextContent(
       "Marquer fait",
     );
+  });
+
+  it("élève exclu (lecture seule) : le détail reste lisible mais sans action possible", async () => {
+    mockFetch({ role: "STUDENT", onboardingHelpEnabled: false });
+
+    render(
+      <SchoolReadOnlyContext.Provider value={true}>
+        <TeacherClassHomeworkPage />
+      </SchoolReadOnlyContext.Provider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("homework-row-hw-1"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-toggle-done")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("homework-toggle-done")).toBeDisabled();
+    expect(screen.queryByTestId("homework-comment-input")).toBeNull();
+    expect(screen.queryByTestId("homework-comment-submit")).toBeNull();
+  });
+
+  it("la page n'impose pas de largeur minimale à ses blocs (pas de débordement horizontal sur mobile)", async () => {
+    mockFetch({ role: "STUDENT", onboardingHelpEnabled: false });
+    const { container } = render(<TeacherClassHomeworkPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Conjugaison chapitre 3")).toBeInTheDocument();
+    });
+    const wrapper = container.firstElementChild as HTMLElement | null;
+    expect(wrapper?.className).toContain("grid");
+    expect(wrapper?.className).toContain("[&>*]:min-w-0");
   });
 
   // Régression 2026-09-05 : `/student-grades/context` est un endpoint

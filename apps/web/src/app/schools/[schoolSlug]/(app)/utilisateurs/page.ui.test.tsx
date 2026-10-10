@@ -293,6 +293,16 @@ describe("UtilisateursPage", () => {
     const badge = await screen.findByTestId("users-total");
     expect(badge).toHaveTextContent("19");
     expect(topbar).toContainElement(badge);
+
+    // Les actions (compteur, Personnel, Nouvel utilisateur) passent à la ligne
+    // sur mobile au lieu de déborder de l'écran (bouton coupé à 390 px).
+    const actions = badge.parentElement as HTMLElement;
+    expect(actions.className).toContain("flex-wrap");
+    expect(actions.className).toContain("min-w-0");
+    expect(actions).toContainElement(screen.getByTestId("create-user-button"));
+    expect(actions).toContainElement(
+      screen.getByTestId("manage-staff-functions-button"),
+    );
   });
 
   it("affiche un état vide quand la liste est vide", async () => {
@@ -1228,29 +1238,48 @@ describe("UtilisateursPage", () => {
 
   // ── Exclusion de l'école ──────────────────────────────────────────────────
 
+  type ExclusionUser = typeof TEACHER_USER | typeof STUDENT_ONLY;
+
+  // Simule l'API : lecture de la liste/détail, POST exclude (sortie complète),
+  // DELETE (retrait de la classe, élève uniquement).
   function mockExclusion(
-    user: typeof TEACHER_USER,
+    user: ExclusionUser,
     detail: Record<string, unknown>,
-    deleteResponse: () => Promise<Response> = () =>
-      jsonRes({ action: "EXCLUDED", remainingRoles: [] }),
+    respond: {
+      exclude?: () => Promise<Response>;
+      unassign?: () => Promise<Response>;
+    } = {},
   ) {
     return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = String(input);
       const method = (init?.method ?? "GET").toUpperCase();
       if (url.includes("/users?")) return jsonRes(makeListResponse([user]));
-      if (url.includes(`/users/${user.id}`) && method === "DELETE")
-        return deleteResponse();
+      if (method === "POST" && url.endsWith("/exclude"))
+        return (respond.exclude ?? (() => jsonRes({ action: "EXCLUDED" })))();
+      if (method === "DELETE" && url.includes(`/users/${user.id}`))
+        return (
+          respond.unassign ??
+          (() =>
+            jsonRes({
+              action: "UNASSIGNED_FROM_CLASS",
+              remainingRoles: ["STUDENT"],
+            }))
+        )();
+      if (url.includes(`/students/${user.id}/profile`)) return jsonRes(detail);
       if (url.includes(`/users/${user.id}`)) return jsonRes(detail);
       return jsonRes({}, 404);
     });
   }
 
-  const deleteCalls = (fetchMock: ReturnType<typeof mockExclusion>) =>
+  const callsWith = (
+    fetchMock: ReturnType<typeof mockExclusion>,
+    method: string,
+  ) =>
     fetchMock.mock.calls.filter(
-      (c) => (c[1]?.method ?? "").toUpperCase() === "DELETE",
+      (c) => (c[1]?.method ?? "").toUpperCase() === method,
     );
 
-  it("exclut un enseignant après confirmation (DELETE + CSRF), toast de succès et fermeture du panneau", async () => {
+  it("exclut un enseignant après confirmation (POST exclude + CSRF), toast de succès et fermeture du panneau", async () => {
     const fetchMock = mockExclusion(TEACHER_USER, TEACHER_DETAIL);
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
@@ -1258,21 +1287,67 @@ describe("UtilisateursPage", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/Ekani Marie/)).toBeInTheDocument();
-    expect(deleteCalls(fetchMock)).toHaveLength(0);
+    expect(
+      within(dialog).getByText(
+        t("users.exclude.messageStaff").replace(/\{name\}/g, "Ekani Marie"),
+      ),
+    ).toBeInTheDocument();
+    expect(callsWith(fetchMock, "POST")).toHaveLength(0);
+    fireEvent.change(within(dialog).getByTestId("exclude-reason-input"), {
+      target: { value: "  Fin de contrat  " },
+    });
     fireEvent.click(
       within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
     );
 
-    await waitFor(() => expect(deleteCalls(fetchMock)).toHaveLength(1));
-    const call = deleteCalls(fetchMock)[0];
-    expect(String(call[0])).toContain(`/users/${TEACHER_USER.id}`);
+    await waitFor(() => expect(callsWith(fetchMock, "POST")).toHaveLength(1));
+    const call = callsWith(fetchMock, "POST")[0];
+    expect(String(call[0])).toContain(`/users/${TEACHER_USER.id}/exclude`);
     expect((call[1]?.headers as Record<string, string>)["X-CSRF-Token"]).toBe(
       "csrf-test",
     );
+    expect(JSON.parse(String(call[1]?.body))).toEqual({
+      reason: "Fin de contrat",
+    });
+    expect(callsWith(fetchMock, "DELETE")).toHaveLength(0);
     expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.queryByTestId("action-exclude")).not.toBeInTheDocument(),
     );
+  });
+
+  it("envoie un corps vide quand aucun motif n'est saisi", async () => {
+    const fetchMock = mockExclusion(TEACHER_USER, TEACHER_DETAIL);
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
+    );
+    await waitFor(() => expect(callsWith(fetchMock, "POST")).toHaveLength(1));
+    expect(
+      JSON.parse(String(callsWith(fetchMock, "POST")[0][1]?.body)),
+    ).toEqual({});
+  });
+
+  it("refuse un motif de plus de 500 caractères : erreur inline, aucune requête", async () => {
+    const fetchMock = mockExclusion(TEACHER_USER, TEACHER_DETAIL);
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByTestId("exclude-reason-input"), {
+      target: { value: "x".repeat(501) },
+    });
+    expect(
+      await within(dialog).findByTestId("exclude-reason-error"),
+    ).toHaveTextContent(t("users.exclude.reasonTooLong"));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
+    );
+    expect(callsWith(fetchMock, "POST")).toHaveLength(0);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("n'exclut rien si l'on annule la confirmation", async () => {
@@ -1285,7 +1360,8 @@ describe("UtilisateursPage", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
-    expect(deleteCalls(fetchMock)).toHaveLength(0);
+    expect(callsWith(fetchMock, "POST")).toHaveLength(0);
+    expect(callsWith(fetchMock, "DELETE")).toHaveLength(0);
   });
 
   it("masque l'exclusion pour l'administrateur principal", async () => {
@@ -1305,12 +1381,13 @@ describe("UtilisateursPage", () => {
   });
 
   it("affiche l'erreur du serveur (409) sans fermer le panneau", async () => {
-    mockExclusion(TEACHER_USER, TEACHER_DETAIL, () =>
-      jsonRes(
-        { message: "Impossible d'exclure le dernier administrateur" },
-        409,
-      ),
-    );
+    mockExclusion(TEACHER_USER, TEACHER_DETAIL, {
+      exclude: () =>
+        jsonRes(
+          { message: "Impossible d'exclure le dernier administrateur" },
+          409,
+        ),
+    });
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
     fireEvent.click(await screen.findByTestId("action-exclude"));
@@ -1323,39 +1400,66 @@ describe("UtilisateursPage", () => {
     expect(screen.getByTestId("action-exclude")).toBeInTheDocument();
   });
 
-  it("élève affecté à une classe : action 'Retirer de sa classe' (rôle conservé, panneau ouvert)", async () => {
+  it("élève affecté à une classe : 'Retirer de sa classe' (DELETE, panneau ouvert) distinct de 'Exclure de l'école'", async () => {
     const fetchMock = mockExclusion(
       STUDENT_USER as unknown as typeof TEACHER_USER,
       { ...STUDENT_DETAIL, hasActiveClass: true },
-      () =>
-        jsonRes({
-          action: "UNASSIGNED_FROM_CLASS",
-          remainingRoles: ["STUDENT"],
-        }),
     );
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
-    const button = await screen.findByTestId("action-exclude");
-    expect(button).toHaveTextContent(t("users.actions.unassignClass"));
-    fireEvent.click(button);
+    const unassign = await screen.findByTestId("action-unassign-class");
+    expect(unassign).toHaveTextContent(t("users.actions.unassignClass"));
+    expect(screen.getByTestId("action-exclude")).toHaveTextContent(
+      t("users.actions.exclude"),
+    );
+    fireEvent.click(unassign);
 
     const dialog = await screen.findByRole("dialog");
     expect(
       within(dialog).getByText(t("users.unassignClass.title")),
     ).toBeInTheDocument();
+    // Retrait de classe : pas de champ motif.
+    expect(
+      within(dialog).queryByTestId("exclude-reason-input"),
+    ).not.toBeInTheDocument();
     fireEvent.click(
       within(dialog).getByRole("button", {
         name: t("users.unassignClass.confirm"),
       }),
     );
 
-    await waitFor(() => expect(deleteCalls(fetchMock)).toHaveLength(1));
+    await waitFor(() => expect(callsWith(fetchMock, "DELETE")).toHaveLength(1));
+    expect(callsWith(fetchMock, "POST")).toHaveLength(0);
     expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
     // Le panneau reste ouvert : l'élève n'est pas exclu de l'école.
     expect(screen.getByTestId("action-edit-roles")).toBeInTheDocument();
   });
 
-  it("élève sans classe pour l'année active : aucune action de retrait", async () => {
+  it("élève : 'Exclure de l'école' utilise POST exclude avec le message élève (lecture seule, plus de notifications)", async () => {
+    const fetchMock = mockExclusion(
+      STUDENT_USER as unknown as typeof TEACHER_USER,
+      { ...STUDENT_DETAIL, hasActiveClass: true },
+    );
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        t("users.exclude.messageStudent").replace(/\{name\}/g, "Owona Paul"),
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
+    );
+    await waitFor(() => expect(callsWith(fetchMock, "POST")).toHaveLength(1));
+    expect(String(callsWith(fetchMock, "POST")[0][0])).toContain(
+      `/users/${STUDENT_USER.id}/exclude`,
+    );
+    expect(callsWith(fetchMock, "DELETE")).toHaveLength(0);
+  });
+
+  it("élève sans classe pour l'année active : plus de retrait de classe mais l'exclusion reste possible", async () => {
     mockExclusion(STUDENT_USER as unknown as typeof TEACHER_USER, {
       ...STUDENT_DETAIL,
       hasActiveClass: false,
@@ -1363,7 +1467,225 @@ describe("UtilisateursPage", () => {
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
     await screen.findByTestId("action-edit-roles");
-    expect(screen.queryByTestId("action-exclude")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("action-unassign-class"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("action-exclude")).toBeInTheDocument();
+  });
+
+  it("élève sans compte : exclusion par studentId (route students/:id/exclude)", async () => {
+    const fetchMock = mockExclusion(STUDENT_ONLY, STUDENT_ONLY_DETAIL);
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_ONLY.id}`));
+    fireEvent.click(await screen.findByTestId("action-exclude"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("users.exclude.confirm") }),
+    );
+    await waitFor(() => expect(callsWith(fetchMock, "POST")).toHaveLength(1));
+    expect(String(callsWith(fetchMock, "POST")[0][0])).toContain(
+      `/users/students/${STUDENT_ONLY.studentId}/exclude`,
+    );
+    expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
+  });
+
+  // ── Liste des exclus et réinvitation ──────────────────────────────────────
+
+  const EXCLUDED_TEACHER = {
+    ...TEACHER_USER,
+    excluded: true,
+    excludedAt: "2026-10-01T09:00:00.000Z",
+    exclusionReason: "Fin de contrat",
+  };
+  const EXCLUDED_STUDENT_ONLY = {
+    ...STUDENT_ONLY,
+    excluded: true,
+    excludedAt: "2026-10-02T09:00:00.000Z",
+    exclusionReason: null,
+  };
+
+  function mockMembershipList(
+    reinvite: () => Promise<Response> = () => jsonRes({ action: "REINVITED" }),
+  ) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (method === "POST" && url.endsWith("/reinvite")) return reinvite();
+      if (url.includes("/users?")) {
+        return jsonRes(
+          url.includes("membershipStatus=excluded")
+            ? makeListResponse([EXCLUDED_TEACHER, EXCLUDED_STUDENT_ONLY])
+            : makeListResponse([PARENT_USER]),
+        );
+      }
+      return jsonRes({}, 404);
+    });
+  }
+
+  const listUrls = (fetchMock: ReturnType<typeof mockMembershipList>) =>
+    fetchMock.mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes("/users?"));
+
+  it("liste par défaut les actifs : aucun paramètre membershipStatus", async () => {
+    const fetchMock = mockMembershipList();
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    expect(
+      listUrls(fetchMock).every((u) => !u.includes("membershipStatus")),
+    ).toBe(true);
+    expect(screen.getByTestId("membership-filter-active")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByTestId("membership-filter-excluded")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("le filtre 'Exclus' recharge la liste avec membershipStatus=excluded et affiche des cartes distinctes", async () => {
+    const fetchMock = mockMembershipList();
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+
+    const card = await screen.findByTestId(`user-card-${TEACHER_USER.id}`);
+    expect(card).toHaveAttribute("data-excluded", "true");
+    expect(
+      listUrls(fetchMock).some((u) => u.includes("membershipStatus=excluded")),
+    ).toBe(true);
+    expect(screen.queryByTestId(`user-card-${PARENT_USER.id}`)).toBeNull();
+    expect(screen.getByTestId("users-excluded-hint")).toBeInTheDocument();
+    expect(
+      within(card).getByText(t("users.excluded.badge")),
+    ).toBeInTheDocument();
+    expect(within(card).getByText(/Fin de contrat/)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`user-excluded-since-${TEACHER_USER.id}`),
+    ).toBeInTheDocument();
+    // Seule action disponible : inviter.
+    expect(
+      within(card)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual([t("users.actions.reinvite")]);
+    // Élève sans compte exclu : sans motif, même traitement.
+    expect(
+      screen.getByTestId(`action-reinvite-${STUDENT_ONLY.id}`),
+    ).toBeInTheDocument();
+  });
+
+  it("une carte exclue n'ouvre pas de panneau de détail", async () => {
+    mockMembershipList();
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+    const card = await screen.findByTestId(`user-card-${TEACHER_USER.id}`);
+    fireEvent.click(card);
+    expect(screen.queryByTestId("user-detail-fullname")).toBeNull();
+  });
+
+  it("réinvite un membre exclu (POST reinvite + CSRF), toast et rechargement de la liste", async () => {
+    const fetchMock = mockMembershipList();
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+    fireEvent.click(
+      await screen.findByTestId(`action-reinvite-${TEACHER_USER.id}`),
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter((c) => String(c[0]).endsWith("/reinvite")),
+      ).toHaveLength(1),
+    );
+    const call = fetchMock.mock.calls.find((c) =>
+      String(c[0]).endsWith("/reinvite"),
+    )!;
+    expect(String(call[0])).toContain(`/users/${TEACHER_USER.id}/reinvite`);
+    expect((call[1]?.headers as Record<string, string>)["X-CSRF-Token"]).toBe(
+      "csrf-test",
+    );
+    expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
+    const excludedLoads = listUrls(fetchMock).filter((u) =>
+      u.includes("membershipStatus=excluded"),
+    );
+    expect(excludedLoads.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("réinvite un élève sans compte par studentId", async () => {
+    const fetchMock = mockMembershipList();
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+    fireEvent.click(
+      await screen.findByTestId(`action-reinvite-${STUDENT_ONLY.id}`),
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((c) =>
+          String(c[0]).includes(
+            `/users/students/${STUDENT_ONLY.studentId}/reinvite`,
+          ),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("affiche l'erreur serveur d'une réinvitation refusée et garde la liste", async () => {
+    mockMembershipList(() => jsonRes({ message: "Classe pleine" }, 400));
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+    fireEvent.click(
+      await screen.findByTestId(`action-reinvite-${TEACHER_USER.id}`),
+    );
+    expect(await screen.findByTestId("toast-error")).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`user-card-${TEACHER_USER.id}`),
+    ).toBeInTheDocument();
+  });
+
+  it("liste des exclus vide : message dédié", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/users?"))
+        return jsonRes(
+          url.includes("membershipStatus=excluded")
+            ? makeListResponse([])
+            : makeListResponse([PARENT_USER]),
+        );
+      return jsonRes({}, 404);
+    });
+    render(<UtilisateursPage />);
+    await screen.findByTestId(`user-card-${PARENT_USER.id}`);
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+    expect(
+      await screen.findByText(t("users.empty.excludedTitle")),
+    ).toBeInTheDocument();
+  });
+
+  it("changer de filtre ferme le panneau de détail ouvert", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/users?"))
+        return jsonRes(
+          url.includes("membershipStatus=excluded")
+            ? makeListResponse([EXCLUDED_TEACHER])
+            : makeListResponse([TEACHER_USER]),
+        );
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
+      return jsonRes({}, 404);
+    });
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
+    await screen.findByTestId("user-detail-fullname");
+    fireEvent.click(screen.getByTestId("membership-filter-excluded"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("user-detail-fullname")).toBeNull(),
+    );
   });
 
   // ── Contact et activité ───────────────────────────────────────────────────

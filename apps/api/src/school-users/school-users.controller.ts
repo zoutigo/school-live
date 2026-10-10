@@ -18,6 +18,7 @@ import { SchoolScopeGuard } from "../access/school-scope.guard.js";
 import { Roles } from "../access/roles.decorator.js";
 import { SchoolUsersService } from "./school-users.service.js";
 import { ListSchoolUsersQueryDto } from "./dto/list-school-users-query.dto.js";
+import { ExcludeMemberDto } from "./dto/exclude-member.dto.js";
 import { UpdateUserRolesDto } from "./dto/update-user-roles.dto.js";
 
 @Controller("schools/:schoolSlug/users")
@@ -75,5 +76,57 @@ export class SchoolUsersController {
       currentUser.id,
       userId,
     );
+  }
+
+  @Post(":userId/exclude")
+  excludeMember(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("userId") userId: string,
+    @Body() dto: ExcludeMemberDto,
+  ) {
+    return this.schoolUsersService.excludeMember(
+      schoolId,
+      currentUser.id,
+      userId,
+      dto?.reason,
+    );
+  }
+
+  @Post(":userId/reinvite")
+  reinviteMember(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("userId") userId: string,
+  ) {
+    return this.schoolUsersService.reinviteMember(schoolId, currentUser.id, {
+      userId,
+    });
+  }
+
+  @Post("students/:studentId/exclude")
+  excludeStudent(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Body() dto: ExcludeMemberDto,
+  ) {
+    return this.schoolUsersService.excludeStudent(
+      schoolId,
+      currentUser.id,
+      studentId,
+      dto?.reason,
+    );
+  }
+
+  @Post("students/:studentId/reinvite")
+  reinviteStudent(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+  ) {
+    return this.schoolUsersService.reinviteMember(schoolId, currentUser.id, {
+      studentId,
+    });
   }
 }

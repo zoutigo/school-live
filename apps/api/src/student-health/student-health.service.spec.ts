@@ -72,9 +72,14 @@ const makePrismaMock = () => ({
     }),
   },
   enrollment: {
+    // Par défaut l'élève n'est pas exclu : seule la requête WITHDRAWN renvoie null.
     findFirst: jest
       .fn()
-      .mockResolvedValue({ classId: CLASS_ID, schoolYearId: SCHOOL_YEAR_ID }),
+      .mockImplementation(async (args: { where?: { status?: string } }) =>
+        args?.where?.status === "WITHDRAWN"
+          ? null
+          : { classId: CLASS_ID, schoolYearId: SCHOOL_YEAR_ID },
+      ),
   },
   class: {
     findFirst: jest
@@ -529,6 +534,45 @@ describe("StudentHealthService", () => {
       expect(
         pushService.sendStudentHealthCareEventNotification,
       ).toHaveBeenCalledWith(expect.objectContaining({ tokens: ["tok-1"] }));
+    });
+
+    it("ne notifie pas les parents quand l'élève est exclu (WITHDRAWN)", async () => {
+      prisma.studentHealthCareEvent.create.mockResolvedValue({
+        id: "care-1",
+        summary: payload.summary,
+        description: null,
+        occurredAt: new Date("2026-08-03T10:42:00Z"),
+        alertLevel: "INFO",
+        authorUser: { firstName: "Marie", lastName: "Ateba" },
+      });
+      prisma.enrollment.findFirst.mockImplementation(
+        async (args: { where?: { status?: string } }) =>
+          args?.where?.status === "WITHDRAWN" ? { id: "enr-1" } : null,
+      );
+      prisma.parentStudent.findMany.mockResolvedValue([
+        {
+          parent: {
+            id: PARENT_USER_ID,
+            email: "parent@example.com",
+            firstName: "Jean",
+            preferredLocale: "FR",
+          },
+        },
+      ]);
+
+      await service.createCareEvent(
+        SCHOOL_ID,
+        HEALTH_OFFICER,
+        STUDENT_ID,
+        payload,
+      );
+
+      expect(
+        mailService.sendStudentHealthCareEventNotification,
+      ).not.toHaveBeenCalled();
+      expect(
+        pushService.sendStudentHealthCareEventNotification,
+      ).not.toHaveBeenCalled();
     });
 
     it("ne bloque pas la création si l'envoi du mail échoue", async () => {

@@ -244,6 +244,81 @@ describe("LandingLoginForm UI", () => {
     });
   });
 
+  it("membre exclu (mot de passe valide, plus aucune école) : message explicite, pas de redirection", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "t" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ role: null, schoolSlug: null, memberships: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    render(<LandingLoginForm />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "excluded@example.test" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe"), {
+      target: { value: "Password123!" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Aucune ecole associee a ce compte/),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(/Si vous avez ete retire\(e\) d'un etablissement/),
+    ).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("le même message existe en anglais", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "t" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ role: null, schoolSlug: null }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    render(<LandingLoginForm />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "excluded@example.test" },
+    });
+    fireEvent.input(screen.getByLabelText("Password"), {
+      target: { value: "Password123!" },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/If you were removed from a school/),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("redirects to platform credentials completion when backend requires it", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(

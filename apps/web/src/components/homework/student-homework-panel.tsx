@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Card } from "../ui/card";
 import { ModuleHelpTab } from "../ui/module-help-tab";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { useSchoolReadOnly } from "../layout/school-read-only-context";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
 import { usePageHelp } from "../../store/page-help";
 import {
@@ -102,6 +103,7 @@ export function StudentHomeworkPanel({
     null,
   );
   const [detailLoading, setDetailLoading] = useState(false);
+  const readOnly = useSchoolReadOnly();
   const [completionLoading, setCompletionLoading] = useState(false);
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
@@ -321,7 +323,7 @@ export function StudentHomeworkPanel({
   });
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 [&>*]:min-w-0">
       <Card title={cardTitle} subtitle={cardSubtitle}>
         <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.tabs}>
           <div className="mb-4 flex items-end gap-2 border-b border-border">
@@ -518,7 +520,7 @@ export function StudentHomeworkPanel({
               <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.markDone}>
                 <button
                   type="button"
-                  disabled={completionLoading}
+                  disabled={completionLoading || readOnly}
                   onClick={() => void handleToggleDone(selectedDetail)}
                   className={`w-fit rounded-card px-4 py-2 text-sm font-semibold text-white ${
                     selectedDetail.myDoneAt
@@ -623,25 +625,27 @@ export function StudentHomeworkPanel({
                     ))}
                   </div>
                 )}
-                <form
-                  onSubmit={(e) => void handleAddComment(e)}
-                  className="flex gap-2"
-                >
-                  <input
-                    {...registerComment("body")}
-                    placeholder={t("homework.comment.placeholder")}
-                    className="flex-1 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="homework-comment-input"
-                  />
-                  <button
-                    type="submit"
-                    disabled={commentSaving}
-                    className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
-                    data-testid="homework-comment-submit"
+                {readOnly ? null : (
+                  <form
+                    onSubmit={(e) => void handleAddComment(e)}
+                    className="flex gap-2"
                   >
-                    {commentSaving ? "..." : t("homework.comment.submit")}
-                  </button>
-                </form>
+                    <input
+                      {...registerComment("body")}
+                      placeholder={t("homework.comment.placeholder")}
+                      className="flex-1 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="homework-comment-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={commentSaving}
+                      className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                      data-testid="homework-comment-submit"
+                    >
+                      {commentSaving ? "..." : t("homework.comment.submit")}
+                    </button>
+                  </form>
+                )}
                 {commentErrors.body?.message && (
                   <p className="mt-1 text-xs text-notification">
                     {commentErrors.body.message}

@@ -417,9 +417,26 @@ describe("PromotionsService", () => {
       ).rejects.toThrow(NotFoundException);
     });
 
+    it("refuse l'affectation d'une inscription exclue (WITHDRAWN)", async () => {
+      prisma.enrollment.findFirst.mockResolvedValue({
+        id: "enr-1",
+        status: "WITHDRAWN",
+        schoolYearId: YEAR_ID,
+        classId: null,
+        academicLevelId: null,
+      });
+      await expect(
+        service.assignEnrollmentToClass(SCHOOL_ID, "enr-1", {
+          classId: CLASS_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.enrollment.update).not.toHaveBeenCalled();
+    });
+
     it("refuse si l'eleve est deja affecte a une classe", async () => {
       prisma.enrollment.findFirst.mockResolvedValue({
         id: "enr-1",
+        status: "ACTIVE",
         schoolYearId: YEAR_ID,
         classId: "already-assigned",
       });
@@ -433,6 +450,7 @@ describe("PromotionsService", () => {
     it("refuse une classe cible qui n'appartient pas a l'annee scolaire de l'inscription", async () => {
       prisma.enrollment.findFirst.mockResolvedValue({
         id: "enr-1",
+        status: "ACTIVE",
         schoolYearId: YEAR_ID,
         classId: null,
       });
@@ -447,6 +465,7 @@ describe("PromotionsService", () => {
     it("refuse l'affectation au-dela de la capacite de la classe", async () => {
       prisma.enrollment.findFirst.mockResolvedValue({
         id: "enr-1",
+        status: "ACTIVE",
         schoolYearId: YEAR_ID,
         classId: null,
       });
@@ -468,6 +487,7 @@ describe("PromotionsService", () => {
     it("refuse une classe cible dont le niveau ne correspond pas au niveau decide pour l'eleve", async () => {
       prisma.enrollment.findFirst.mockResolvedValue({
         id: "enr-1",
+        status: "ACTIVE",
         schoolYearId: YEAR_ID,
         classId: null,
         academicLevelId: "level-ce2",
@@ -487,6 +507,7 @@ describe("PromotionsService", () => {
     it("affecte l'eleve quand la classe a de la place disponible et que le niveau correspond", async () => {
       prisma.enrollment.findFirst.mockResolvedValue({
         id: "enr-1",
+        status: "ACTIVE",
         schoolYearId: YEAR_ID,
         classId: null,
         academicLevelId: "level-ce2",
@@ -519,6 +540,17 @@ describe("PromotionsService", () => {
             classId: null,
             schoolYearId: YEAR_ID,
           }),
+        }),
+      );
+    });
+
+    it("n'inclut jamais une inscription exclue (WITHDRAWN) dans la salle d'attente", async () => {
+      await service.listWaitingEnrollments(SCHOOL_ID, {
+        schoolYearId: YEAR_ID,
+      });
+      expect(prisma.enrollment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: "ACTIVE" }),
         }),
       );
     });

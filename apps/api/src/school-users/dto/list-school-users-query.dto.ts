@@ -42,6 +42,14 @@ export class ListSchoolUsersQueryDto {
   @IsString()
   schoolYearId?: string;
 
+  /**
+   * `active` (défaut) : membres de l'établissement ; `excluded` : membres sortis
+   * de l'établissement, éligibles à une réinvitation.
+   */
+  @IsOptional()
+  @IsIn(["active", "excluded"])
+  membershipStatus?: "active" | "excluded";
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

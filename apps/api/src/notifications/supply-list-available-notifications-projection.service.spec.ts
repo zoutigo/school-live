@@ -15,6 +15,12 @@ const STUDENT_ID = "student-1";
 const SCHOOL_YEAR_ID = "year-2026";
 
 const makePrismaMock = () => ({
+  school: {
+    findUnique: jest
+      .fn()
+      .mockResolvedValue({ activeSchoolYearId: SCHOOL_YEAR_ID }),
+  },
+  enrollment: { findFirst: jest.fn().mockResolvedValue(null) },
   student: {
     findFirst: jest.fn().mockResolvedValue({
       firstName: "Remi",
@@ -76,6 +82,27 @@ describe("SupplyListAvailableNotificationsProjectionService", () => {
       studentId: STUDENT_ID,
       schoolYearId: SCHOOL_YEAR_ID,
     });
+    expect(
+      pushService.sendSupplyListAvailableNotification,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("ne notifie personne quand l'eleve est exclu (inscription WITHDRAWN)", async () => {
+    prisma.enrollment.findFirst.mockResolvedValue({ id: "enr-1" });
+    await service.project({
+      schoolId: SCHOOL_ID,
+      studentId: STUDENT_ID,
+      schoolYearId: SCHOOL_YEAR_ID,
+    });
+    expect(prisma.enrollment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          studentId: STUDENT_ID,
+          status: "WITHDRAWN",
+        }),
+      }),
+    );
+    expect(prisma.mobilePushToken.findMany).not.toHaveBeenCalled();
     expect(
       pushService.sendSupplyListAvailableNotification,
     ).not.toHaveBeenCalled();
