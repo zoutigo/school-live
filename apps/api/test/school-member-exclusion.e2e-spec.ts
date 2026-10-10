@@ -403,7 +403,10 @@ describe("Exclusion complète d'un membre + réinvitation e2e", () => {
       expect(badges.response.status).toBe(200);
       const teacherClasses = (
         badges.body as unknown as {
-          teacherClasses: Array<{ classId: string; evaluationsToGrade: number }>;
+          teacherClasses: Array<{
+            classId: string;
+            evaluationsToGrade: number;
+          }>;
         }
       ).teacherClasses;
       expect(

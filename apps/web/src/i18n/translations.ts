@@ -10289,8 +10289,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "readOnly.title": "Read-only access",
     "readOnly.message":
       "You are no longer enrolled at the school. You can browse your history (grades, homework, timetable…) but can no longer act or receive notifications.",
-    "readOnly.actionBlocked":
-      "Action not possible: your access is read-only.",
+    "readOnly.actionBlocked": "Action not possible: your access is read-only.",
     "readOnly.messageParent":
       "Your child is no longer enrolled at the school. You can browse their history (grades, homework, timetable…) but can no longer act or receive notifications.",
     "users.unassignClass.title": "Remove from class",

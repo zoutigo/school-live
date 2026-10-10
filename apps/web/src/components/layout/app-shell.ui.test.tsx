@@ -467,9 +467,7 @@ describe("AppShell — lecture seule : libellés, filet de sécurité 403, conte
   }
 
   function ReadOnlyProbe() {
-    return (
-      <span data-testid="probe">{String(useSchoolReadOnly())}</span>
-    );
+    return <span data-testid="probe">{String(useSchoolReadOnly())}</span>;
   }
 
   const renderShell = (child: React.ReactNode = <div>Content</div>) =>
@@ -529,7 +527,10 @@ describe("AppShell — lecture seule : libellés, filet de sécurité 403, conte
       role: "STUDENT",
       readOnly: true,
       write: () =>
-        json({ code: "SCHOOL_MEMBER_READ_ONLY", message: "Lecture seule" }, 403),
+        json(
+          { code: "SCHOOL_MEMBER_READ_ONLY", message: "Lecture seule" },
+          403,
+        ),
     });
     renderShell();
     await screen.findByTestId("read-only-banner");
@@ -543,7 +544,9 @@ describe("AppShell — lecture seule : libellés, filet de sécurité 403, conte
     expect(await response.json()).toMatchObject({
       code: "SCHOOL_MEMBER_READ_ONLY",
     });
-    expect(await screen.findByTestId("read-only-blocked-toast")).toHaveTextContent(
+    expect(
+      await screen.findByTestId("read-only-blocked-toast"),
+    ).toHaveTextContent(
       "Action impossible : votre accès est en lecture seule.",
     );
   });
@@ -592,9 +595,9 @@ describe("AppShell — lecture seule : libellés, filet de sécurité 403, conte
     const before = window.fetch;
     renderShell();
     await waitFor(() =>
-      expect(
-        spy.mock.calls.some((c) => String(c[0]).endsWith("/api/me")),
-      ).toBe(true),
+      expect(spy.mock.calls.some((c) => String(c[0]).endsWith("/api/me"))).toBe(
+        true,
+      ),
     );
     expect(window.fetch).toBe(before);
     await window.fetch(

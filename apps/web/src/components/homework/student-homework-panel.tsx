@@ -626,25 +626,25 @@ export function StudentHomeworkPanel({
                   </div>
                 )}
                 {readOnly ? null : (
-                <form
-                  onSubmit={(e) => void handleAddComment(e)}
-                  className="flex gap-2"
-                >
-                  <input
-                    {...registerComment("body")}
-                    placeholder={t("homework.comment.placeholder")}
-                    className="flex-1 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="homework-comment-input"
-                  />
-                  <button
-                    type="submit"
-                    disabled={commentSaving}
-                    className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
-                    data-testid="homework-comment-submit"
+                  <form
+                    onSubmit={(e) => void handleAddComment(e)}
+                    className="flex gap-2"
                   >
-                    {commentSaving ? "..." : t("homework.comment.submit")}
-                  </button>
-                </form>
+                    <input
+                      {...registerComment("body")}
+                      placeholder={t("homework.comment.placeholder")}
+                      className="flex-1 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="homework-comment-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={commentSaving}
+                      className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                      data-testid="homework-comment-submit"
+                    >
+                      {commentSaving ? "..." : t("homework.comment.submit")}
+                    </button>
+                  </form>
                 )}
                 {commentErrors.body?.message && (
                   <p className="mt-1 text-xs text-notification">
