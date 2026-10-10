@@ -16,6 +16,9 @@ const prisma = {
     count: jest.fn(),
     delete: jest.fn(),
   },
+  schoolMemberExclusion: {
+    updateMany: jest.fn(),
+  },
   activationCode: {
     updateMany: jest.fn(),
     create: jest.fn(),
@@ -76,6 +79,11 @@ describe("ManagementService — addSchoolAdmin", () => {
 
     expect(prisma.schoolMembership.create).toHaveBeenCalledWith({
       data: { userId: "user-1", schoolId: "school-1", role: "SCHOOL_ADMIN" },
+    });
+    // Un ancien exclu qui revient comme admin voit sa trace d'exclusion close.
+    expect(prisma.schoolMemberExclusion.updateMany).toHaveBeenCalledWith({
+      where: { schoolId: "school-1", userId: "user-1", reinvitedAt: null },
+      data: { reinvitedAt: expect.any(Date) },
     });
     expect(prisma.user.create).not.toHaveBeenCalled();
     expect(result).toEqual({

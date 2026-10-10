@@ -7,6 +7,15 @@ describe("AuthService.getMe", () => {
     user: {
       findUnique: jest.fn(),
     },
+    school: {
+      findUnique: jest.fn(),
+    },
+    student: {
+      findFirst: jest.fn(),
+    },
+    parentStudent: {
+      findMany: jest.fn(),
+    },
   };
 
   const jwtService = {
@@ -32,6 +41,14 @@ describe("AuthService.getMe", () => {
 
   beforeEach(() => {
     prisma.user.findUnique.mockReset();
+    prisma.school.findUnique.mockReset();
+    prisma.school.findUnique.mockResolvedValue({
+      activeSchoolYearId: "year-1",
+    });
+    prisma.student.findFirst.mockReset();
+    prisma.student.findFirst.mockResolvedValue(null);
+    prisma.parentStudent.findMany.mockReset();
+    prisma.parentStudent.findMany.mockResolvedValue([]);
   });
 
   it("retourne la classe courante de chaque enfant lié quand elle existe", async () => {
@@ -156,6 +173,66 @@ describe("AuthService.getMe", () => {
       }),
     );
     expect(result.onboardingHelpEnabled).toBe(false);
+  });
+
+  describe("schoolReadOnly", () => {
+    const meUser = (role: "PARENT" | "STUDENT") => ({
+      id: "user-1",
+      activeRole: role,
+      profileCompleted: true,
+      activationStatus: "ACTIVE",
+      email: "u@example.com",
+      phone: null,
+      avatarUrl: null,
+      firstName: "Robert",
+      lastName: "Ntamack",
+      gender: null,
+      onboardingHelpEnabled: true,
+      platformRoles: [],
+      memberships: [{ schoolId: "school-1", role }],
+      parentLinks: [],
+    });
+
+    it("false par défaut (parent sans enfant exclu)", async () => {
+      prisma.user.findUnique.mockResolvedValue(meUser("PARENT"));
+      const result = await service.getMe("user-1", "school-1");
+      expect(result.schoolReadOnly).toBe(false);
+    });
+
+    it("true pour un parent dont tous les enfants sont exclus", async () => {
+      prisma.user.findUnique.mockResolvedValue(meUser("PARENT"));
+      prisma.parentStudent.findMany.mockResolvedValue([
+        { student: { enrollments: [{ status: "WITHDRAWN" }] } },
+      ]);
+      const result = await service.getMe("user-1", "school-1");
+      expect(result.schoolReadOnly).toBe(true);
+    });
+
+    it("false pour un parent avec un enfant exclu et un enfant actif", async () => {
+      prisma.user.findUnique.mockResolvedValue(meUser("PARENT"));
+      prisma.parentStudent.findMany.mockResolvedValue([
+        { student: { enrollments: [{ status: "WITHDRAWN" }] } },
+        { student: { enrollments: [{ status: "ACTIVE" }] } },
+      ]);
+      const result = await service.getMe("user-1", "school-1");
+      expect(result.schoolReadOnly).toBe(false);
+    });
+
+    it("true pour un élève exclu, false pour un élève actif", async () => {
+      prisma.user.findUnique.mockResolvedValue(meUser("STUDENT"));
+      prisma.student.findFirst.mockResolvedValue({
+        enrollments: [{ status: "WITHDRAWN" }],
+      });
+      expect((await service.getMe("user-1", "school-1")).schoolReadOnly).toBe(
+        true,
+      );
+      prisma.student.findFirst.mockResolvedValue({
+        enrollments: [{ status: "ACTIVE" }],
+      });
+      expect((await service.getMe("user-1", "school-1")).schoolReadOnly).toBe(
+        false,
+      );
+    });
   });
 
   it("rejette si l'utilisateur n'a aucun accès sur l'école (getMe)", async () => {

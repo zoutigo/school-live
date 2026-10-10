@@ -5,8 +5,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { Prisma, SchoolRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
+import { ensureClassHasCapacity } from "../common/class-capacity.util.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { ListSchoolUsersQueryDto } from "./dto/list-school-users-query.dto.js";
 import type { UpdateUserRolesDto } from "./dto/update-user-roles.dto.js";
@@ -19,6 +21,10 @@ export class SchoolUsersService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
+
+    if (query.membershipStatus === "excluded") {
+      return this.listExcludedMembers(schoolId, query, page, limit, skip);
+    }
 
     const isStudentQuery = !query.role || query.role === "STUDENT";
 
@@ -38,7 +44,10 @@ export class SchoolUsersService {
       ...(query.role ? { role: query.role } : {}),
     };
 
-    const andFilters: object[] = [{ memberships: { some: membershipFilter } }];
+    const andFilters: object[] = [
+      { memberships: { some: membershipFilter } },
+      { schoolExclusions: { none: { schoolId, reinvitedAt: null } } },
+    ];
 
     if (query.role === "TEACHER" && query.schoolYearId) {
       andFilters.push({
@@ -116,6 +125,109 @@ export class SchoolUsersService {
     };
   }
 
+  /**
+   * Membres sortis de l'établissement (trace d'exclusion courante, non
+   * réinvitée). Une seule ligne par personne, la plus récente d'abord.
+   */
+  private async listExcludedMembers(
+    schoolId: string,
+    query: ListSchoolUsersQueryDto,
+    page: number,
+    limit: number,
+    skip: number,
+  ) {
+    const searchTrim = query.search?.trim();
+    const personSearch = searchTrim
+      ? ([
+          { firstName: { contains: searchTrim, mode: "insensitive" } },
+          { lastName: { contains: searchTrim, mode: "insensitive" } },
+        ] as const)
+      : null;
+
+    const where: Prisma.SchoolMemberExclusionWhereInput = {
+      schoolId,
+      reinvitedAt: null,
+      ...(query.role ? { rolesSnapshot: { has: query.role } } : {}),
+      ...(query.hasAccount === true ? { userId: { not: null } } : {}),
+      ...(query.hasAccount === false ? { userId: null } : {}),
+      ...(personSearch
+        ? {
+            OR: [
+              {
+                user: {
+                  OR: [
+                    ...personSearch,
+                    { email: { contains: searchTrim, mode: "insensitive" } },
+                    { phone: { contains: searchTrim, mode: "insensitive" } },
+                  ],
+                },
+              },
+              { student: { OR: [...personSearch] } },
+            ],
+          }
+        : {}),
+    };
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.schoolMemberExclusion.findMany({
+        where,
+        orderBy: [{ excludedAt: "desc" }, { id: "asc" }],
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          userId: true,
+          studentId: true,
+          rolesSnapshot: true,
+          reason: true,
+          excludedAt: true,
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              gender: true,
+              avatarUrl: true,
+              activationStatus: true,
+              profileCompleted: true,
+              createdAt: true,
+            },
+          },
+          student: {
+            select: { firstName: true, lastName: true, createdAt: true },
+          },
+        },
+      }),
+      this.prisma.schoolMemberExclusion.count({ where }),
+    ]);
+
+    const data = rows.map((row) => {
+      const person = row.user ?? row.student;
+      return {
+        type: row.userId ? ("user" as const) : ("student-only" as const),
+        id: row.userId ?? (row.studentId as string),
+        studentId: row.studentId,
+        firstName: person?.firstName ?? "",
+        lastName: person?.lastName ?? "",
+        email: row.user?.email ?? null,
+        phone: row.user?.phone ?? null,
+        gender: row.user?.gender ?? null,
+        avatarUrl: row.user?.avatarUrl ?? null,
+        roles: row.rolesSnapshot,
+        activationStatus: row.user?.activationStatus ?? null,
+        profileCompleted: row.user?.profileCompleted ?? false,
+        createdAt: person?.createdAt ?? row.excludedAt,
+        hasAccount: Boolean(row.userId),
+        excluded: true as const,
+        excludedAt: row.excludedAt,
+        exclusionReason: row.reason,
+      };
+    });
+
+    return { data, total, page, limit, hasMore: skip + data.length < total };
+  }
+
   private async listMembersHybrid(
     schoolId: string,
     query: ListSchoolUsersQueryDto,
@@ -137,6 +249,7 @@ export class SchoolUsersService {
       : { schoolId };
     const userAndFilters: object[] = [
       { memberships: { some: userMembershipFilter } },
+      { schoolExclusions: { none: { schoolId, reinvitedAt: null } } },
     ];
 
     if (searchTrim) {
@@ -167,7 +280,10 @@ export class SchoolUsersService {
       userAndFilters.length === 1 ? userAndFilters[0] : { AND: userAndFilters };
 
     // Query 2: Students with no userId
-    const studentAndFilters: object[] = [{ schoolId, userId: null }];
+    const studentAndFilters: object[] = [
+      { schoolId, userId: null },
+      { exclusions: { none: { schoolId, reinvitedAt: null } } },
+    ];
 
     if (searchTrim) {
       studentAndFilters.push({
@@ -754,61 +870,469 @@ export class SchoolUsersService {
         return;
       }
 
-      await tx.schoolMembership.deleteMany({
-        where: { schoolId, userId, role: { not: "STUDENT" } },
+      await this.removeNonStudentRoles(tx, {
+        schoolId,
+        userId,
+        roles,
+        activeSchoolYearId,
+        now,
       });
-      await tx.schoolStaffAssignment.deleteMany({
-        where: { schoolId, userId },
-      });
-
-      if (roles.includes("TEACHER")) {
-        await tx.teacher.deleteMany({ where: { schoolId, userId } });
-        if (activeSchoolYearId) {
-          await tx.teacherClassSubject.deleteMany({
-            where: {
-              schoolId,
-              schoolYearId: activeSchoolYearId,
-              teacherUserId: userId,
-            },
-          });
-          await tx.classTimetableSlot.deleteMany({
-            where: {
-              schoolId,
-              schoolYearId: activeSchoolYearId,
-              teacherUserId: userId,
-              activeFromDate: { gt: now },
-            },
-          });
-          await tx.classTimetableSlot.updateMany({
-            where: {
-              schoolId,
-              schoolYearId: activeSchoolYearId,
-              teacherUserId: userId,
-              OR: [{ activeToDate: null }, { activeToDate: { gt: now } }],
-            },
-            data: { activeToDate: now },
-          });
-          await tx.classTimetableOneOffSlot.deleteMany({
-            where: {
-              schoolId,
-              schoolYearId: activeSchoolYearId,
-              teacherUserId: userId,
-              occurrenceDate: { gt: now },
-            },
-          });
-        }
+      // Sans rôle élève, ce retrait est une sortie complète de l'école : on en
+      // garde la trace pour pouvoir réinviter la personne. (Un compte qui reste
+      // élève reste visible : l'exclusion complète passe par `excludeMember`.)
+      if (!isStudent) {
+        await this.openExclusionTrace(tx, {
+          schoolId,
+          userId,
+          studentId: null,
+          roles,
+          excludedByUserId: actorUserId,
+          excludedAt: now,
+        });
       }
-
-      await tx.user.updateMany({
-        where: { id: userId, activeSchoolId: schoolId },
-        data: { activeSchoolId: null },
-      });
     });
 
     return {
       action: otherRoles.length === 0 ? "UNASSIGNED_FROM_CLASS" : "EXCLUDED",
       remainingRoles: isStudent ? ["STUDENT"] : [],
     };
+  }
+
+  /**
+   * Retire tous les rôles non-élève d'un membre et défait ce qui s'y rattache
+   * (affectations, fiche enseignant, créneaux futurs/en cours). Les données
+   * historiques ne sont jamais effacées.
+   */
+  private async removeNonStudentRoles(
+    tx: Prisma.TransactionClient,
+    input: {
+      schoolId: string;
+      userId: string;
+      roles: string[];
+      activeSchoolYearId: string | null;
+      now: Date;
+    },
+  ) {
+    const { schoolId, userId, roles, activeSchoolYearId, now } = input;
+    await tx.schoolMembership.deleteMany({
+      where: { schoolId, userId, role: { not: "STUDENT" } },
+    });
+    await tx.schoolStaffAssignment.deleteMany({
+      where: { schoolId, userId },
+    });
+
+    if (roles.includes("TEACHER")) {
+      await tx.teacher.deleteMany({ where: { schoolId, userId } });
+      if (activeSchoolYearId) {
+        await tx.teacherClassSubject.deleteMany({
+          where: {
+            schoolId,
+            schoolYearId: activeSchoolYearId,
+            teacherUserId: userId,
+          },
+        });
+        await tx.classTimetableSlot.deleteMany({
+          where: {
+            schoolId,
+            schoolYearId: activeSchoolYearId,
+            teacherUserId: userId,
+            activeFromDate: { gt: now },
+          },
+        });
+        await tx.classTimetableSlot.updateMany({
+          where: {
+            schoolId,
+            schoolYearId: activeSchoolYearId,
+            teacherUserId: userId,
+            OR: [{ activeToDate: null }, { activeToDate: { gt: now } }],
+          },
+          data: { activeToDate: now },
+        });
+        await tx.classTimetableOneOffSlot.deleteMany({
+          where: {
+            schoolId,
+            schoolYearId: activeSchoolYearId,
+            teacherUserId: userId,
+            occurrenceDate: { gt: now },
+          },
+        });
+      }
+    }
+
+    await tx.user.updateMany({
+      where: { id: userId, activeSchoolId: schoolId },
+      data: { activeSchoolId: null },
+    });
+  }
+
+  /**
+   * Exclusion complète d'un membre de l'établissement (tous rôles confondus).
+   * - Rôles de gestion (enseignant, parent, staff…) : memberships retirés, donc
+   *   plus aucun accès.
+   * - Élève : l'inscription de l'année active passe à WITHDRAWN. Le compte reste
+   *   connectable en lecture seule (historique) mais sort de tous les effectifs
+   *   et ne reçoit plus de notification ; il en va de même pour ses parents.
+   * Une trace (`SchoolMemberExclusion`) permet d'afficher les exclus et de les
+   * réinviter. Aucune donnée historique n'est supprimée.
+   */
+  async excludeMember(
+    schoolId: string,
+    actorUserId: string,
+    userId: string,
+    reason?: string,
+  ): Promise<{ action: "EXCLUDED"; roles: string[]; excludedAt: Date }> {
+    if (actorUserId === userId) {
+      throw new ForbiddenException(
+        "Vous ne pouvez pas vous exclure vous-même de l'établissement.",
+      );
+    }
+
+    const memberships = await this.prisma.schoolMembership.findMany({
+      where: { schoolId, userId },
+      select: { role: true },
+    });
+    if (memberships.length === 0) {
+      throw new NotFoundException(
+        "Cet utilisateur n'est pas membre de cet établissement.",
+      );
+    }
+    const roles = memberships.map((membership) => membership.role);
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { primaryAdminUserId: true, activeSchoolYearId: true },
+    });
+    if (school?.primaryAdminUserId === userId) {
+      throw new ConflictException(
+        "L'administrateur principal ne peut pas être exclu, il peut seulement être remplacé par la plateforme.",
+      );
+    }
+    if (roles.includes("SCHOOL_ADMIN")) {
+      const adminCount = await this.prisma.schoolMembership.count({
+        where: { schoolId, role: "SCHOOL_ADMIN" },
+      });
+      if (adminCount <= 1) {
+        throw new ConflictException(
+          "Impossible d'exclure le dernier administrateur de l'établissement.",
+        );
+      }
+    }
+
+    const otherRoles = roles.filter((role) => role !== "STUDENT");
+    const isStudent = roles.includes("STUDENT");
+    const activeSchoolYearId = school?.activeSchoolYearId ?? null;
+    const student = isStudent
+      ? await this.prisma.student.findFirst({
+          where: { schoolId, userId },
+          select: { id: true },
+        })
+      : null;
+
+    if (isStudent && otherRoles.length === 0) {
+      if (!activeSchoolYearId) {
+        throw new ConflictException(
+          "Aucune année scolaire active : impossible d'exclure cet élève.",
+        );
+      }
+      if (
+        student &&
+        (await this.isStudentWithdrawn(
+          schoolId,
+          student.id,
+          activeSchoolYearId,
+        ))
+      ) {
+        throw new ConflictException("Cet élève est déjà exclu.");
+      }
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      if (otherRoles.length > 0) {
+        await this.removeNonStudentRoles(tx, {
+          schoolId,
+          userId,
+          roles,
+          activeSchoolYearId,
+          now,
+        });
+      }
+      if (student && activeSchoolYearId) {
+        await this.withdrawStudentEnrollment(
+          tx,
+          schoolId,
+          student.id,
+          activeSchoolYearId,
+        );
+      }
+      await this.openExclusionTrace(tx, {
+        schoolId,
+        userId,
+        studentId: student?.id ?? null,
+        roles,
+        reason,
+        excludedByUserId: actorUserId,
+        excludedAt: now,
+      });
+    });
+
+    return { action: "EXCLUDED", roles, excludedAt: now };
+  }
+
+  /** Exclusion d'un élève sans compte (aucun membership à retirer). */
+  async excludeStudent(
+    schoolId: string,
+    actorUserId: string,
+    studentId: string,
+    reason?: string,
+  ): Promise<{ action: "EXCLUDED"; roles: string[]; excludedAt: Date }> {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true, userId: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Élève introuvable.");
+    }
+    if (student.userId) {
+      // Les élèves avec compte passent par la route utilisateur.
+      return this.excludeMember(schoolId, actorUserId, student.userId, reason);
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+    const activeSchoolYearId = school?.activeSchoolYearId ?? null;
+    if (!activeSchoolYearId) {
+      throw new ConflictException(
+        "Aucune année scolaire active : impossible d'exclure cet élève.",
+      );
+    }
+    if (
+      await this.isStudentWithdrawn(schoolId, student.id, activeSchoolYearId)
+    ) {
+      throw new ConflictException("Cet élève est déjà exclu.");
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await this.withdrawStudentEnrollment(
+        tx,
+        schoolId,
+        student.id,
+        activeSchoolYearId,
+      );
+      await this.openExclusionTrace(tx, {
+        schoolId,
+        userId: null,
+        studentId: student.id,
+        roles: ["STUDENT"],
+        reason,
+        excludedByUserId: actorUserId,
+        excludedAt: now,
+      });
+    });
+
+    return { action: "EXCLUDED", roles: ["STUDENT"], excludedAt: now };
+  }
+
+  /**
+   * Réintègre un membre exclu : les rôles de la trace sont recréés (ou
+   * l'inscription élève redevient ACTIVE). Les affectations d'enseignant, elles,
+   * ne reviennent pas : c'est à l'administration de les refaire.
+   */
+  async reinviteMember(
+    schoolId: string,
+    actorUserId: string,
+    target: { userId?: string; studentId?: string },
+  ): Promise<{ action: "REINVITED"; roles: string[] }> {
+    if (!target.userId && !target.studentId) {
+      throw new BadRequestException("Utilisateur ou élève requis.");
+    }
+
+    const trace = await this.prisma.schoolMemberExclusion.findFirst({
+      where: {
+        schoolId,
+        reinvitedAt: null,
+        OR: [
+          ...(target.userId ? [{ userId: target.userId }] : []),
+          ...(target.studentId ? [{ studentId: target.studentId }] : []),
+        ],
+      },
+      orderBy: { excludedAt: "desc" },
+    });
+    if (!trace) {
+      throw new NotFoundException(
+        "Cet utilisateur n'est pas exclu de cet établissement.",
+      );
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+    const activeSchoolYearId = school?.activeSchoolYearId ?? null;
+    const restoresStudent = trace.rolesSnapshot.includes("STUDENT");
+    const restoredRoles = trace.rolesSnapshot.filter(
+      (role) => role !== "STUDENT",
+    );
+
+    let withdrawnEnrollment: {
+      id: string;
+      classId: string | null;
+      schoolYearId: string;
+    } | null = null;
+    if (restoresStudent && trace.studentId && activeSchoolYearId) {
+      withdrawnEnrollment = await this.prisma.enrollment.findFirst({
+        where: {
+          schoolId,
+          studentId: trace.studentId,
+          schoolYearId: activeSchoolYearId,
+          status: "WITHDRAWN",
+        },
+        select: { id: true, classId: true, schoolYearId: true },
+      });
+      if (withdrawnEnrollment?.classId) {
+        await ensureClassHasCapacity(
+          this.prisma,
+          withdrawnEnrollment.classId,
+          withdrawnEnrollment.schoolYearId,
+        );
+      }
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      if (trace.userId && restoredRoles.length > 0) {
+        await tx.schoolMembership.createMany({
+          data: restoredRoles.map((role) => ({
+            userId: trace.userId as string,
+            schoolId,
+            role,
+          })),
+          skipDuplicates: true,
+        });
+      }
+      if (trace.userId && restoresStudent) {
+        await tx.schoolMembership.createMany({
+          data: [{ userId: trace.userId, schoolId, role: "STUDENT" as const }],
+          skipDuplicates: true,
+        });
+      }
+      if (withdrawnEnrollment) {
+        await tx.enrollment.update({
+          where: { id: withdrawnEnrollment.id },
+          data: { status: "ACTIVE" },
+        });
+      }
+      await tx.schoolMemberExclusion.updateMany({
+        where: {
+          schoolId,
+          reinvitedAt: null,
+          OR: [
+            ...(trace.userId ? [{ userId: trace.userId }] : []),
+            ...(trace.studentId ? [{ studentId: trace.studentId }] : []),
+          ],
+        },
+        data: { reinvitedAt: now, reinvitedByUserId: actorUserId },
+      });
+    });
+
+    if (trace.userId) {
+      await this.sendReinviteNotification(schoolId, actorUserId, trace.userId);
+    }
+
+    return { action: "REINVITED", roles: trace.rolesSnapshot };
+  }
+
+  private async isStudentWithdrawn(
+    schoolId: string,
+    studentId: string,
+    schoolYearId: string,
+  ) {
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: { schoolId, studentId, schoolYearId, status: "WITHDRAWN" },
+      select: { id: true },
+    });
+    return Boolean(enrollment);
+  }
+
+  private async withdrawStudentEnrollment(
+    tx: Prisma.TransactionClient,
+    schoolId: string,
+    studentId: string,
+    schoolYearId: string,
+  ) {
+    // La classe est conservée : elle permet à l'élève (et à ses parents) de
+    // consulter l'historique de l'année en cours, alors que le statut
+    // WITHDRAWN le retire de tous les effectifs.
+    await tx.enrollment.upsert({
+      where: { schoolYearId_studentId: { schoolYearId, studentId } },
+      update: { status: "WITHDRAWN" },
+      create: { schoolId, schoolYearId, studentId, status: "WITHDRAWN" },
+    });
+  }
+
+  private async openExclusionTrace(
+    tx: Prisma.TransactionClient,
+    input: {
+      schoolId: string;
+      userId: string | null;
+      studentId: string | null;
+      roles: SchoolRole[];
+      reason?: string;
+      excludedByUserId: string;
+      excludedAt: Date;
+    },
+  ) {
+    const identity = [
+      ...(input.userId ? [{ userId: input.userId }] : []),
+      ...(input.studentId ? [{ studentId: input.studentId }] : []),
+    ];
+    await tx.schoolMemberExclusion.updateMany({
+      where: { schoolId: input.schoolId, reinvitedAt: null, OR: identity },
+      // Une exclusion encore ouverte est remplacée par la plus récente.
+      data: { reinvitedAt: input.excludedAt },
+    });
+    await tx.schoolMemberExclusion.create({
+      data: {
+        schoolId: input.schoolId,
+        userId: input.userId,
+        studentId: input.studentId,
+        rolesSnapshot: input.roles,
+        reason: input.reason?.trim() || null,
+        excludedByUserId: input.excludedByUserId,
+        excludedAt: input.excludedAt,
+      },
+    });
+  }
+
+  private async sendReinviteNotification(
+    schoolId: string,
+    senderUserId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      const school = await this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true },
+      });
+      const message = await this.prisma.internalMessage.create({
+        data: {
+          schoolId,
+          senderUserId,
+          subject: "Vous avez été réintégré dans l'établissement",
+          body: `<p>Bonjour,</p><p>L'administration de ${school?.name ?? "votre établissement"} vous a réintégré. Vous pouvez de nouveau accéder à votre espace.</p>`,
+          status: "SENT",
+          sentAt: new Date(),
+        },
+      });
+      await this.prisma.internalMessageRecipient.create({
+        data: { messageId: message.id, schoolId, recipientUserId: userId },
+      });
+    } catch {
+      // Notification best-effort — ne doit jamais faire échouer la réintégration.
+    }
   }
 
   async resetMemberPin(

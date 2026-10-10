@@ -324,3 +324,109 @@ describe("AppShell — modale d'aide globale", () => {
     expect(usePageHelpStore.getState().open).toBe(false);
   });
 });
+
+describe("AppShell — bannière lecture seule (élève/parent exclu)", () => {
+  function mockFetch(opts: {
+    role: string;
+    schoolMe: () => Response | Promise<Response>;
+  }) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return new Response(
+          JSON.stringify({
+            firstName: "Robert",
+            lastName: "Ntamack",
+            role: opts.role,
+            activeRole: opts.role,
+            platformRoles: [],
+            memberships: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/schools/college-vogt/me")) return opts.schoolMe();
+      return new Response(JSON.stringify({}), { status: 404 });
+    });
+  }
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  const renderShell = () =>
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("affiche la bannière quand l'API signale schoolReadOnly", async () => {
+    mockFetch({
+      role: "PARENT",
+      schoolMe: () => json({ schoolReadOnly: true }),
+    });
+    renderShell();
+    expect(await screen.findByTestId("read-only-banner")).toHaveTextContent(
+      "Accès en lecture seule",
+    );
+    expect(screen.getByText("Content")).toBeInTheDocument();
+  });
+
+  it("n'affiche rien quand l'accès est normal", async () => {
+    const fetchMock = mockFetch({
+      role: "STUDENT",
+      schoolMe: () => json({ schoolReadOnly: false }),
+    });
+    renderShell();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((c) =>
+          String(c[0]).endsWith("/schools/college-vogt/me"),
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByTestId("read-only-banner")).toBeNull();
+  });
+
+  it("n'interroge pas /schools/:slug/me pour un rôle de gestion", async () => {
+    const fetchMock = mockFetch({
+      role: "TEACHER",
+      schoolMe: () => json({ schoolReadOnly: true }),
+    });
+    renderShell();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((c) => String(c[0]).endsWith("/api/me")),
+      ).toBe(true),
+    );
+    expect(
+      fetchMock.mock.calls.some((c) =>
+        String(c[0]).endsWith("/schools/college-vogt/me"),
+      ),
+    ).toBe(false);
+    expect(screen.queryByTestId("read-only-banner")).toBeNull();
+  });
+
+  it("ignore silencieusement une erreur API ou réseau", async () => {
+    mockFetch({ role: "PARENT", schoolMe: () => json({}, 500) });
+    renderShell();
+    await screen.findByText("Content");
+    await waitFor(() =>
+      expect(screen.queryByTestId("read-only-banner")).toBeNull(),
+    );
+
+    vi.restoreAllMocks();
+    mockFetch({
+      role: "PARENT",
+      schoolMe: () => Promise.reject(new Error("network")),
+    });
+    renderShell();
+    await waitFor(() => expect(screen.getAllByText("Content").length).toBe(2));
+    expect(screen.queryByTestId("read-only-banner")).toBeNull();
+  });
+});

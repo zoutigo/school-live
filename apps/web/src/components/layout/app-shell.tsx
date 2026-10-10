@@ -66,6 +66,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [schoolReadOnly, setSchoolReadOnly] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
@@ -109,6 +110,37 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
       // Keep shell usable even when API is temporarily unreachable.
     }
   }
+
+  const activeAppRole = me?.activeRole ?? me?.role ?? null;
+  const mayBeReadOnly =
+    activeAppRole === "STUDENT" || activeAppRole === "PARENT";
+
+  useEffect(() => {
+    // Seuls un élève exclu (ou un parent dont tous les enfants le sont) passent
+    // en lecture seule : on évite l'appel pour tous les autres rôles.
+    if (!schoolSlug || !mayBeReadOnly) {
+      setSchoolReadOnly(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`${API_URL}/schools/${schoolSlug}/me`, {
+          credentials: "include",
+        });
+        if (!response.ok || cancelled) return;
+        const payload = (await response.json()) as {
+          schoolReadOnly?: boolean;
+        };
+        if (!cancelled) setSchoolReadOnly(payload.schoolReadOnly === true);
+      } catch {
+        // Bannière purement informative : on ignore les erreurs réseau.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, mayBeReadOnly]);
 
   async function loadSchoolBranding(slug: string) {
     try {
@@ -337,6 +369,16 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
             data-testid="app-shell-main"
             className="site-main-gutter site-scroll-frame min-w-0 flex-1 overflow-y-auto bg-background"
           >
+            {schoolReadOnly ? (
+              <div
+                role="status"
+                data-testid="read-only-banner"
+                className="mb-4 rounded-xl border border-[#F4C7A1] bg-[#FFF3E4] px-4 py-3 text-sm text-[#7A4A12]"
+              >
+                <p className="font-semibold">{t("readOnly.title")}</p>
+                <p className="mt-0.5">{t("readOnly.message")}</p>
+              </div>
+            ) : null}
             {children}
           </main>
         </div>

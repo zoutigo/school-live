@@ -25,6 +25,7 @@ model Student {
   payments          StudentPayment[]
   walletAllocations WalletTransaction[]
   supplyListViews   SupplyListView[]
+  exclusions        SchoolMemberExclusion[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])

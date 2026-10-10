@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { isStudentExcludedInSchool } from "../common/school-member-status.util.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { PushService } from "./push.service.js";
 import type { SupplyListAvailableEventPayload } from "./supply-list-available-notification.types.js";
@@ -25,6 +26,16 @@ export class SupplyListAvailableNotificationsProjectionService {
       },
     });
     if (!student) return;
+    // Élève exclu : ses parents ne sont plus notifiés.
+    if (
+      await isStudentExcludedInSchool(
+        this.prisma,
+        event.schoolId,
+        event.studentId,
+      )
+    ) {
+      return;
+    }
 
     const schoolYear = await this.prisma.schoolYear.findUnique({
       where: { id: event.schoolYearId },

@@ -20,6 +20,10 @@ function makePrisma() {
     classTimetableSlot: { deleteMany: jest.fn(), updateMany: jest.fn() },
     classTimetableOneOffSlot: { deleteMany: jest.fn() },
     user: { updateMany: jest.fn() },
+    schoolMemberExclusion: {
+      updateMany: jest.fn(),
+      create: jest.fn(),
+    },
   };
   const prisma = {
     schoolMembership: {

@@ -5,6 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import {
+  closeStudentExclusionTrace,
+  isStudentExcludedInSchool,
+  openStudentExclusionTrace,
+} from "../common/school-member-status.util.js";
 import { Prisma } from "@prisma/client";
 import type {
   PlatformRole,
@@ -1262,7 +1267,11 @@ export class ManagementService {
 
     const enrolledStudentsCount = school.activeSchoolYearId
       ? await this.prisma.enrollment.count({
-          where: { schoolId, schoolYearId: school.activeSchoolYearId },
+          where: {
+            schoolId,
+            schoolYearId: school.activeSchoolYearId,
+            status: "ACTIVE",
+          },
         })
       : 0;
 
@@ -1459,6 +1468,11 @@ export class ManagementService {
           schoolId,
           role: "SCHOOL_ADMIN",
         },
+      });
+      // Un membre précédemment exclu qui revient comme admin n'est plus « exclu ».
+      await this.prisma.schoolMemberExclusion.updateMany({
+        where: { schoolId, userId: existingUser.id, reinvitedAt: null },
+        data: { reinvitedAt: new Date() },
       });
 
       return {
@@ -7462,7 +7476,13 @@ export class ManagementService {
           in: parsed.enrollmentIds,
         },
       },
-      select: { id: true, classId: true, schoolYearId: true, status: true },
+      select: {
+        id: true,
+        classId: true,
+        schoolYearId: true,
+        status: true,
+        studentId: true,
+      },
     });
 
     if (existingRows.length !== parsed.enrollmentIds.length) {
@@ -7501,10 +7521,43 @@ export class ManagementService {
       },
     });
 
+    await this.syncExclusionTraces(schoolId, parsed.status, existingRows);
+
     return {
       success: true,
       updatedCount: result.count,
     };
+  }
+
+  /**
+   * Garde la trace d'exclusion cohérente quand un statut d'inscription de
+   * l'année active bascule vers/depuis WITHDRAWN via l'API d'inscriptions.
+   */
+  private async syncExclusionTraces(
+    schoolId: string,
+    status: "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED",
+    rows: Array<{ studentId: string; schoolYearId: string }>,
+  ) {
+    if (status !== "WITHDRAWN" && status !== "ACTIVE") return;
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+    if (!school?.activeSchoolYearId) return;
+    for (const row of rows) {
+      if (row.schoolYearId !== school.activeSchoolYearId) continue;
+      if (status === "WITHDRAWN") {
+        await openStudentExclusionTrace(this.prisma, {
+          schoolId,
+          studentId: row.studentId,
+        });
+      } else {
+        await closeStudentExclusionTrace(this.prisma, {
+          schoolId,
+          studentId: row.studentId,
+        });
+      }
+    }
   }
 
   async updateStudentEnrollment(
@@ -7581,6 +7634,10 @@ export class ManagementService {
         },
       },
     });
+
+    await this.syncExclusionTraces(schoolId, parsed.status, [
+      { studentId, schoolYearId: enrollment.schoolYearId },
+    ]);
 
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
@@ -8551,6 +8608,16 @@ export class ManagementService {
     };
     action: "CREATED" | "UPDATED";
   }) {
+    // Élève exclu : ni lui ni ses parents ne sont plus notifiés.
+    if (
+      await isStudentExcludedInSchool(
+        this.prisma,
+        params.schoolId,
+        params.studentId,
+      )
+    ) {
+      return;
+    }
     const student = await this.prisma.student.findFirst({
       where: {
         id: params.studentId,

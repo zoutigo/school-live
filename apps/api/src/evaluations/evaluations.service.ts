@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ENROLLMENT_VIEWABLE_STATUSES } from "../common/school-member-status.util.js";
 import {
   EvaluationStatus,
   Sequence,
@@ -1094,7 +1095,13 @@ export class EvaluationsService {
     }
 
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { schoolId, studentId, status: "ACTIVE", classId: { not: null } },
+      where: {
+        schoolId,
+        studentId,
+        // Élève exclu : l'historique de notes reste consultable.
+        status: { in: [...ENROLLMENT_VIEWABLE_STATUSES] },
+        classId: { not: null },
+      },
       orderBy: [{ schoolYear: { label: "desc" } }],
       select: {
         classId: true,

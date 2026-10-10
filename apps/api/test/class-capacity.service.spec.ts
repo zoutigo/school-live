@@ -26,6 +26,11 @@ const prisma = {
   user: {
     create: jest.fn(),
   },
+  schoolMemberExclusion: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    updateMany: jest.fn(),
+  },
   $transaction: jest.fn(),
 };
 
@@ -257,6 +262,16 @@ describe("ManagementService — capacite de classe", () => {
 
       expect(prisma.class.findUnique).not.toHaveBeenCalled();
       expect(prisma.enrollment.update).toHaveBeenCalled();
+      // WITHDRAWN sur l'année active = exclusion : une trace est ouverte.
+      expect(prisma.schoolMemberExclusion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            schoolId: "school-1",
+            studentId: "student-1",
+            rolesSnapshot: ["STUDENT"],
+          }),
+        }),
+      );
     });
   });
 

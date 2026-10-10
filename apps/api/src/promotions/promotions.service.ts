@@ -237,6 +237,8 @@ export class PromotionsService {
         schoolId,
         schoolYearId: query.schoolYearId,
         classId: null,
+        // Un élève exclu (WITHDRAWN) n'attend pas d'affectation.
+        status: "ACTIVE",
         academicLevelId: query.academicLevelId,
         trackId: query.trackId,
       },
@@ -264,10 +266,16 @@ export class PromotionsService {
         schoolYearId: true,
         classId: true,
         academicLevelId: true,
+        status: true,
       },
     });
     if (!enrollment) {
       throw new NotFoundException("Inscription introuvable");
+    }
+    if (enrollment.status !== "ACTIVE") {
+      throw new BadRequestException(
+        "Cette inscription n'est plus active (élève exclu ou sorti).",
+      );
     }
     if (enrollment.classId) {
       throw new BadRequestException("Cet eleve est deja affecte a une classe");

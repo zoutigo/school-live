@@ -4,6 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import {
+  isStudentExcludedInSchool,
+  notExcludedStudentFilter,
+} from "../common/school-member-status.util.js";
 import type {
   Prisma,
   StudentHealthAccessAction,
@@ -241,6 +245,7 @@ export class StudentHealthService {
     const students = await this.prisma.student.findMany({
       where: {
         schoolId,
+        ...notExcludedStudentFilter(activeSchoolYearId),
         enrollments: {
           some: {
             classId,
@@ -815,6 +820,10 @@ export class StudentHealthService {
       authorUser: { firstName: string; lastName: string } | null;
     },
   ) {
+    // Élève exclu : ses parents ne sont plus notifiés.
+    if (await isStudentExcludedInSchool(this.prisma, schoolId, student.id)) {
+      return;
+    }
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
       select: { name: true, slug: true },

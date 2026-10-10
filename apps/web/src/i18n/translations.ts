@@ -4820,6 +4820,32 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.exclude.confirm": "Exclure",
     "users.exclude.success": "{name} a été exclu(e) de l'école.",
     "users.exclude.failed": "Exclusion impossible.",
+    "users.exclude.messageStudent":
+      "{name} sera retiré(e) de tous les effectifs (notes, devoirs, appel…) et ne recevra plus aucune notification, ni ses parents. Son compte et celui de ses parents restent consultables en lecture seule pour l'historique, sans possibilité d'agir. Rien n'est supprimé et {name} pourra être réinvité(e).",
+    "users.exclude.messageStaff":
+      "{name} n'aura plus aucun accès à l'établissement et ses rôles seront retirés. Son historique (notes, présences, années passées) est conservé, le compte n'est pas supprimé et {name} pourra être réinvité(e).",
+    "users.exclude.reasonLabel": "Motif (facultatif)",
+    "users.exclude.reasonPlaceholder":
+      "Ex. fin de contrat, départ de l'établissement…",
+    "users.exclude.reasonTooLong":
+      "Le motif ne peut pas dépasser 500 caractères.",
+    "users.membership.label": "Statut dans l'école",
+    "users.membership.active": "Actifs",
+    "users.membership.excluded": "Exclus",
+    "users.excluded.badge": "Exclu(e)",
+    "users.excluded.since": "Exclu(e) le {date}",
+    "users.excluded.reason": "Motif : {reason}",
+    "users.excluded.hint":
+      "Ces personnes ne font plus partie de l'école. Réinvitez-les pour leur redonner accès.",
+    "users.empty.excludedTitle": "Aucune personne exclue",
+    "users.empty.excludedMessage":
+      "Les personnes exclues de l'école apparaîtront ici.",
+    "users.actions.reinvite": "Inviter dans l'école",
+    "users.reinvite.success": "{name} a été réinvité(e) dans l'école.",
+    "users.reinvite.failed": "Réinvitation impossible.",
+    "readOnly.title": "Accès en lecture seule",
+    "readOnly.message":
+      "L'élève n'est plus inscrit(e) dans l'établissement. Vous pouvez consulter l'historique (notes, devoirs, emploi du temps…) mais plus effectuer d'action ni recevoir de notification.",
     "users.unassignClass.title": "Retirer de sa classe",
     "users.unassignClass.message":
       "{name} restera élève de l'école mais ne sera plus affecté(e) à une classe pour l'année scolaire en cours. Son historique est conservé.",
@@ -10233,6 +10259,30 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.exclude.confirm": "Remove",
     "users.exclude.success": "{name} was removed from the school.",
     "users.exclude.failed": "Removal failed.",
+    "users.exclude.messageStudent":
+      "{name} will be removed from every roster (grades, homework, attendance…) and will no longer receive any notification, nor will their parents. Their account and their parents' accounts stay viewable in read-only mode for the history, with no way to act. Nothing is deleted and {name} can be invited back.",
+    "users.exclude.messageStaff":
+      "{name} will no longer have any access to the school and their roles will be removed. Their history (grades, attendance, past years) is kept, the account is not deleted and {name} can be invited back.",
+    "users.exclude.reasonLabel": "Reason (optional)",
+    "users.exclude.reasonPlaceholder": "E.g. end of contract, left the school…",
+    "users.exclude.reasonTooLong": "The reason cannot exceed 500 characters.",
+    "users.membership.label": "School status",
+    "users.membership.active": "Active",
+    "users.membership.excluded": "Excluded",
+    "users.excluded.badge": "Excluded",
+    "users.excluded.since": "Excluded on {date}",
+    "users.excluded.reason": "Reason: {reason}",
+    "users.excluded.hint":
+      "These people are no longer part of the school. Invite them back to restore their access.",
+    "users.empty.excludedTitle": "No excluded people",
+    "users.empty.excludedMessage":
+      "People excluded from the school will appear here.",
+    "users.actions.reinvite": "Invite back to the school",
+    "users.reinvite.success": "{name} was invited back to the school.",
+    "users.reinvite.failed": "Could not invite back.",
+    "readOnly.title": "Read-only access",
+    "readOnly.message":
+      "The student is no longer enrolled at the school. You can browse the history (grades, homework, timetable…) but can no longer act or receive notifications.",
     "users.unassignClass.title": "Remove from class",
     "users.unassignClass.message":
       "{name} will remain a student of the school but will no longer be assigned to a class for the current school year. Their history is kept.",

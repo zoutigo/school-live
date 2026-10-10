@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ENROLLMENT_VIEWABLE_STATUSES } from "../common/school-member-status.util.js";
 import {
   InlineMediaEntityType,
   InlineMediaScope,
@@ -684,7 +685,8 @@ export class HomeworkService {
               schoolId,
               classId,
               schoolYearId: classEntity.schoolYearId,
-              status: "ACTIVE",
+              // Élève exclu : consultation de l'historique en lecture seule.
+              status: { in: [...ENROLLMENT_VIEWABLE_STATUSES] },
             },
           },
         },
@@ -714,7 +716,8 @@ export class HomeworkService {
                 schoolId,
                 classId,
                 schoolYearId: classEntity.schoolYearId,
-                status: "ACTIVE",
+                // Enfant exclu : le parent consulte l'historique en lecture seule.
+                status: { in: [...ENROLLMENT_VIEWABLE_STATUSES] },
               },
             },
           },

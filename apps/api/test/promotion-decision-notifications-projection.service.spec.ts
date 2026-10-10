@@ -29,6 +29,12 @@ describe("PromotionDecisionNotificationsProjectionService", () => {
     pushTokens?: Array<{ token: string }>;
   }) {
     return {
+      school: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ activeSchoolYearId: "year-1" }),
+      },
+      enrollment: { findFirst: jest.fn().mockResolvedValue(null) },
       studentTermReport: {
         findUnique: jest
           .fn()
@@ -58,6 +64,23 @@ describe("PromotionDecisionNotificationsProjectionService", () => {
 
     await service.project({ schoolId: "school-1", reportId: "report-1" });
 
+    expect(
+      pushService.sendPromotionDecisionNotification,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the student is excluded (WITHDRAWN enrollment)", async () => {
+    const prisma = buildPrisma();
+    prisma.enrollment.findFirst.mockResolvedValue({ id: "enr-1" });
+    const pushService = buildPushService();
+    const service = new PromotionDecisionNotificationsProjectionService(
+      prisma as never,
+      pushService as never,
+    );
+
+    await service.project({ schoolId: "school-1", reportId: "report-1" });
+
+    expect(prisma.mobilePushToken.findMany).not.toHaveBeenCalled();
     expect(
       pushService.sendPromotionDecisionNotification,
     ).not.toHaveBeenCalled();
