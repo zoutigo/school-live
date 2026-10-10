@@ -3364,7 +3364,7 @@ export default function UtilisateursPage() {
               {t("users.subtitle")}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap">
             {total > 0 ? (
               <span
                 className="rounded-full border border-warm-border bg-warm-surface px-3 py-1 text-xs font-semibold text-text-secondary"

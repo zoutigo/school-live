@@ -498,7 +498,7 @@ export default function TeacherClassHomeworkPage() {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 [&>*]:min-w-0">
       <Card title={pageTitle} subtitle={t("homework.page.subtitle")}>
         <div className="mb-4 flex items-end gap-2 border-b border-border">
           <button

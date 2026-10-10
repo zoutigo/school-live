@@ -1,5 +1,6 @@
 "use client";
 
+import { useSchoolReadOnly } from "../layout/school-read-only-context";
 import React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -161,7 +162,7 @@ export function FamilyFeedPage({
   childFullName,
   scopeLabel = "la discipline",
   allowComposer = true,
-  readOnly = false,
+  readOnly: readOnlyProp = false,
   viewerRole = "PARENT",
   viewScope = "GENERAL",
   currentClassId,
@@ -171,6 +172,7 @@ export function FamilyFeedPage({
   useDemoSeed = true,
 }: Props) {
   const { t, locale } = useTranslation();
+  const readOnly = readOnlyProp || useSchoolReadOnly();
   const canCompose = allowComposer && !readOnly;
   const editorRef = useRef<RichTextEditorRef | null>(null);
   const editEditorRef = useRef<RichTextEditorRef | null>(null);

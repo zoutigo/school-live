@@ -1,5 +1,6 @@
 "use client";
 
+import { useSchoolReadOnly } from "../layout/school-read-only-context";
 import { useEffect, useState } from "react";
 import { Forward, Pencil, Reply } from "lucide-react";
 import { Card } from "../ui/card";
@@ -40,6 +41,7 @@ export function MessagingMessageDetailView({
   onEditDraft,
 }: Props) {
   const { t } = useTranslation();
+  const readOnly = useSchoolReadOnly();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,9 +61,14 @@ export function MessagingMessageDetailView({
     try {
       const details = await client.get(messageId);
       setMessage(details);
-      if (folder === "inbox") {
-        await client.markRead(messageId, true);
-        window.dispatchEvent(new Event("messaging:updated"));
+      if (folder === "inbox" && !readOnly) {
+        // Marquer comme lu ne doit jamais empêcher la lecture du message.
+        try {
+          await client.markRead(messageId, true);
+          window.dispatchEvent(new Event("messaging:updated"));
+        } catch {
+          // Lecture conservée même si l'accusé de lecture échoue.
+        }
       }
     } catch {
       setError(t("messaging.page.loadMessageError"));
@@ -137,7 +144,7 @@ export function MessagingMessageDetailView({
             onBack={onBack}
             onOpenAttachment={setPreviewAttachment}
             topActions={
-              message ? (
+              message && !readOnly ? (
                 <div className="flex w-full flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {message.status === "DRAFT" && onEditDraft ? (

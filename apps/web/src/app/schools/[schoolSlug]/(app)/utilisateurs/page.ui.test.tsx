@@ -293,6 +293,16 @@ describe("UtilisateursPage", () => {
     const badge = await screen.findByTestId("users-total");
     expect(badge).toHaveTextContent("19");
     expect(topbar).toContainElement(badge);
+
+    // Les actions (compteur, Personnel, Nouvel utilisateur) passent à la ligne
+    // sur mobile au lieu de déborder de l'écran (bouton coupé à 390 px).
+    const actions = badge.parentElement as HTMLElement;
+    expect(actions.className).toContain("flex-wrap");
+    expect(actions.className).toContain("min-w-0");
+    expect(actions).toContainElement(screen.getByTestId("create-user-button"));
+    expect(actions).toContainElement(
+      screen.getByTestId("manage-staff-functions-button"),
+    );
   });
 
   it("affiche un état vide quand la liste est vide", async () => {

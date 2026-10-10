@@ -26,6 +26,7 @@ describe("Exclusion complète d'un membre + réinvitation e2e", () => {
   let classId = "";
   let subjectId = "";
   let homeworkId = "";
+  let evaluationId = "";
   const tokens: Record<string, string> = {};
 
   async function apiJson(path: string, init?: RequestInit) {
@@ -209,6 +210,33 @@ describe("Exclusion complète d'un membre + réinvitation e2e", () => {
       })
     ).id;
 
+    const evaluationType = await prisma.evaluationType.create({
+      data: { schoolId, code: "DEVOIR", label: "Devoir" },
+    });
+    evaluationId = (
+      await prisma.evaluation.create({
+        data: {
+          schoolId,
+          schoolYearId: yearId,
+          classId,
+          subjectId,
+          evaluationTypeId: evaluationType.id,
+          authorUserId: ids.teacher,
+          title: "Contrôle fractions",
+          maxScore: 20,
+          sequence: "SEQ_1",
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+        },
+      })
+    ).id;
+    await prisma.studentEvaluationScore.createMany({
+      data: [
+        { evaluationId, studentId: ids.pupilAStudent, score: 15 },
+        { evaluationId, studentId: ids.pupilBStudent, score: 12 },
+      ],
+    });
+
     for (const key of [
       "admin",
       "otherAdmin",
@@ -334,6 +362,58 @@ describe("Exclusion complète d'un membre + réinvitation e2e", () => {
       );
       expect(hw.response.status).toBe(200);
       expect(contains(hw.body, ids.pupilAStudent)).toBe(false);
+    });
+
+    it("sa note n'est plus comptée dans la complétude des évaluations (liste de classe, liste école, badge « à saisir »)", async () => {
+      const classList = await apiJson(
+        url(`/classes/${classId}/evaluations`),
+        authed(tokens.teacher),
+      );
+      expect(classList.response.status).toBe(200);
+      const classRow = (
+        classList.body as unknown as Array<{
+          id: string;
+          _count: { scores: number };
+          class: { studentsCount: number };
+        }>
+      ).find((row) => row.id === evaluationId);
+      // Effectif actif : pupilB + élève sans compte ; seule la note de pupilB compte.
+      expect(classRow?.class.studentsCount).toBe(2);
+      expect(classRow?._count.scores).toBe(1);
+
+      const schoolList = await apiJson(
+        url("/evaluations"),
+        authed(tokens.admin),
+      );
+      expect(schoolList.response.status).toBe(200);
+      const schoolRow = (
+        schoolList.body as unknown as Array<{
+          id: string;
+          _count: { scores: number };
+        }>
+      ).find((row) => row.id === evaluationId);
+      expect(schoolRow?._count.scores).toBe(1);
+
+      // 2 élèves actifs - 1 note d'élève actif = 1 saisie restante (et non 0,
+      // ce que donnerait le décompte brut des 2 notes en base).
+      const badges = await apiJson(
+        url("/me/unread-summary"),
+        authed(tokens.teacher),
+      );
+      expect(badges.response.status).toBe(200);
+      const teacherClasses = (
+        badges.body as unknown as {
+          teacherClasses: Array<{ classId: string; evaluationsToGrade: number }>;
+        }
+      ).teacherClasses;
+      expect(
+        teacherClasses.find((c) => c.classId === classId)?.evaluationsToGrade,
+      ).toBe(1);
+
+      // Les notes brutes restent en base (historique), seul le décompte change.
+      expect(
+        await prisma.studentEvaluationScore.count({ where: { evaluationId } }),
+      ).toBe(2);
     });
 
     it("n'est plus dans la salle d'attente des affectations ni listé comme actif", async () => {

@@ -197,7 +197,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "login.errors.invalidUsername":
       "Identifiant invalide (3 caracteres minimum).",
     "login.errors.invalidSession": "Session invalide apres connexion",
-    "login.errors.noSchool": "Aucune ecole associee a ce compte",
+    "login.errors.noSchool":
+      "Aucune ecole associee a ce compte. Si vous avez ete retire(e) d'un etablissement, contactez son administration.",
     "login.errors.connectionError": "Erreur de connexion",
     "login.errors.invalidPhonePin": "Telephone ou PIN invalide",
     "login.errors.invalidEmailPassword": "Email ou mot de passe invalide",
@@ -4845,7 +4846,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.reinvite.failed": "Réinvitation impossible.",
     "readOnly.title": "Accès en lecture seule",
     "readOnly.message":
-      "L'élève n'est plus inscrit(e) dans l'établissement. Vous pouvez consulter l'historique (notes, devoirs, emploi du temps…) mais plus effectuer d'action ni recevoir de notification.",
+      "Vous n'êtes plus inscrit(e) dans l'établissement. Vous pouvez consulter votre historique (notes, devoirs, emploi du temps…) mais plus effectuer d'action ni recevoir de notification.",
+    "readOnly.actionBlocked":
+      "Action impossible : votre accès est en lecture seule.",
+    "readOnly.messageParent":
+      "Votre enfant n'est plus inscrit(e) dans l'établissement. Vous pouvez consulter son historique (notes, devoirs, emploi du temps…) mais plus effectuer d'action ni recevoir de notification.",
     "users.unassignClass.title": "Retirer de sa classe",
     "users.unassignClass.message":
       "{name} restera élève de l'école mais ne sera plus affecté(e) à une classe pour l'année scolaire en cours. Son historique est conservé.",
@@ -5833,7 +5838,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "login.errors.passwordRequired": "Password is required.",
     "login.errors.invalidUsername": "Invalid username (3 characters minimum).",
     "login.errors.invalidSession": "Invalid session after login",
-    "login.errors.noSchool": "No school associated with this account",
+    "login.errors.noSchool":
+      "No school associated with this account. If you were removed from a school, please contact its administration.",
     "login.errors.connectionError": "Connection error",
     "login.errors.invalidPhonePin": "Invalid phone or PIN",
     "login.errors.invalidEmailPassword": "Invalid email or password",
@@ -10282,7 +10288,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.reinvite.failed": "Could not invite back.",
     "readOnly.title": "Read-only access",
     "readOnly.message":
-      "The student is no longer enrolled at the school. You can browse the history (grades, homework, timetable…) but can no longer act or receive notifications.",
+      "You are no longer enrolled at the school. You can browse your history (grades, homework, timetable…) but can no longer act or receive notifications.",
+    "readOnly.actionBlocked":
+      "Action not possible: your access is read-only.",
+    "readOnly.messageParent":
+      "Your child is no longer enrolled at the school. You can browse their history (grades, homework, timetable…) but can no longer act or receive notifications.",
     "users.unassignClass.title": "Remove from class",
     "users.unassignClass.message":
       "{name} will remain a student of the school but will no longer be assigned to a class for the current school year. Their history is kept.",

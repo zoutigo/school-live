@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChildCahierDeTextePage from "./page";
+import { SchoolReadOnlyContext } from "../../../../../../../components/layout/school-read-only-context";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 import { usePageHelpStore } from "../../../../../../../store/page-help";
 
@@ -244,6 +245,57 @@ describe("Child cahier de texte page (vue parent)", () => {
       done: true,
       studentId: "child-1",
     });
+  });
+
+  it("lecture seule (enfant exclu) : consultation possible, mais plus de case à cocher ni de commentaire", async () => {
+    const writes: string[] = [];
+    mockFetchDefault({
+      onboardingHelpEnabled: false,
+      onRequest: (url, init) => {
+        if (init?.method && init.method !== "GET") {
+          writes.push(`${init.method} ${url}`);
+        }
+        return undefined;
+      },
+    });
+
+    render(
+      <SchoolReadOnlyContext.Provider value={true}>
+        <ChildCahierDeTextePage />
+      </SchoolReadOnlyContext.Provider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Apprendre le vocabulaire")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("homework-row-hw-1"));
+
+    // L'historique reste lisible : consignes et commentaires existants.
+    await waitFor(() => {
+      expect(screen.getByText("Reprendre la lecon.")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Pensez a bien reviser.")).toBeInTheDocument();
+
+    // Aucune action possible.
+    expect(screen.getByTestId("homework-toggle-done")).toBeDisabled();
+    expect(screen.queryByTestId("homework-comment-input")).toBeNull();
+    expect(screen.queryByTestId("homework-comment-submit")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("homework-toggle-done"));
+    expect(writes).toEqual([]);
+  });
+
+  it("accès normal : case à cocher active et formulaire de commentaire présents", async () => {
+    mockFetchDefault({ onboardingHelpEnabled: false });
+    render(<ChildCahierDeTextePage />);
+    await waitFor(() => {
+      expect(screen.getByText("Apprendre le vocabulaire")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("homework-row-hw-1"));
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-toggle-done")).toBeEnabled();
+    });
+    expect(screen.getByTestId("homework-comment-input")).toBeInTheDocument();
   });
 
   it("affiche l'onglet Voir avec les compteurs de la classe de l'enfant", async () => {

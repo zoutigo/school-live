@@ -9,6 +9,7 @@ import {
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
+import { useSchoolReadOnly } from "./school-read-only-context";
 import { usePageHelpStore } from "../../store/page-help";
 import { useLocaleStore } from "../../i18n/locale-store";
 
@@ -428,5 +429,188 @@ describe("AppShell — bannière lecture seule (élève/parent exclu)", () => {
     renderShell();
     await waitFor(() => expect(screen.getAllByText("Content").length).toBe(2));
     expect(screen.queryByTestId("read-only-banner")).toBeNull();
+  });
+});
+
+describe("AppShell — lecture seule : libellés, filet de sécurité 403, contexte", () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  function mockApi(opts: {
+    role: "STUDENT" | "PARENT" | "TEACHER";
+    readOnly: boolean;
+    write?: () => Response;
+  }) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return json({
+          firstName: "Robert",
+          lastName: "Ntamack",
+          role: opts.role,
+          activeRole: opts.role,
+          platformRoles: [],
+          memberships: [],
+        });
+      }
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return json({ schoolReadOnly: opts.readOnly });
+      }
+      if (url.includes("/schools/college-vogt/homework/done")) {
+        return opts.write ? opts.write() : json({});
+      }
+      return json({}, 404);
+    });
+  }
+
+  function ReadOnlyProbe() {
+    return (
+      <span data-testid="probe">{String(useSchoolReadOnly())}</span>
+    );
+  }
+
+  const renderShell = (child: React.ReactNode = <div>Content</div>) =>
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        {child}
+      </AppShell>,
+    );
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useLocaleStore.getState().setLocale("fr");
+  });
+
+  it("adresse l'élève exclu à la deuxième personne", async () => {
+    mockApi({ role: "STUDENT", readOnly: true });
+    renderShell();
+    const banner = await screen.findByTestId("read-only-banner");
+    expect(banner).toHaveTextContent("Vous n'êtes plus inscrit(e)");
+    expect(banner).not.toHaveTextContent("Votre enfant");
+  });
+
+  it("parle de l'enfant au parent dont tous les enfants sont exclus", async () => {
+    mockApi({ role: "PARENT", readOnly: true });
+    renderShell();
+    expect(await screen.findByTestId("read-only-banner")).toHaveTextContent(
+      "Votre enfant n'est plus inscrit(e)",
+    );
+  });
+
+  it("affiche les libellés en anglais", async () => {
+    useLocaleStore.getState().setLocale("en");
+    mockApi({ role: "PARENT", readOnly: true });
+    renderShell();
+    const banner = await screen.findByTestId("read-only-banner");
+    expect(banner).toHaveTextContent("Read-only access");
+    expect(banner).toHaveTextContent("Your child is no longer enrolled");
+  });
+
+  it("expose le mode lecture seule aux modules via le contexte", async () => {
+    mockApi({ role: "STUDENT", readOnly: true });
+    renderShell(<ReadOnlyProbe />);
+    await waitFor(() =>
+      expect(screen.getByTestId("probe")).toHaveTextContent("true"),
+    );
+  });
+
+  it("le contexte vaut false pour un accès normal", async () => {
+    mockApi({ role: "STUDENT", readOnly: false });
+    renderShell(<ReadOnlyProbe />);
+    await screen.findByTestId("probe");
+    expect(screen.getByTestId("probe")).toHaveTextContent("false");
+  });
+
+  it("explique clairement un refus 403 SCHOOL_MEMBER_READ_ONLY sur une écriture", async () => {
+    mockApi({
+      role: "STUDENT",
+      readOnly: true,
+      write: () =>
+        json({ code: "SCHOOL_MEMBER_READ_ONLY", message: "Lecture seule" }, 403),
+    });
+    renderShell();
+    await screen.findByTestId("read-only-banner");
+
+    const response = await window.fetch(
+      "http://localhost:3001/api/schools/college-vogt/homework/done",
+      { method: "POST" },
+    );
+    // La réponse reste lisible par l'appelant (clone interne).
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      code: "SCHOOL_MEMBER_READ_ONLY",
+    });
+    expect(await screen.findByTestId("read-only-blocked-toast")).toHaveTextContent(
+      "Action impossible : votre accès est en lecture seule.",
+    );
+  });
+
+  it("n'affiche aucun toast pour un autre 403 ou pour une lecture", async () => {
+    mockApi({
+      role: "STUDENT",
+      readOnly: true,
+      write: () => json({ code: "FORBIDDEN_OTHER" }, 403),
+    });
+    renderShell();
+    await screen.findByTestId("read-only-banner");
+
+    await window.fetch(
+      "http://localhost:3001/api/schools/college-vogt/homework/done",
+      { method: "POST" },
+    );
+    await window.fetch(
+      "http://localhost:3001/api/schools/college-vogt/homework/done",
+    );
+    expect(screen.queryByTestId("read-only-blocked-toast")).toBeNull();
+  });
+
+  it("ignore une réponse 403 non JSON sans planter", async () => {
+    mockApi({
+      role: "STUDENT",
+      readOnly: true,
+      write: () => new Response("Forbidden", { status: 403 }),
+    });
+    renderShell();
+    await screen.findByTestId("read-only-banner");
+    const response = await window.fetch(
+      "http://localhost:3001/api/schools/college-vogt/homework/done",
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(403);
+    expect(screen.queryByTestId("read-only-blocked-toast")).toBeNull();
+  });
+
+  it("n'intercepte pas fetch pour un utilisateur qui n'est pas en lecture seule", async () => {
+    const spy = mockApi({
+      role: "TEACHER",
+      readOnly: false,
+      write: () => json({ code: "SCHOOL_MEMBER_READ_ONLY" }, 403),
+    });
+    const before = window.fetch;
+    renderShell();
+    await waitFor(() =>
+      expect(
+        spy.mock.calls.some((c) => String(c[0]).endsWith("/api/me")),
+      ).toBe(true),
+    );
+    expect(window.fetch).toBe(before);
+    await window.fetch(
+      "http://localhost:3001/api/schools/college-vogt/homework/done",
+      { method: "POST" },
+    );
+    expect(screen.queryByTestId("read-only-blocked-toast")).toBeNull();
+  });
+
+  it("restaure fetch au démontage", async () => {
+    mockApi({ role: "STUDENT", readOnly: true });
+    const before = window.fetch;
+    const { unmount } = renderShell();
+    await screen.findByTestId("read-only-banner");
+    expect(window.fetch).not.toBe(before);
+    unmount();
+    expect(window.fetch).toBe(before);
   });
 });

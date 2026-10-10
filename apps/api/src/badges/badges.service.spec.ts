@@ -360,10 +360,14 @@ describe("BadgesService", () => {
         { classId: "class-1", class: { id: "class-1", name: "6e A" } },
       ]);
       prisma.evaluation.findMany.mockResolvedValue([
-        { schoolYearId: "year-1", _count: { scores: 18 } },
-        { schoolYearId: "year-1", _count: { scores: 20 } },
+        { id: "eval-1", schoolYearId: "year-1" },
+        { id: "eval-2", schoolYearId: "year-1" },
       ]);
       prisma.enrollment.count.mockResolvedValue(20);
+      // Notes des seuls élèves de l'effectif actif (18 puis 20).
+      prisma.studentEvaluationScore.count
+        .mockResolvedValueOnce(18)
+        .mockResolvedValueOnce(20);
 
       const result = await service.getUnreadSummary(user, "school-1");
 
@@ -372,6 +376,63 @@ describe("BadgesService", () => {
         { classId: "class-1", className: "6e A", evaluationsToGrade: 2 },
       ]);
       expect(result.total).toBe(2);
+    });
+  });
+
+  describe("teacher class evaluations to grade — élèves exclus", () => {
+    it("ne compte que les notes des élèves de l'effectif actif (un exclu déjà noté ne masque pas un élève restant à noter)", async () => {
+      const user = makeUser({
+        memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+      });
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        { classId: "class-1", class: { id: "class-1", name: "6e A" } },
+      ]);
+      prisma.evaluation.findMany.mockResolvedValue([
+        { id: "eval-1", schoolYearId: "year-1" },
+      ]);
+      // Effectif actif de 20 ; 19 notes d'élèves actifs (la 20e note brute
+      // appartient à un élève exclu et ne doit pas fermer le « à saisir »).
+      prisma.enrollment.count.mockResolvedValue(20);
+      prisma.studentEvaluationScore.count.mockResolvedValue(19);
+
+      const result = await service.getUnreadSummary(user, "school-1");
+
+      expect(result.teacherClasses).toEqual([
+        { classId: "class-1", className: "6e A", evaluationsToGrade: 1 },
+      ]);
+      expect(prisma.studentEvaluationScore.count).toHaveBeenCalledWith({
+        where: {
+          evaluationId: "eval-1",
+          student: {
+            enrollments: {
+              some: {
+                schoolId: "school-1",
+                classId: "class-1",
+                schoolYearId: "year-1",
+                status: "ACTIVE",
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it("jamais de total négatif quand l'effectif actif a diminué", async () => {
+      const user = makeUser({
+        memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+      });
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        { classId: "class-1", class: { id: "class-1", name: "6e A" } },
+      ]);
+      prisma.evaluation.findMany.mockResolvedValue([
+        { id: "eval-1", schoolYearId: "year-1" },
+      ]);
+      prisma.enrollment.count.mockResolvedValue(18);
+      prisma.studentEvaluationScore.count.mockResolvedValue(20);
+
+      const result = await service.getUnreadSummary(user, "school-1");
+
+      expect(result.teacherClasses[0].evaluationsToGrade).toBe(0);
     });
   });
 
